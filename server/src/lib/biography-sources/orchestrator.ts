@@ -14,6 +14,7 @@
  */
 
 import newrelic from "newrelic"
+import { RunLogger } from "../run-logger.js"
 import type {
   ActorForBiography,
   BiographyEnrichmentConfig,
@@ -99,6 +100,15 @@ const SOURCE_FAMILY_LOOKUP = buildFamilyLookup()
 export class BiographyEnrichmentOrchestrator {
   private config: BiographyEnrichmentConfig
   private sources: BaseBiographySource[]
+  private runLogger: RunLogger | null = null
+
+  /**
+   * Set the RunLogger for capturing structured logs to the run_logs DB table.
+   * Call this once the enrichment run_id is known (after creating the enrichment_runs record).
+   */
+  setRunLogger(runLogger: RunLogger): void {
+    this.runLogger = runLogger
+  }
 
   constructor(config?: Partial<BiographyEnrichmentConfig>) {
     this.config = {
@@ -250,6 +260,10 @@ export class BiographyEnrichmentOrchestrator {
         `  - ${source.name} (${source.isFree ? "free" : `$${source.estimatedCostPerQuery}/query`}, reliability: ${source.reliabilityScore.toFixed(2)})`
       )
     }
+    this.runLogger?.info("Sources initialized", {
+      sourceCount: sources.length,
+      sourceNames: sources.map((s) => s.name),
+    })
 
     return sources
   }
@@ -280,6 +294,7 @@ export class BiographyEnrichmentOrchestrator {
     }
 
     console.log(`\nEnriching biography: ${actor.name} (ID: ${actor.id})`)
+    this.runLogger?.info("Processing actor", { actorId: actor.id, actorName: actor.name })
 
     // Try each source in order
     for (const source of this.sources) {
@@ -307,6 +322,10 @@ export class BiographyEnrichmentOrchestrator {
 
         if (!lookupResult.success || !lookupResult.data) {
           console.log(`    Failed: ${lookupResult.error || "No data"}`)
+          this.runLogger?.debug("Source failed", {
+            actorId: actor.id,
+            error: lookupResult.error || "No data",
+          }, source.name)
           newrelic.recordCustomEvent("BioSourceFailed", {
             actorId: actor.id,
             actorName: actor.name,
@@ -323,6 +342,12 @@ export class BiographyEnrichmentOrchestrator {
         console.log(
           `    Success! Content: ${lookupResult.source.confidence.toFixed(2)} | Reliability: ${srcReliability.toFixed(2)}`
         )
+        this.runLogger?.info("Source success", {
+          actorId: actor.id,
+          confidence: lookupResult.source.confidence,
+          reliability: srcReliability,
+          costUsd: sourceCost,
+        }, source.name)
 
         // Accumulate raw data for synthesis
         rawSources.push(lookupResult.data)
@@ -356,6 +381,12 @@ export class BiographyEnrichmentOrchestrator {
           console.log(
             `    ${highQualityFamilies.size} distinct high-quality source families collected, stopping early to save cost`
           )
+          this.runLogger?.info("Early stop triggered", {
+            actorId: actor.id,
+            highQualityFamilies: highQualityFamilies.size,
+            sourcesAttempted,
+            costUsd: totalCost,
+          })
           newrelic.recordCustomEvent("BioEarlyStop", {
             actorId: actor.id,
             actorName: actor.name,
@@ -368,6 +399,10 @@ export class BiographyEnrichmentOrchestrator {
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Unknown error"
         console.log(`    Error: ${errorMsg}`)
+        this.runLogger?.error("Source error", {
+          actorId: actor.id,
+          error: errorMsg,
+        }, source.name)
         newrelic.recordCustomEvent("BioSourceFailed", {
           actorId: actor.id,
           actorName: actor.name,
@@ -384,6 +419,12 @@ export class BiographyEnrichmentOrchestrator {
         console.log(
           `    Per-actor cost limit reached ($${totalCost.toFixed(4)} >= $${this.config.costLimits.maxCostPerActor})`
         )
+        this.runLogger?.warn("Per-actor cost limit reached", {
+          actorId: actor.id,
+          actorName: actor.name,
+          costUsd: totalCost,
+          limit: this.config.costLimits.maxCostPerActor,
+        })
         newrelic.recordCustomEvent("BioCostLimitPerActor", {
           actorId: actor.id,
           actorName: actor.name,
@@ -416,6 +457,11 @@ export class BiographyEnrichmentOrchestrator {
 
         if (synthesisResult.error) {
           console.log(`    Synthesis error: ${synthesisResult.error}`)
+          this.runLogger?.error("Claude synthesis error", {
+            actorId: actor.id,
+            error: synthesisResult.error,
+            sourceCount: rawSources.length,
+          })
           newrelic.recordCustomEvent("BioSynthesisError", {
             actorId: actor.id,
             actorName: actor.name,
@@ -424,6 +470,13 @@ export class BiographyEnrichmentOrchestrator {
           })
         } else {
           console.log(`    Synthesis complete, cost: $${synthesisResult.costUsd.toFixed(4)}`)
+          this.runLogger?.info("Claude synthesis complete", {
+            actorId: actor.id,
+            sourceCount: rawSources.length,
+            costUsd: synthesisResult.costUsd,
+            hasNarrative: !!synthesisData?.narrative,
+            narrativeConfidence: synthesisData?.narrativeConfidence || "unknown",
+          })
           newrelic.recordCustomEvent("BioSynthesisSuccess", {
             actorId: actor.id,
             actorName: actor.name,
@@ -438,6 +491,11 @@ export class BiographyEnrichmentOrchestrator {
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Unknown error"
         console.log(`    Synthesis failed: ${errorMsg}`)
+        this.runLogger?.error("Claude synthesis failed", {
+          actorId: actor.id,
+          error: errorMsg,
+          sourceCount: rawSources.length,
+        })
         newrelic.recordCustomEvent("BioSynthesisError", {
           actorId: actor.id,
           actorName: actor.name,
@@ -450,6 +508,11 @@ export class BiographyEnrichmentOrchestrator {
       }
     } else {
       console.log(`  No source data collected, skipping synthesis`)
+      this.runLogger?.warn("No source data collected", {
+        actorId: actor.id,
+        actorName: actor.name,
+        sourcesAttempted,
+      })
       newrelic.recordCustomEvent("BioNoSourceData", {
         actorId: actor.id,
         actorName: actor.name,
@@ -461,6 +524,17 @@ export class BiographyEnrichmentOrchestrator {
     console.log(
       `  Complete in ${processingTimeMs}ms, cost: $${totalCost.toFixed(4)} (source: $${totalSourceCost.toFixed(4)}, synthesis: $${totalSynthesisCost.toFixed(4)}), sources: ${sourcesSucceeded}/${sourcesAttempted}`
     )
+    this.runLogger?.info("Actor complete", {
+      actorId: actor.id,
+      actorName: actor.name,
+      timeMs: processingTimeMs,
+      costUsd: totalCost,
+      sourceCostUsd: totalSourceCost,
+      synthesisCostUsd: totalSynthesisCost,
+      sourcesAttempted,
+      sourcesSucceeded,
+      hasSynthesisData: !!synthesisData,
+    })
 
     // Record actor completion in New Relic
     newrelic.recordCustomEvent("BioActorComplete", {
@@ -534,6 +608,12 @@ export class BiographyEnrichmentOrchestrator {
     console.log(`Per-actor cost limit: $${this.config.costLimits.maxCostPerActor}`)
     console.log(`Total cost limit: $${this.config.costLimits.maxTotalCost}`)
     console.log(`${"=".repeat(60)}`)
+    this.runLogger?.info("Batch started", {
+      actorCount: actors.length,
+      sourceCount: this.sources.length,
+      maxTotalCost: this.config.costLimits.maxTotalCost,
+      maxCostPerActor: this.config.costLimits.maxCostPerActor,
+    })
 
     for (let i = 0; i < actors.length; i++) {
       const actor = actors[i]
@@ -550,12 +630,19 @@ export class BiographyEnrichmentOrchestrator {
           `\nBatch total cost limit reached ($${batchTotalCost.toFixed(4)} >= $${this.config.costLimits.maxTotalCost})`
         )
         console.log(`Processed ${i + 1} of ${actors.length} actors before limit`)
+        this.runLogger?.warn("Total cost limit reached", {
+          costUsd: batchTotalCost,
+          limit: this.config.costLimits.maxTotalCost,
+          actorsProcessed: i + 1,
+          totalActors: actors.length,
+        })
         newrelic.recordCustomEvent("BioEnrichmentBatchCostLimit", {
           actorsProcessed: i + 1,
           totalActors: actors.length,
           totalCostUsd: batchTotalCost,
           costLimit: this.config.costLimits.maxTotalCost,
         })
+        await this.runLogger?.flush()
         break
       }
 
@@ -586,6 +673,14 @@ export class BiographyEnrichmentOrchestrator {
     console.log(`  Fill rate:        ${fillRate.toFixed(1)}%`)
     console.log(`  Total cost:       $${batchTotalCost.toFixed(4)}`)
     console.log(`${"=".repeat(60)}`)
+    this.runLogger?.info("Batch complete", {
+      actorsProcessed: results.size,
+      actorsEnriched: enrichedCount,
+      fillRate,
+      totalCostUsd: batchTotalCost,
+      totalTimeMs: batchTotalTimeMs,
+    })
+    await this.runLogger?.flush()
 
     return results
   }

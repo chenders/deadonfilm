@@ -837,6 +837,12 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
 
     const orchestrator = new DeathEnrichmentOrchestrator(config)
 
+    // Wire up RunLogger for DB log capture if we have a run ID
+    if (runId) {
+      const { RunLogger } = await import("../src/lib/run-logger.js")
+      orchestrator.setRunLogger(new RunLogger("death", runId))
+    }
+
     // Convert to ActorForEnrichment format
     const actorsToEnrich: ActorForEnrichment[] = actors.map((a) => ({
       id: a.id,
