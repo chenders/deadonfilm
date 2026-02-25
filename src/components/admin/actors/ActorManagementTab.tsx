@@ -511,6 +511,7 @@ export default function ActorManagementTab() {
               className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
             >
               <option value="popularity">Popularity</option>
+              <option value="interestingness">Interestingness</option>
               <option value="death_date">Death Date</option>
               <option value="name">Name</option>
               <option value="enriched_at">Last Enriched</option>

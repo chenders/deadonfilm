@@ -182,6 +182,7 @@ interface EnrichOptions {
   staging: boolean // Stage 4: Write to staging tables for review workflow
   disableReliabilityThreshold: boolean // A/B control: disable source reliability threshold
   disableBooks: boolean // Disable book sources (Google Books, Open Library, IA Books)
+  sortBy: "popularity" | "interestingness" // Order actors by popularity or interestingness score
 }
 
 /**
@@ -385,6 +386,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     staging,
     disableReliabilityThreshold,
     disableBooks,
+    sortBy,
   } = options
 
   // Configure cache behavior
@@ -623,9 +625,15 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
           )`
 
         // When filtering for US actors, sort by US/English appearances instead of total
-        query += `
+        query +=
+          sortBy === "interestingness"
+            ? `
           ORDER BY
-            a.popularity DESC NULLS LAST,
+            a.interestingness_score DESC NULLS LAST,`
+            : `
+          ORDER BY
+            a.popularity DESC NULLS LAST,`
+        query += `
             a.birthday DESC NULLS LAST,
             (
               SELECT COUNT(*) FROM actor_show_appearances asa
@@ -638,7 +646,10 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
               AND (m.production_countries @> ARRAY['US']::text[] OR m.original_language = 'en')
             ) DESC`
       } else {
-        query += ` ORDER BY a.popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
+        query +=
+          sortBy === "interestingness"
+            ? ` ORDER BY a.interestingness_score DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
+            : ` ORDER BY a.popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
       }
 
       if (limit) {
@@ -1304,6 +1315,17 @@ const program = new Command()
     "--disable-reliability-threshold",
     "Disable source reliability threshold (A/B control mode, uses content confidence only)"
   )
+  .option(
+    "--sort-by <field>",
+    "Sort actors by: popularity (default) or interestingness",
+    (value: string) => {
+      if (value !== "popularity" && value !== "interestingness") {
+        throw new InvalidArgumentError('Must be "popularity" or "interestingness"')
+      }
+      return value as "popularity" | "interestingness"
+    },
+    "popularity"
+  )
   .action(async (options) => {
     // Validate that only one targeting mode is used at a time
     const targetingModes = [
@@ -1344,6 +1366,7 @@ const program = new Command()
       topBilledYear: options.topBilledYear,
       maxBilling: options.maxBilling,
       topMovies: options.topMovies,
+      sortBy: options.sortBy || "popularity",
       usActorsOnly: options.usActorsOnly || false,
       ignoreCache: options.ignoreCache || false,
       yes: options.yes || false,

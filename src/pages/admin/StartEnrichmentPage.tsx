@@ -30,6 +30,7 @@ export default function StartEnrichmentPage() {
   const [confidence, setConfidence] = useState("0.5")
   const [recentOnly, setRecentOnly] = useState<boolean>(false)
   const [usActorsOnly, setUsActorsOnly] = useState<boolean>(false)
+  const [sortBy, setSortBy] = useState<"popularity" | "interestingness">("popularity")
 
   // Source selection flags - defaults match CLI script (enabled by default)
   const [free, setFree] = useState<boolean>(true)
@@ -163,6 +164,7 @@ export default function StartEnrichmentPage() {
                 : Math.max(0, Math.min(100, parsedMinPopularity)),
               recentOnly,
               usActorsOnly,
+              sortBy,
             }),
         maxTotalCost: isNaN(parsedMaxTotalCost) ? 10 : Math.max(0.01, parsedMaxTotalCost),
         maxCostPerActor,
@@ -371,6 +373,28 @@ export default function StartEnrichmentPage() {
                   >
                     US actors only
                   </label>
+                </div>
+                {/* Sort By */}
+                <div>
+                  <label
+                    htmlFor="sortBy"
+                    className="mb-1 block text-sm font-medium text-admin-text-secondary"
+                  >
+                    Sort By
+                  </label>
+                  <select
+                    id="sortBy"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as "popularity" | "interestingness")}
+                    className="w-full rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-2 text-sm text-admin-text-primary shadow-sm focus:border-admin-interactive focus:ring-admin-interactive"
+                  >
+                    <option value="popularity">Most Popular First</option>
+                    <option value="interestingness">Most Interesting First</option>
+                  </select>
+                  <p className="mt-1 text-xs text-admin-text-muted">
+                    Interestingness score uses multiple factors including era, demographics, death
+                    drama, life complexity, and Wikipedia/cultural interest signals
+                  </p>
                 </div>
               </div>
             )}

@@ -191,6 +191,7 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
     allowRegeneration,
     useStaging,
     sourceCategories,
+    sortBy,
   } = req.body
 
   // Validate earlyStopSourceCount before inserting run record
@@ -253,6 +254,7 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
         confidenceThreshold,
         earlyStopSourceCount,
         allowRegeneration: effectiveAllowRegeneration,
+        sortBy: sortBy === "interestingness" ? "interestingness" : "popularity",
         useStaging: useStaging || false,
         sourceCategories,
       },
@@ -508,6 +510,7 @@ router.post("/runs/start", async (req: Request, res: Response): Promise<void> =>
       maxTotalCost,
       allowRegeneration,
       sourceCategories,
+      sortBy,
     } = req.body
 
     // Validate: must have either actorIds or limit
@@ -533,6 +536,7 @@ router.post("/runs/start", async (req: Request, res: Response): Promise<void> =>
       maxTotalCost,
       allowRegeneration,
       sourceCategories,
+      sortBy: sortBy === "interestingness" ? "interestingness" : "popularity",
     })
 
     res.json({ success: true, runId })
