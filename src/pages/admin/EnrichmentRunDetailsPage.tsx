@@ -19,6 +19,7 @@ import {
   type EnrichmentRunLog,
 } from "../../hooks/admin/useEnrichmentRuns"
 import { ActorLogsModal } from "../../components/admin/ActorLogsModal"
+import { RunLogsSection } from "../../components/admin/RunLogsSection"
 import { createActorSlug } from "../../utils/slugify"
 import MobileCard from "../../components/admin/ui/MobileCard"
 
@@ -581,6 +582,9 @@ export default function EnrichmentRunDetailsPage() {
             </>
           )}
         </div>
+
+        {/* Run Logs (structured enrichment logs from run_logs table) */}
+        <RunLogsSection runType="death" runId={runId} />
       </div>
 
       {/* Actor Logs Modal */}

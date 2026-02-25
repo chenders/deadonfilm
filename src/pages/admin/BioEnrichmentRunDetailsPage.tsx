@@ -22,6 +22,7 @@ import {
   type BioEnrichmentRunActor,
 } from "../../hooks/admin/useBioEnrichmentRuns"
 import { ActorLogsModal } from "../../components/admin/ActorLogsModal"
+import { RunLogsSection } from "../../components/admin/RunLogsSection"
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`
@@ -308,6 +309,9 @@ export default function BioEnrichmentRunDetailsPage() {
             </pre>
           </div>
         )}
+
+        {/* Run Logs (structured enrichment logs from run_logs table) */}
+        {runId && <RunLogsSection runType="biography" runId={runId} />}
       </div>
 
       {/* Actor Logs Modal */}
