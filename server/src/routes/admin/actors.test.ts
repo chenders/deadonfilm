@@ -599,7 +599,7 @@ describe("admin actors routes", () => {
       has_detailed_death_info: true,
       enriched_at: "2026-01-20T00:00:00Z",
       enrichment_source: "multi-source",
-      enrichment_version: "3.0.0",
+      enrichment_version: "4.0.0",
       cause_of_death_source: "claude",
       biography: "A decorated film actor...",
       biography_generated_at: "2026-01-15T00:00:00Z",

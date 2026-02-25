@@ -1318,7 +1318,7 @@ router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Pro
         : null,
       entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
       enrichmentSource: "admin-inline-enrichment",
-      enrichmentVersion: "3.0.0",
+      enrichmentVersion: "4.0.0",
     }
 
     await writeToProduction(pool, enrichmentData, circumstancesData)

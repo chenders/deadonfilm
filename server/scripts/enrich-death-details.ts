@@ -181,6 +181,7 @@ interface EnrichOptions {
   runId?: number // Optional run ID for tracking progress in database
   staging: boolean // Stage 4: Write to staging tables for review workflow
   disableReliabilityThreshold: boolean // A/B control: disable source reliability threshold
+  disableBooks: boolean // Disable book sources (Google Books, Open Library, IA Books)
 }
 
 /**
@@ -383,6 +384,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     runId,
     staging,
     disableReliabilityThreshold,
+    disableBooks,
   } = options
 
   // Configure cache behavior
@@ -816,6 +818,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         free: free,
         paid: paid,
         ai: ai,
+        books: !disableBooks,
       },
       confidenceThreshold: confidenceThreshold,
       costLimits: {
@@ -1041,7 +1044,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
             }
           : null,
         enrichmentSource: "multi-source-enrichment",
-        enrichmentVersion: disableReliabilityThreshold ? "3.0.0-no-reliability" : "3.0.0",
+        enrichmentVersion: disableReliabilityThreshold ? "4.0.0-no-reliability" : "4.0.0",
       }
 
       // Stage 4: Route to staging or production based on --staging flag
@@ -1224,6 +1227,7 @@ const program = new Command()
   // Source category options (enabled by default, use --disable-* to turn off)
   .option("--disable-free", "Disable free sources")
   .option("--disable-paid", "Disable paid sources")
+  .option("--disable-books", "Disable book sources (Google Books, Open Library, IA Books)")
   .option("--ai", "Include AI model fallbacks")
   .option(
     "-c, --confidence <number>",
@@ -1340,6 +1344,7 @@ const program = new Command()
       runId: options.runId,
       staging: options.staging || false,
       disableReliabilityThreshold: options.disableReliabilityThreshold || false,
+      disableBooks: options.disableBooks || false,
     })
   })
 
