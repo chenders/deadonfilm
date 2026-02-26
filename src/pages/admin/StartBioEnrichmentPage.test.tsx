@@ -169,9 +169,8 @@ describe("StartBioEnrichmentPage", () => {
             },
           })
         )
+        expect(mockNavigate).toHaveBeenCalledWith("/admin/bio-enrichment/runs/42")
       })
-
-      expect(mockNavigate).toHaveBeenCalledWith("/admin/bio-enrichment/runs/42")
     })
 
     it("shows error message when mutation fails", async () => {
