@@ -84,6 +84,9 @@ const AdminBioEnrichmentRunDetailsPage = lazyWithRetry(
 const AdminStartBioEnrichmentPage = lazyWithRetry(
   () => import("./pages/admin/StartBioEnrichmentPage")
 )
+const AdminCombinedEnrichmentPage = lazyWithRetry(
+  () => import("./pages/admin/CombinedEnrichmentPage")
+)
 
 function App() {
   useGoogleAnalytics()
@@ -155,6 +158,16 @@ function App() {
                   <AdminThemeProvider>
                     <Suspense fallback={<LoadingSpinner />}>
                       <AdminStartEnrichmentPage />
+                    </Suspense>
+                  </AdminThemeProvider>
+                }
+              />
+              <Route
+                path="/admin/enrichment/combined"
+                element={
+                  <AdminThemeProvider>
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <AdminCombinedEnrichmentPage />
                     </Suspense>
                   </AdminThemeProvider>
                 }
