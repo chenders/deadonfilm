@@ -14,13 +14,20 @@ import StartBioEnrichmentPage from "./StartBioEnrichmentPage"
 
 const mockMutateAsync = vi.fn()
 const mockNavigate = vi.fn()
+const mockHookState = { isPending: false, isError: false, error: null as Error | null }
 
 vi.mock("../../hooks/admin/useBioEnrichmentRuns", () => ({
   useStartBioEnrichmentRun: () => ({
     mutateAsync: mockMutateAsync,
-    isPending: false,
-    isError: false,
-    error: null,
+    get isPending() {
+      return mockHookState.isPending
+    },
+    get isError() {
+      return mockHookState.isError
+    },
+    get error() {
+      return mockHookState.error
+    },
   }),
 }))
 
@@ -68,6 +75,9 @@ describe("StartBioEnrichmentPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockMutateAsync.mockResolvedValue({ success: true, runId: 42 })
+    mockHookState.isPending = false
+    mockHookState.isError = false
+    mockHookState.error = null
   })
 
   describe("Actor Selection defaults", () => {
@@ -165,13 +175,16 @@ describe("StartBioEnrichmentPage", () => {
     })
 
     it("shows error message when mutation fails", async () => {
+      mockHookState.isError = true
+      mockHookState.error = new Error("Server error")
       mockMutateAsync.mockRejectedValue(new Error("Server error"))
 
-      // Re-mock to expose error state
-      // The component catches the error in try/catch and logs it.
-      // Verify the mutation was called and rejected.
       renderPage()
 
+      // Error message is rendered immediately since isError is true
+      expect(screen.getByText("Server error")).toBeInTheDocument()
+
+      // Submit still calls mutateAsync (component catches the rejection)
       const submitBtn = screen.getByRole("button", { name: /start bio enrichment run/i })
       fireEvent.click(submitBtn)
 
