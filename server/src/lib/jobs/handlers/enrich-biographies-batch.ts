@@ -111,7 +111,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
             totalCostUsd: 0,
             sourceCostUsd: 0,
             synthesisCostUsd: 0,
-            exitReason: "completed",
+            exitReason: "no_actors_matched",
             costBySource: {},
             sourceHitRates: {},
             errorCount: 0,
@@ -153,8 +153,10 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       })
 
       // Wire up RunLogger for DB log capture if we have a run ID
+      let runLogger: RunLogger | null = null
       if (runId) {
-        orchestrator.setRunLogger(new RunLogger("biography", runId))
+        runLogger = new RunLogger("biography", runId)
+        orchestrator.setRunLogger(runLogger)
       }
 
       // 3. Process each actor
@@ -269,6 +271,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
               { totalCostUsd, maxTotalCost },
               "Batch total cost limit reached, stopping early"
             )
+            await runLogger?.flush()
             if (runId) {
               await this.completeBioEnrichmentRun(db, runId, {
                 actorsProcessed: i + 1,
@@ -329,6 +332,9 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
           }
         }
       }
+
+      // Flush any remaining buffered run logs before completing
+      await runLogger?.flush()
 
       // Complete the run
       if (runId) {

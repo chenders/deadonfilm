@@ -849,9 +849,13 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     const orchestrator = new DeathEnrichmentOrchestrator(config)
 
     // Wire up RunLogger for DB log capture if we have a run ID
+    // Keep reference for flushing after the enrichActor() loop
+    let flushRunLogs: (() => Promise<void>) | null = null
     if (runId) {
       const { RunLogger } = await import("../src/lib/run-logger.js")
-      orchestrator.setRunLogger(new RunLogger("death", runId))
+      const rl = new RunLogger("death", runId)
+      orchestrator.setRunLogger(rl)
+      flushRunLogs = () => rl.flush()
     }
 
     // Convert to ActorForEnrichment format
@@ -1152,6 +1156,9 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       totalCostUsd: stats.totalCostUsd,
       totalTimeMs: stats.totalTimeMs,
     })
+
+    // Flush any remaining buffered run logs before completing
+    await flushRunLogs?.()
 
     // Update enrichment run completion in database
     await completeEnrichmentRun(
