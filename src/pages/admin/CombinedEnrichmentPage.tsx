@@ -26,7 +26,8 @@ interface ActorWithVersions {
 function shouldSkipDeath(actor: ActorWithVersions): boolean {
   return actor.enrichment_version === "4.0.0"
 }
-function shouldSkipBio(actor: ActorWithVersions): boolean {
+function shouldSkipBio(actor: ActorWithVersions, allowRegeneration: boolean): boolean {
+  if (allowRegeneration) return false
   return actor.biography_version != null && actor.biography_version >= 1
 }
 
@@ -79,13 +80,21 @@ export default function CombinedEnrichmentPage(): React.JSX.Element {
     queryKey: ["admin", "actors", "details-combined", preSelectedActorIds],
     queryFn: async () => {
       if (preSelectedActorIds.length === 0) return []
-      const params = new URLSearchParams()
-      preSelectedActorIds.forEach((id) => params.append("ids", id.toString()))
-      const response = await fetch(`/admin/api/coverage/actors/by-ids?${params.toString()}`, {
-        credentials: "include",
-      })
-      if (!response.ok) throw new Error("Failed to fetch actor details")
-      return response.json() as Promise<ActorWithVersions[]>
+      // Backend limits to 100 IDs per request — chunk if needed
+      const CHUNK_SIZE = 100
+      const allActors: ActorWithVersions[] = []
+      for (let i = 0; i < preSelectedActorIds.length; i += CHUNK_SIZE) {
+        const chunk = preSelectedActorIds.slice(i, i + CHUNK_SIZE)
+        const params = new URLSearchParams()
+        chunk.forEach((id) => params.append("ids", id.toString()))
+        const response = await fetch(`/admin/api/coverage/actors/by-ids?${params.toString()}`, {
+          credentials: "include",
+        })
+        if (!response.ok) throw new Error("Failed to fetch actor details")
+        const actors = (await response.json()) as ActorWithVersions[]
+        allActors.push(...actors)
+      }
+      return allActors
     },
     enabled: preSelectedActorIds.length > 0,
   })
@@ -103,7 +112,7 @@ export default function CombinedEnrichmentPage(): React.JSX.Element {
       } else {
         deathIds.push(actor.id)
       }
-      if (shouldSkipBio(actor)) {
+      if (shouldSkipBio(actor, bioAllowRegeneration)) {
         bSkip++
       } else {
         bioIds.push(actor.id)
@@ -115,7 +124,7 @@ export default function CombinedEnrichmentPage(): React.JSX.Element {
       deathSkipCount: dSkip,
       bioSkipCount: bSkip,
     }
-  }, [actors])
+  }, [actors, bioAllowRegeneration])
 
   const tabs = useMemo(
     () => [
@@ -144,7 +153,10 @@ export default function CombinedEnrichmentPage(): React.JSX.Element {
             maxTotalCost: isNaN(parsedDeathMaxTotalCost)
               ? 10
               : Math.max(0.01, parsedDeathMaxTotalCost),
-            maxCostPerActor: deathMaxCostPerActor,
+            maxCostPerActor:
+              deathMaxCostPerActor != null && !isNaN(deathMaxCostPerActor)
+                ? Math.max(0.01, deathMaxCostPerActor)
+                : undefined,
             confidence: isNaN(parsedDeathConfidence)
               ? 0.5
               : Math.max(0, Math.min(1, parsedDeathConfidence)),
@@ -294,7 +306,7 @@ export default function CombinedEnrichmentPage(): React.JSX.Element {
                         Death ✓
                       </span>
                     )}
-                    {shouldSkipBio(actor) && (
+                    {shouldSkipBio(actor, bioAllowRegeneration) && (
                       <span
                         className="rounded-full bg-green-900/30 px-2 py-0.5 text-xs text-green-400"
                         data-testid={`skip-bio-${actor.id}`}
