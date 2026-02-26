@@ -274,8 +274,11 @@ router.get("/actors/by-ids", async (req: Request, res: Response): Promise<void> 
       name: string
       popularity: number | null
       tmdb_id: number | null
+      enrichment_version: string | null
+      biography_version: number | null
     }>(
-      `SELECT id, name, dof_popularity::float as popularity, tmdb_id
+      `SELECT id, name, dof_popularity::float as popularity, tmdb_id,
+              enrichment_version, biography_version
        FROM actors
        WHERE id = ANY($1::int[])
        ORDER BY dof_popularity DESC NULLS LAST`,
