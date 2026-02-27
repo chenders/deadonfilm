@@ -55,7 +55,14 @@ export default function MobileCard({
           />
         )}
         <div
-          className={`min-w-0 flex-1${selectable && onSelectionChange ? "cursor-pointer rounded focus:outline-none focus:ring-2 focus:ring-admin-interactive" : ""}`}
+          className={[
+            "min-w-0 flex-1",
+            selectable &&
+              onSelectionChange &&
+              "cursor-pointer rounded focus:outline-none focus:ring-2 focus:ring-admin-interactive",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           {...(selectable && onSelectionChange
             ? {
                 role: "button",
