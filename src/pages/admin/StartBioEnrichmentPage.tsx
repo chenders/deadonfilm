@@ -49,7 +49,7 @@ export default function StartBioEnrichmentPage() {
   const [sortBy, setSortBy] = useState<"popularity" | "interestingness">("popularity")
 
   // Other options
-  const [allowRegeneration, setAllowRegeneration] = useState(false)
+  const [allowRegeneration, setAllowRegeneration] = useState(true)
 
   // Actor selection mode
   const [selectionMode, setSelectionMode] = useState<"batch" | "specific">(
