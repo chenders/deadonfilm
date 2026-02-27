@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { to: "/deaths/all", label: "Deaths" },
   { to: "/movies/genres", label: "Genres" },
   { to: "/causes-of-death", label: "Causes" },
+  { to: "/in-detail", label: "In Detail" },
 ]
 
 export default function Header() {
