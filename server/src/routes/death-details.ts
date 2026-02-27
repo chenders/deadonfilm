@@ -682,7 +682,6 @@ export async function getInDetailHandler(req: Request, res: Response) {
     // Parse query params
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1)
     const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string, 10) || 50))
-    const includeObscure = req.query.includeObscure === "true"
     const search = (req.query.search as string) || undefined
 
     // Normalize sort/dir to valid values to prevent cache key bloat
@@ -698,7 +697,6 @@ export async function getInDetailHandler(req: Request, res: Response) {
         type: "in-detail",
         page,
         pageSize,
-        includeObscure,
         sort,
         dir,
       })
@@ -718,7 +716,6 @@ export async function getInDetailHandler(req: Request, res: Response) {
       const result = await getInDetailActorsFromDb({
         page,
         pageSize,
-        includeObscure,
         sort,
         dir,
       })
@@ -740,7 +737,6 @@ export async function getInDetailHandler(req: Request, res: Response) {
     const result = await getInDetailActorsFromDb({
       page,
       pageSize,
-      includeObscure,
       search,
       sort,
       dir,

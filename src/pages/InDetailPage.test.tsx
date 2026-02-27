@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { HelmetProvider } from "react-helmet-async"
@@ -142,35 +142,17 @@ describe("InDetailPage", () => {
     })
   })
 
-  it("renders include obscure checkbox", async () => {
+  it("does not render include obscure checkbox", async () => {
     vi.mocked(api.getInDetailActors).mockResolvedValue(mockInDetailResponse)
 
     renderWithProviders(<InDetailPage />)
 
     await waitFor(() => {
-      expect(screen.getByTestId("include-obscure-filter")).toBeInTheDocument()
+      expect(screen.getByText("Researched Actor")).toBeInTheDocument()
     })
 
-    expect(screen.getByText("Include lesser-known actors")).toBeInTheDocument()
-  })
-
-  it("calls API with includeObscure param when checkbox is toggled", async () => {
-    vi.mocked(api.getInDetailActors).mockResolvedValue(mockInDetailResponse)
-
-    renderWithProviders(<InDetailPage />)
-
-    await waitFor(() => {
-      expect(screen.getByTestId("include-obscure-filter")).toBeInTheDocument()
-    })
-
-    const checkbox = screen.getByRole("checkbox")
-    fireEvent.click(checkbox)
-
-    await waitFor(() => {
-      expect(api.getInDetailActors).toHaveBeenCalledWith(
-        expect.objectContaining({ includeObscure: true })
-      )
-    })
+    expect(screen.queryByText("Include lesser-known actors")).not.toBeInTheDocument()
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument()
   })
 
   it("renders pagination when multiple pages", async () => {

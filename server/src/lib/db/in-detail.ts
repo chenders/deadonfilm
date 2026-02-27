@@ -21,7 +21,7 @@ const IN_DETAIL_SORT_MAP: Record<string, { column: string; defaultDir: string }>
 
 export async function getInDetailActors(options: InDetailOptions = {}): Promise<InDetailResponse> {
   const db = getPool()
-  const { page = 1, pageSize = 50, includeObscure = false, search, sort, dir } = options
+  const { page = 1, pageSize = 50, search, sort, dir } = options
   const offset = (page - 1) * pageSize
 
   // Sort column comes from hardcoded allowlist, NOT user input (safe for SQL interpolation)
@@ -35,10 +35,6 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
   const conditions: string[] = [`(a.has_detailed_death_info = true OR abd.id IS NOT NULL)`]
   const params: (string | number | boolean)[] = []
   let paramIndex = 1
-
-  if (!includeObscure) {
-    conditions.push("a.is_obscure = false")
-  }
 
   if (search) {
     const words = splitSearchWords(search)
