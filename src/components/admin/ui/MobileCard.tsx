@@ -56,11 +56,18 @@ export default function MobileCard({
         )}
         <div
           className="min-w-0 flex-1"
-          {...(selectable
+          {...(selectable && onSelectionChange
             ? {
                 role: "button",
-                tabIndex: -1,
-                onClick: () => onSelectionChange?.(!(selected ?? false)),
+                tabIndex: 0,
+                "aria-pressed": selected ?? false,
+                onClick: () => onSelectionChange(!(selected ?? false)),
+                onKeyDown: (e: React.KeyboardEvent) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    onSelectionChange(!(selected ?? false))
+                  }
+                },
               }
             : {})}
         >

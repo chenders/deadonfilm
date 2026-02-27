@@ -79,7 +79,7 @@ describe("MobileCard", () => {
     expect(onSelectionChange).toHaveBeenCalledWith(true)
   })
 
-  it("untoggle selection when clicking title area on selected card", () => {
+  it("deselects when clicking title area on selected card", () => {
     const onSelectionChange = vi.fn()
     render(
       <MobileCard title="John Wayne" selectable selected onSelectionChange={onSelectionChange} />
@@ -87,6 +87,36 @@ describe("MobileCard", () => {
 
     fireEvent.click(screen.getByText("John Wayne"))
     expect(onSelectionChange).toHaveBeenCalledWith(false)
+  })
+
+  it("toggles selection via keyboard Enter on title area", () => {
+    const onSelectionChange = vi.fn()
+    render(
+      <MobileCard
+        title="John Wayne"
+        selectable
+        selected={false}
+        onSelectionChange={onSelectionChange}
+      />
+    )
+
+    fireEvent.keyDown(screen.getByText("John Wayne"), { key: "Enter" })
+    expect(onSelectionChange).toHaveBeenCalledWith(true)
+  })
+
+  it("toggles selection via keyboard Space on title area", () => {
+    const onSelectionChange = vi.fn()
+    render(
+      <MobileCard
+        title="John Wayne"
+        selectable
+        selected={false}
+        onSelectionChange={onSelectionChange}
+      />
+    )
+
+    fireEvent.keyDown(screen.getByText("John Wayne"), { key: " " })
+    expect(onSelectionChange).toHaveBeenCalledWith(true)
   })
 
   it("does not add click handler to title area when not selectable", () => {
