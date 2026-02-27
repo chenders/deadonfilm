@@ -277,7 +277,7 @@ export default function CombinedEnrichmentPage(): React.JSX.Element {
         {isLoading ? (
           <LoadingSpinner />
         ) : isError ? (
-          <div className="rounded-lg border border-red-700 bg-red-900/20 p-4">
+          <div role="alert" className="rounded-lg border border-red-700 bg-red-900/20 p-4">
             <p className="text-sm text-red-300">
               Failed to load actor details:{" "}
               {error instanceof Error ? error.message : "Unknown error"}
@@ -485,7 +485,16 @@ export default function CombinedEnrichmentPage(): React.JSX.Element {
               </Link>
             </div>
           </>
-        ) : null}
+        ) : (
+          <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4">
+            <p className="text-sm text-admin-text-muted">
+              No actor details found for the selected IDs. The actors may have been removed.{" "}
+              <Link to="/admin/actors" className="text-admin-interactive hover:underline">
+                Go back to Actors
+              </Link>
+            </p>
+          </div>
+        )}
       </div>
     </AdminLayout>
   )

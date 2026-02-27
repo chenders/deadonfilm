@@ -118,6 +118,53 @@ describe("CombinedEnrichmentPage", () => {
     expect(screen.getByText(/no actors selected/i)).toBeInTheDocument()
   })
 
+  it("does not render tabs or submit while actors are loading", () => {
+    // Mock fetch that never resolves to keep loading state
+    mockFetch.mockReturnValue(new Promise(() => {}))
+    renderPage()
+
+    // Loading spinner should be present
+    expect(screen.getByRole("status")).toBeInTheDocument()
+    // Tabs and submit should NOT be rendered
+    expect(screen.queryByTestId("tab-death")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("submit-both")).not.toBeInTheDocument()
+  })
+
+  it("shows error message when actor fetch fails", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: "Internal server error" }),
+    })
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument()
+    })
+
+    expect(screen.getByText(/failed to load actor details/i)).toBeInTheDocument()
+    // Tabs and submit should NOT be rendered
+    expect(screen.queryByTestId("tab-death")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("submit-both")).not.toBeInTheDocument()
+  })
+
+  it("shows empty state when fetch returns no actors", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([]),
+    })
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText(/no actor details found/i)).toBeInTheDocument()
+    })
+
+    expect(screen.queryByTestId("tab-death")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("submit-both")).not.toBeInTheDocument()
+  })
+
   it("renders actor list with skip status pills", async () => {
     renderPage()
 
