@@ -117,8 +117,18 @@ describe("MobileCard", () => {
     )
 
     const toggleButton = screen.getByRole("button", { name: /john wayne/i })
+    fireEvent.keyDown(toggleButton, { key: " " })
     fireEvent.keyUp(toggleButton, { key: " " })
     expect(onSelectionChange).toHaveBeenCalledWith(true)
+  })
+
+  it("renders checkbox but non-interactive title when selectable without onSelectionChange", () => {
+    render(<MobileCard title="John Wayne" selectable selected={false} />)
+
+    expect(screen.getByRole("checkbox")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /john wayne/i })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText("John Wayne"))
   })
 
   it("does not add click handler to title area when not selectable", () => {

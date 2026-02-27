@@ -55,12 +55,13 @@ export default function MobileCard({
           />
         )}
         <div
-          className="min-w-0 flex-1"
+          className={`min-w-0 flex-1${selectable && onSelectionChange ? "cursor-pointer rounded focus:outline-none focus:ring-2 focus:ring-admin-interactive" : ""}`}
           {...(selectable && onSelectionChange
             ? {
                 role: "button",
                 tabIndex: 0,
                 "aria-pressed": selected ?? false,
+                "aria-label": ariaLabel ?? (typeof title === "string" ? title : undefined),
                 onClick: () => onSelectionChange(!(selected ?? false)),
                 onKeyDown: (e: React.KeyboardEvent) => {
                   if (e.key === "Enter") {
