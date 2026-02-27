@@ -73,10 +73,15 @@ export default function CombinedEnrichmentPage(): React.JSX.Element {
   const [bioNews, setBioNews] = useState(true)
   const [bioObituary, setBioObituary] = useState(true)
   const [bioArchives, setBioArchives] = useState(true)
-  const [bioAllowRegeneration, setBioAllowRegeneration] = useState(false)
+  const [bioAllowRegeneration, setBioAllowRegeneration] = useState(true)
 
   // ── Fetch actor details with enrichment versions ──────────────────────
-  const { data: actors, isLoading } = useQuery({
+  const {
+    data: actors,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["admin", "actors", "details-combined", preSelectedActorIds],
     queryFn: async () => {
       if (preSelectedActorIds.length === 0) return []
@@ -271,207 +276,225 @@ export default function CombinedEnrichmentPage(): React.JSX.Element {
         {/* Actor list with skip status */}
         {isLoading ? (
           <LoadingSpinner />
-        ) : actors && actors.length > 0 ? (
-          <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-admin-text-primary">
-                {actors.length} Actor{actors.length !== 1 ? "s" : ""} Selected
-              </h2>
-              <p className="text-sm text-admin-text-muted">
-                {deathSkipCount > 0 && <span>{deathSkipCount} skip death</span>}
-                {deathSkipCount > 0 && bioSkipCount > 0 && <span> · </span>}
-                {bioSkipCount > 0 && <span>{bioSkipCount} skip bio</span>}
-              </p>
-            </div>
-            <ul className="max-h-64 space-y-1 overflow-y-auto text-sm" data-testid="actor-list">
-              {actors.map((actor) => (
-                <li
-                  key={actor.id}
-                  className="flex items-center justify-between rounded px-2 py-1.5 text-admin-text-secondary hover:bg-admin-surface-base"
-                >
-                  <span>
-                    {actor.name}
-                    {actor.popularity != null && (
-                      <span className="ml-1 text-admin-text-muted">
-                        (pop: {actor.popularity.toFixed(1)})
-                      </span>
-                    )}
-                  </span>
-                  <span className="flex gap-1.5">
-                    {shouldSkipDeath(actor) && (
-                      <span
-                        className="rounded-full bg-green-900/30 px-2 py-0.5 text-xs text-green-400"
-                        data-testid={`skip-death-${actor.id}`}
-                      >
-                        Death ✓
-                      </span>
-                    )}
-                    {shouldSkipBio(actor, bioAllowRegeneration) && (
-                      <span
-                        className="rounded-full bg-green-900/30 px-2 py-0.5 text-xs text-green-400"
-                        data-testid={`skip-bio-${actor.id}`}
-                      >
-                        Bio ✓
-                      </span>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
+        ) : isError ? (
+          <div role="alert" className="rounded-lg border border-red-700 bg-red-900/20 p-4">
+            <p className="text-sm text-red-300">
+              Failed to load actor details:{" "}
+              {error instanceof Error ? error.message : "Unknown error"}
+            </p>
           </div>
-        ) : null}
-
-        {/* Tabbed options */}
-        <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
-          <AdminTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
-            {activeTab === "death" ? (
-              <DeathOptionsForm
-                maxTotalCost={deathMaxTotalCost}
-                setMaxTotalCost={setDeathMaxTotalCost}
-                maxCostPerActor={deathMaxCostPerActor}
-                setMaxCostPerActor={setDeathMaxCostPerActor}
-                confidence={deathConfidence}
-                setConfidence={setDeathConfidence}
-                free={deathFree}
-                setFree={setDeathFree}
-                paid={deathPaid}
-                setPaid={setDeathPaid}
-                ai={deathAi}
-                setAi={setDeathAi}
-                gatherAllSources={deathGatherAllSources}
-                setGatherAllSources={setDeathGatherAllSources}
-                claudeCleanup={deathClaudeCleanup}
-                setClaudeCleanup={setDeathClaudeCleanup}
-                followLinks={deathFollowLinks}
-                setFollowLinks={setDeathFollowLinks}
-                aiLinkSelection={deathAiLinkSelection}
-                setAiLinkSelection={setDeathAiLinkSelection}
-                aiContentExtraction={deathAiContentExtraction}
-                setAiContentExtraction={setDeathAiContentExtraction}
-                wikiAISection={deathWikiAISection}
-                setWikiAISection={setDeathWikiAISection}
-                wikiFollowLinked={deathWikiFollowLinked}
-                setWikiFollowLinked={setDeathWikiFollowLinked}
-                wikiMaxLinked={deathWikiMaxLinked}
-                setWikiMaxLinked={setDeathWikiMaxLinked}
-                wikiMaxSections={deathWikiMaxSections}
-                setWikiMaxSections={setDeathWikiMaxSections}
-                actorCount={deathActorIds.length}
-                skipCount={deathSkipCount}
-              />
-            ) : (
-              <BioOptionsForm
-                confidence={bioConfidence}
-                setConfidence={setBioConfidence}
-                maxCostPerActor={bioMaxCostPerActor}
-                setMaxCostPerActor={setBioMaxCostPerActor}
-                maxTotalCost={bioMaxTotalCost}
-                setMaxTotalCost={setBioMaxTotalCost}
-                free={bioFree}
-                setFree={setBioFree}
-                reference={bioReference}
-                setReference={setBioReference}
-                books={bioBooks}
-                setBooks={setBioBooks}
-                webSearch={bioWebSearch}
-                setWebSearch={setBioWebSearch}
-                news={bioNews}
-                setNews={setBioNews}
-                obituary={bioObituary}
-                setObituary={setBioObituary}
-                archives={bioArchives}
-                setArchives={setBioArchives}
-                allowRegeneration={bioAllowRegeneration}
-                setAllowRegeneration={setBioAllowRegeneration}
-                actorCount={bioActorIds.length}
-                skipCount={bioSkipCount}
-              />
-            )}
-          </AdminTabs>
-        </div>
-
-        {/* Results */}
-        {results && (
-          <div
-            className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6"
-            data-testid="enrichment-results"
-          >
-            <h2 className="mb-3 text-lg font-semibold text-admin-text-primary">Results</h2>
-            <div className="space-y-2">
-              {results.death && (
-                <div
-                  className={`rounded p-3 ${results.death.success ? "bg-green-900/20" : "bg-red-900/20"}`}
-                >
-                  {results.death.success ? (
-                    <p className="text-sm text-green-300">
-                      Death enrichment started.{" "}
-                      <Link
-                        to={`/admin/enrichment/runs/${results.death.runId}`}
-                        className="underline hover:text-green-200"
-                      >
-                        View run #{results.death.runId}
-                      </Link>
-                    </p>
-                  ) : (
-                    <p className="text-sm text-red-300">
-                      Death enrichment failed: {results.death.error}
-                    </p>
-                  )}
-                </div>
-              )}
-              {results.bio && (
-                <div
-                  className={`rounded p-3 ${results.bio.success ? "bg-green-900/20" : "bg-red-900/20"}`}
-                >
-                  {results.bio.success ? (
-                    <p className="text-sm text-green-300">
-                      Bio enrichment started.{" "}
-                      <Link
-                        to={`/admin/bio-enrichment/runs/${results.bio.runId}`}
-                        className="underline hover:text-green-200"
-                      >
-                        View run #{results.bio.runId}
-                      </Link>
-                    </p>
-                  ) : (
-                    <p className="text-sm text-red-300">
-                      Bio enrichment failed: {results.bio.error}
-                    </p>
-                  )}
-                </div>
-              )}
-              {deathActorIds.length === 0 && (
+        ) : actors && actors.length > 0 ? (
+          <>
+            <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-admin-text-primary">
+                  {actors.length} Actor{actors.length !== 1 ? "s" : ""} Selected
+                </h2>
                 <p className="text-sm text-admin-text-muted">
-                  Death enrichment skipped — all actors already enriched.
+                  {deathSkipCount > 0 && <span>{deathSkipCount} skip death</span>}
+                  {deathSkipCount > 0 && bioSkipCount > 0 && <span> · </span>}
+                  {bioSkipCount > 0 && <span>{bioSkipCount} skip bio</span>}
                 </p>
-              )}
-              {bioActorIds.length === 0 && (
-                <p className="text-sm text-admin-text-muted">
-                  Bio enrichment skipped — all actors already have biographies.
-                </p>
-              )}
+              </div>
+              <ul className="max-h-64 space-y-1 overflow-y-auto text-sm" data-testid="actor-list">
+                {actors.map((actor) => (
+                  <li
+                    key={actor.id}
+                    className="flex items-center justify-between rounded px-2 py-1.5 text-admin-text-secondary hover:bg-admin-surface-base"
+                  >
+                    <span>
+                      {actor.name}
+                      {actor.popularity != null && (
+                        <span className="ml-1 text-admin-text-muted">
+                          (pop: {actor.popularity.toFixed(1)})
+                        </span>
+                      )}
+                    </span>
+                    <span className="flex gap-1.5">
+                      {shouldSkipDeath(actor) && (
+                        <span
+                          className="rounded-full bg-green-900/30 px-2 py-0.5 text-xs text-green-400"
+                          data-testid={`skip-death-${actor.id}`}
+                        >
+                          Death ✓
+                        </span>
+                      )}
+                      {shouldSkipBio(actor, bioAllowRegeneration) && (
+                        <span
+                          className="rounded-full bg-green-900/30 px-2 py-0.5 text-xs text-green-400"
+                          data-testid={`skip-bio-${actor.id}`}
+                        >
+                          Bio ✓
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
+
+            {/* Tabbed options */}
+            <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+              <AdminTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
+                {activeTab === "death" ? (
+                  <DeathOptionsForm
+                    maxTotalCost={deathMaxTotalCost}
+                    setMaxTotalCost={setDeathMaxTotalCost}
+                    maxCostPerActor={deathMaxCostPerActor}
+                    setMaxCostPerActor={setDeathMaxCostPerActor}
+                    confidence={deathConfidence}
+                    setConfidence={setDeathConfidence}
+                    free={deathFree}
+                    setFree={setDeathFree}
+                    paid={deathPaid}
+                    setPaid={setDeathPaid}
+                    ai={deathAi}
+                    setAi={setDeathAi}
+                    gatherAllSources={deathGatherAllSources}
+                    setGatherAllSources={setDeathGatherAllSources}
+                    claudeCleanup={deathClaudeCleanup}
+                    setClaudeCleanup={setDeathClaudeCleanup}
+                    followLinks={deathFollowLinks}
+                    setFollowLinks={setDeathFollowLinks}
+                    aiLinkSelection={deathAiLinkSelection}
+                    setAiLinkSelection={setDeathAiLinkSelection}
+                    aiContentExtraction={deathAiContentExtraction}
+                    setAiContentExtraction={setDeathAiContentExtraction}
+                    wikiAISection={deathWikiAISection}
+                    setWikiAISection={setDeathWikiAISection}
+                    wikiFollowLinked={deathWikiFollowLinked}
+                    setWikiFollowLinked={setDeathWikiFollowLinked}
+                    wikiMaxLinked={deathWikiMaxLinked}
+                    setWikiMaxLinked={setDeathWikiMaxLinked}
+                    wikiMaxSections={deathWikiMaxSections}
+                    setWikiMaxSections={setDeathWikiMaxSections}
+                    actorCount={deathActorIds.length}
+                    skipCount={deathSkipCount}
+                  />
+                ) : (
+                  <BioOptionsForm
+                    confidence={bioConfidence}
+                    setConfidence={setBioConfidence}
+                    maxCostPerActor={bioMaxCostPerActor}
+                    setMaxCostPerActor={setBioMaxCostPerActor}
+                    maxTotalCost={bioMaxTotalCost}
+                    setMaxTotalCost={setBioMaxTotalCost}
+                    free={bioFree}
+                    setFree={setBioFree}
+                    reference={bioReference}
+                    setReference={setBioReference}
+                    books={bioBooks}
+                    setBooks={setBioBooks}
+                    webSearch={bioWebSearch}
+                    setWebSearch={setBioWebSearch}
+                    news={bioNews}
+                    setNews={setBioNews}
+                    obituary={bioObituary}
+                    setObituary={setBioObituary}
+                    archives={bioArchives}
+                    setArchives={setBioArchives}
+                    allowRegeneration={bioAllowRegeneration}
+                    setAllowRegeneration={setBioAllowRegeneration}
+                    actorCount={bioActorIds.length}
+                    skipCount={bioSkipCount}
+                  />
+                )}
+              </AdminTabs>
+            </div>
+
+            {/* Results */}
+            {results && (
+              <div
+                className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6"
+                data-testid="enrichment-results"
+              >
+                <h2 className="mb-3 text-lg font-semibold text-admin-text-primary">Results</h2>
+                <div className="space-y-2">
+                  {results.death && (
+                    <div
+                      className={`rounded p-3 ${results.death.success ? "bg-green-900/20" : "bg-red-900/20"}`}
+                    >
+                      {results.death.success ? (
+                        <p className="text-sm text-green-300">
+                          Death enrichment started.{" "}
+                          <Link
+                            to={`/admin/enrichment/runs/${results.death.runId}`}
+                            className="underline hover:text-green-200"
+                          >
+                            View run #{results.death.runId}
+                          </Link>
+                        </p>
+                      ) : (
+                        <p className="text-sm text-red-300">
+                          Death enrichment failed: {results.death.error}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {results.bio && (
+                    <div
+                      className={`rounded p-3 ${results.bio.success ? "bg-green-900/20" : "bg-red-900/20"}`}
+                    >
+                      {results.bio.success ? (
+                        <p className="text-sm text-green-300">
+                          Bio enrichment started.{" "}
+                          <Link
+                            to={`/admin/bio-enrichment/runs/${results.bio.runId}`}
+                            className="underline hover:text-green-200"
+                          >
+                            View run #{results.bio.runId}
+                          </Link>
+                        </p>
+                      ) : (
+                        <p className="text-sm text-red-300">
+                          Bio enrichment failed: {results.bio.error}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {deathActorIds.length === 0 && (
+                    <p className="text-sm text-admin-text-muted">
+                      Death enrichment skipped — all actors already enriched.
+                    </p>
+                  )}
+                  {bioActorIds.length === 0 && (
+                    <p className="text-sm text-admin-text-muted">
+                      Bio enrichment skipped — all actors already have biographies.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Submit */}
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={submitting || (deathActorIds.length === 0 && bioActorIds.length === 0)}
+                data-testid="submit-both"
+                className="rounded-lg bg-admin-danger px-6 py-3 font-semibold text-admin-text-primary transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {submitting ? "Starting..." : "Start Both Enrichments"}
+              </button>
+              <Link
+                to="/admin/actors"
+                className="rounded-md border border-admin-border bg-admin-surface-overlay px-6 py-2 text-sm font-semibold text-admin-text-primary shadow-sm hover:bg-admin-interactive-secondary"
+              >
+                Cancel
+              </Link>
+            </div>
+          </>
+        ) : (
+          <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4">
+            <p className="text-sm text-admin-text-muted">
+              No actor details found for the selected IDs. The actors may have been removed.{" "}
+              <Link to="/admin/actors" className="text-admin-interactive hover:underline">
+                Go back to Actors
+              </Link>
+            </p>
           </div>
         )}
-
-        {/* Submit */}
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting || (deathActorIds.length === 0 && bioActorIds.length === 0)}
-            data-testid="submit-both"
-            className="rounded-lg bg-admin-danger px-6 py-3 font-semibold text-admin-text-primary transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {submitting ? "Starting..." : "Start Both Enrichments"}
-          </button>
-          <Link
-            to="/admin/actors"
-            className="rounded-md border border-admin-border bg-admin-surface-overlay px-6 py-2 text-sm font-semibold text-admin-text-primary shadow-sm hover:bg-admin-interactive-secondary"
-          >
-            Cancel
-          </Link>
-        </div>
       </div>
     </AdminLayout>
   )

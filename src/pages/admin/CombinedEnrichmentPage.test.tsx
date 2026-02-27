@@ -118,6 +118,53 @@ describe("CombinedEnrichmentPage", () => {
     expect(screen.getByText(/no actors selected/i)).toBeInTheDocument()
   })
 
+  it("does not render tabs or submit while actors are loading", () => {
+    // Mock fetch that never resolves to keep loading state
+    mockFetch.mockReturnValue(new Promise(() => {}))
+    renderPage()
+
+    // Loading spinner should be present
+    expect(screen.getByRole("status")).toBeInTheDocument()
+    // Tabs and submit should NOT be rendered
+    expect(screen.queryByTestId("tab-death")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("submit-both")).not.toBeInTheDocument()
+  })
+
+  it("shows error message when actor fetch fails", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: "Internal server error" }),
+    })
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument()
+    })
+
+    expect(screen.getByText(/failed to load actor details/i)).toBeInTheDocument()
+    // Tabs and submit should NOT be rendered
+    expect(screen.queryByTestId("tab-death")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("submit-both")).not.toBeInTheDocument()
+  })
+
+  it("shows empty state when fetch returns no actors", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([]),
+    })
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText(/no actor details found/i)).toBeInTheDocument()
+    })
+
+    expect(screen.queryByTestId("tab-death")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("submit-both")).not.toBeInTheDocument()
+  })
+
   it("renders actor list with skip status pills", async () => {
     renderPage()
 
@@ -127,8 +174,9 @@ describe("CombinedEnrichmentPage", () => {
 
     // Actor Two has enrichment_version "4.0.0" -> death skip pill
     expect(screen.getByTestId("skip-death-2")).toHaveTextContent("Death ✓")
-    // Actor Three has biography_version 2 -> bio skip pill
-    expect(screen.getByTestId("skip-bio-3")).toHaveTextContent("Bio ✓")
+
+    // Bio skip pills are NOT shown because bioAllowRegeneration defaults to true
+    expect(screen.queryByTestId("skip-bio-3")).not.toBeInTheDocument()
 
     // Actor One has neither -> no pills
     expect(screen.queryByTestId("skip-death-1")).not.toBeInTheDocument()
@@ -143,7 +191,8 @@ describe("CombinedEnrichmentPage", () => {
     })
 
     expect(screen.getByText("1 skip death")).toBeInTheDocument()
-    expect(screen.getByText("1 skip bio")).toBeInTheDocument()
+    // No bio skips because bioAllowRegeneration defaults to true
+    expect(screen.queryByText("1 skip bio")).not.toBeInTheDocument()
   })
 
   it("tab switching works between death and bio", async () => {
@@ -178,9 +227,9 @@ describe("CombinedEnrichmentPage", () => {
     const deathTab = screen.getByTestId("tab-death")
     expect(deathTab).toHaveTextContent("2")
 
-    // Bio tab badge: actors 1 and 2 need bio enrichment (actor 3 skipped) = 2
+    // Bio tab badge: all 3 actors need bio (allowRegeneration=true, no skips)
     const bioTab = screen.getByTestId("tab-bio")
-    expect(bioTab).toHaveTextContent("2")
+    expect(bioTab).toHaveTextContent("3")
   })
 
   it("submit calls both mutations with correct actor ID subsets", async () => {
@@ -199,10 +248,10 @@ describe("CombinedEnrichmentPage", () => {
           actorIds: [1, 3],
         })
       )
-      // Bio: actors 1 and 2 (actor 3 has biography_version >= 1)
+      // Bio: all 3 actors (allowRegeneration=true by default, no skips)
       expect(mockBioMutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
-          actorIds: [1, 2],
+          actorIds: [1, 2, 3],
         })
       )
     })
