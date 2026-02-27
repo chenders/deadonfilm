@@ -163,4 +163,32 @@ describe("ActorCard", () => {
 
     expect(screen.getByTestId("actor-card-1")).toBeInTheDocument()
   })
+
+  it("applies lazy loading by default", () => {
+    renderCard()
+
+    const img = screen.getByRole("img")
+    expect(img).toHaveAttribute("loading", "lazy")
+    expect(img).not.toHaveAttribute("fetchpriority")
+  })
+
+  it("applies eager loading with fetchpriority=high when priority is true", () => {
+    renderCard({ priority: true })
+
+    const img = screen.getByRole("img")
+    expect(img).not.toHaveAttribute("loading")
+    expect(img).toHaveAttribute("fetchpriority", "high")
+  })
+
+  it("applies priority to fallback profile image", () => {
+    renderCard({
+      profilePath: null,
+      fallbackProfileUrl: "https://example.com/photo.jpg",
+      priority: true,
+    })
+
+    const img = screen.getByRole("img")
+    expect(img).not.toHaveAttribute("loading")
+    expect(img).toHaveAttribute("fetchpriority", "high")
+  })
 })

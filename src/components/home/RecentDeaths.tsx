@@ -84,6 +84,7 @@ export default function RecentDeaths() {
               showBirthDate
               useCauseOfDeathBadge
               nameColor="accent"
+              priority={index === 0}
             />
           </div>
         ))}

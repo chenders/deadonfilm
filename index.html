@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- New Relic browser agent - must be first script for complete instrumentation -->
-    <script src="/nr-browser.js"></script>
+    <!-- New Relic browser agent - deferred to avoid blocking FCP/LCP -->
+    <script src="/nr-browser.js" defer></script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />

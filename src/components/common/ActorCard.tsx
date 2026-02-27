@@ -24,6 +24,9 @@ interface ActorCardProps {
   useCauseOfDeathBadge?: boolean
   nameColor?: "accent" | "brown"
 
+  /** When true, loads image eagerly with fetchpriority="high" (use for LCP candidates) */
+  priority?: boolean
+
   badge?: React.ReactNode
   children?: React.ReactNode
   testId?: string
@@ -52,6 +55,7 @@ export default function ActorCard({
   showBirthDate = false,
   useCauseOfDeathBadge = false,
   nameColor = "accent",
+  priority = false,
   badge,
   children,
   testId,
@@ -83,7 +87,7 @@ export default function ActorCard({
           alt={name}
           width={80}
           height={112}
-          loading="lazy"
+          {...(priority ? { fetchPriority: "high" as const } : { loading: "lazy" as const })}
           className="h-28 w-20 flex-shrink-0 rounded object-cover"
         />
       ) : fallbackProfileUrl ? (
@@ -92,7 +96,7 @@ export default function ActorCard({
           alt={name}
           width={80}
           height={112}
-          loading="lazy"
+          {...(priority ? { fetchPriority: "high" as const } : { loading: "lazy" as const })}
           className="h-28 w-20 flex-shrink-0 rounded object-cover"
         />
       ) : (
