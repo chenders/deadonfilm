@@ -143,10 +143,15 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (req.query.orderBy) {
-      const validOrderBy = ["death_date", "popularity", "name", "enriched_at"]
+      const validOrderBy = ["death_date", "popularity", "name", "enriched_at", "interestingness"]
       const orderBy = req.query.orderBy as string
       if (validOrderBy.includes(orderBy)) {
-        filters.orderBy = orderBy as "death_date" | "popularity" | "name" | "enriched_at"
+        filters.orderBy = orderBy as
+          | "death_date"
+          | "popularity"
+          | "name"
+          | "enriched_at"
+          | "interestingness"
       }
     }
 
@@ -269,8 +274,11 @@ router.get("/actors/by-ids", async (req: Request, res: Response): Promise<void> 
       name: string
       popularity: number | null
       tmdb_id: number | null
+      enrichment_version: string | null
+      biography_version: number | null
     }>(
-      `SELECT id, name, dof_popularity::float as popularity, tmdb_id
+      `SELECT id, name, dof_popularity::float as popularity, tmdb_id,
+              enrichment_version, biography_version
        FROM actors
        WHERE id = ANY($1::int[])
        ORDER BY dof_popularity DESC NULLS LAST`,

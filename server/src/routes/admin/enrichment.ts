@@ -30,6 +30,7 @@ import {
   getEnrichmentRunProgress,
   type EnrichmentRunConfig,
 } from "../../lib/enrichment-process-manager.js"
+import { createRunLogsHandler } from "./run-logs-handler.js"
 
 const router = Router()
 
@@ -304,6 +305,12 @@ router.get("/runs/:id/logs", async (req: Request, res: Response): Promise<void> 
 })
 
 // ============================================================================
+// GET /admin/api/enrichment/runs/:id/run-logs
+// Get all-level logs from the run_logs table for a specific enrichment run
+// ============================================================================
+router.get("/runs/:id/run-logs", createRunLogsHandler("death"))
+
+// ============================================================================
 // GET /admin/api/enrichment/runs/:id/actors/:actorId/logs
 // Get per-actor enrichment log entries
 // ============================================================================
@@ -369,6 +376,8 @@ interface StartEnrichmentRequest {
   aiContentExtraction?: boolean
   // Batch mode filters
   usActorsOnly?: boolean
+  // Sort/priority
+  sortBy?: "popularity" | "interestingness"
   // Cache control
   ignoreCache?: boolean // Default: true - bypass source query cache for fresh data
   // Wikipedia-specific options
@@ -447,6 +456,8 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
       aiContentExtraction: config.aiContentExtraction ?? true,
       // Cache control - default true for admin (get fresh data)
       ignoreCache: config.ignoreCache ?? true,
+      // Sort/priority - default to popularity
+      sortBy: config.sortBy === "interestingness" ? "interestingness" : "popularity",
       // Wikipedia-specific options
       wikipedia: config.wikipedia,
     }

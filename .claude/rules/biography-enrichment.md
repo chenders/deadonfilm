@@ -59,7 +59,7 @@ Enriches actor records with narrative personal life biographies from ~19 active 
 
 ### Stage 3: Claude Synthesis
 - Takes ALL accumulated raw source data
-- Produces structured JSON: narrative, teaser, family, education, etc.
+- Produces structured JSON: narrative, family, education, etc.
 - Enforces personal life focus over career achievements
 - Model: Claude Sonnet (configurable)
 - Cost: ~$0.01-0.05 per actor
@@ -77,6 +77,13 @@ Enriches actor records with narrative personal life biographies from ~19 active 
 |--------|--------|-------|
 | **Britannica** | DuckDuckGo `site:britannica.com` search | High-quality biographical content |
 | **Biography.com** | DuckDuckGo `site:biography.com` search | Dedicated biography resource |
+
+### Phase 2.5: Books/Publications
+| Source | Method | Notes |
+|--------|--------|-------|
+| **Google Books** | Google Books API v1 snippets + descriptions | Requires `GOOGLE_BOOKS_API_KEY`, 1,000 req/day |
+| **Open Library** | Person-subject search + Search Inside API | Free, no API key |
+| **IA Books** | Internet Archive advanced search + OCR | Free, public domain full text |
 
 ### Phase 3: Web Search (with link following)
 | Source | Method | Notes |
@@ -107,7 +114,7 @@ Internet Archive, Chronicling America, Trove, Europeana
 
 ## Orchestrator Flow
 
-1. Initialize sources by category (free → reference → web search → news → obituary → archives)
+1. Initialize sources by category (free → reference → books → web search → news → obituary → archives)
 2. For each actor, try sources sequentially, accumulating ALL successful results
 3. **Early stopping**: After 3+ high-quality sources meeting dual threshold (confidence ≥ 0.6 AND reliability ≥ 0.6)
 4. Send all accumulated raw data to Claude synthesis (Stage 3)
@@ -125,6 +132,7 @@ Internet Archive, Chronicling America, Trove, Europeana
   sourceCategories: {
     free: true,                  // Wikidata, Wikipedia
     reference: true,             // Britannica, Biography.com
+    books: true,                 // Google Books, Open Library, IA Books
     webSearch: true,             // Google, Bing, DuckDuckGo, Brave
     news: true,                  // Guardian, NYT, AP, BBC, People
     obituary: true,              // Legacy, FindAGrave
@@ -157,16 +165,15 @@ The biography system is designed to produce **personal narratives**, not career 
 
 | Table | Purpose |
 |-------|---------|
-| `actor_biography_details` | Enriched biography: narrative, teaser, family, education, factors, sources |
+| `actor_biography_details` | Enriched biography: narrative, family, education, factors, sources |
 | `biography_legacy` | One-time archive of old `actors.biography` before first enrichment |
-| `actors.biography` | Updated with `narrativeTeaser` from enrichment |
+| `actors.biography` | Updated with `narrative` from enrichment |
 | `actors.biography_version` | Incremented on each enrichment |
 
 ## BiographyData Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `narrativeTeaser` | string | 2-3 sentence hook for "show more" preview |
 | `narrative` | string | Full personal life biography |
 | `narrativeConfidence` | enum | `high`, `medium`, `low` |
 | `lifeNotableFactors` | string[] | Tags: orphaned, military_service, immigrant, etc. |
@@ -225,7 +232,7 @@ cd server && npm run enrich:biographies -- \
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| `BiographySection` | `src/components/actor/BiographySection.tsx` | Teaser/expand, life factors pills, lesser-known facts |
+| `BiographySection` | `src/components/actor/BiographySection.tsx` | Expandable narrative, life factors pills, lesser-known facts |
 | `BiographyEnrichmentTab` | `src/components/admin/actors/BiographyEnrichmentTab.tsx` | Admin tab for managing biography enrichment |
 
 ## Golden Test Framework
@@ -242,4 +249,4 @@ cd server && npm run enrich:biographies -- \
 | Hedy Lamarr | Frequency-hopping patent, fled Nazi husband |
 | James Earl Jones | Childhood stutter overcome through poetry |
 
-Scoring algorithm (0-100): fact recall (60pts), factor accuracy (20pts), unwanted content penalty (10pts), teaser quality (10pts).
+Scoring algorithm (0-100): fact recall (70pts), factor accuracy (20pts), unwanted content penalty (10pts).

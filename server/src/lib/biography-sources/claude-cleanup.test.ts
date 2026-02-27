@@ -14,6 +14,12 @@ vi.mock("@anthropic-ai/sdk", () => {
   }
 })
 
+// Mock the database pool (used by saveRejectedFactors when invalid factors are stripped)
+const mockPoolQuery = vi.fn().mockResolvedValue({ rows: [] })
+vi.mock("../db/pool.js", () => ({
+  getPool: () => ({ query: mockPoolQuery }),
+}))
+
 // Import after mocking
 import {
   buildBiographySynthesisPrompt,
@@ -68,8 +74,6 @@ const mockSources: RawBiographySourceData[] = [
 
 function makeValidClaudeResponse(overrides: Record<string, unknown> = {}) {
   return {
-    narrative_teaser:
-      "Before he became the face of the American Western, Marion Morrison was a skinny kid from Iowa whose family could barely afford groceries.",
     narrative:
       "Growing up in Glendale, California, young Marion Morrison was a skinny, bookish kid who preferred reading to roughhousing. His father, a pharmacist who struggled to keep his business afloat, moved the family west from Winterset, Iowa, seeking better prospects.",
     life_notable_factors: ["poverty", "rags_to_riches", "multiple_careers"],
@@ -235,12 +239,6 @@ describe("claude-cleanup (biography)", () => {
       expect(prompt).toContain("No superlatives")
     })
 
-    it("includes teaser quality guidelines", () => {
-      const prompt = buildBiographySynthesisPrompt(mockActor, mockSources)
-      expect(prompt).toContain("TEASER QUALITY")
-      expect(prompt).toContain("hook the reader")
-    })
-
     it("includes valid life notable factors list", () => {
       const prompt = buildBiographySynthesisPrompt(mockActor, mockSources)
       expect(prompt).toContain("VALID LIFE NOTABLE FACTORS")
@@ -323,7 +321,6 @@ describe("claude-cleanup (biography)", () => {
       const result = await synthesizeBiography(mockActor, mockSources)
 
       expect(result.data).not.toBeNull()
-      expect(result.data!.narrativeTeaser).toContain("Marion Morrison")
       expect(result.data!.narrative).toContain("Glendale, California")
       expect(result.data!.birthplaceDetails).toContain("Winterset, Iowa")
       expect(result.data!.familyBackground).toContain("pharmacist")
@@ -451,13 +448,12 @@ describe("claude-cleanup (biography)", () => {
       const result = await synthesizeBiography(mockActor, mockSources)
 
       expect(result.data).not.toBeNull()
-      expect(result.data!.narrativeTeaser).toContain("Marion Morrison")
+      expect(result.data!.narrative).toContain("Glendale, California")
       expect(result.error).toBeUndefined()
     })
 
     it("handles null fields gracefully", async () => {
       const response = makeValidClaudeResponse({
-        narrative_teaser: null,
         narrative: null,
         birthplace_details: null,
         family_background: null,
@@ -474,7 +470,6 @@ describe("claude-cleanup (biography)", () => {
       const result = await synthesizeBiography(mockActor, mockSources)
 
       expect(result.data).not.toBeNull()
-      expect(result.data!.narrativeTeaser).toBeNull()
       expect(result.data!.narrative).toBeNull()
       expect(result.data!.birthplaceDetails).toBeNull()
       expect(result.data!.familyBackground).toBeNull()

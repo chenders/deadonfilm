@@ -159,6 +159,7 @@ export enum DataSourceType {
   OPEN_LIBRARY = "open_library",
   WORLDCAT = "worldcat",
   INTERNET_ARCHIVE = "internet_archive",
+  IA_BOOKS = "ia_books",
 
   // Court/Public Records
   PACER = "pacer",
@@ -282,7 +283,7 @@ export interface EnrichmentResult {
  */
 export interface RelatedCelebrity {
   name: string
-  tmdbId: number | null
+  tmdb_id: number | null
   relationship: string
 }
 
@@ -511,6 +512,7 @@ export interface SourceCategoryFlags {
   free: boolean
   paid: boolean
   ai: boolean
+  books?: boolean
 }
 
 /**

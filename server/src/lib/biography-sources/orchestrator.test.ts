@@ -151,6 +151,15 @@ vi.mock("./sources/trove.js", () => ({
 vi.mock("./sources/europeana.js", () => ({
   EuropeanaBiographySource: makeMockSourceClass("Europeana"),
 }))
+vi.mock("./sources/google-books.js", () => ({
+  GoogleBooksBiographySource: makeMockSourceClass("Google Books"),
+}))
+vi.mock("./sources/open-library.js", () => ({
+  OpenLibraryBiographySource: makeMockSourceClass("Open Library"),
+}))
+vi.mock("./sources/ia-books.js", () => ({
+  IABooksBiographySource: makeMockSourceClass("IA Books"),
+}))
 
 // Mock Claude synthesis
 vi.mock("./claude-cleanup.js", () => ({
@@ -263,7 +272,6 @@ function createSynthesisResult(
     data:
       overrides?.narrative !== null
         ? {
-            narrativeTeaser: "A teaser",
             narrative: overrides?.narrative ?? "Full narrative",
             narrativeConfidence: "high" as const,
             lifeNotableFactors: [],
@@ -314,8 +322,8 @@ describe("BiographyEnrichmentOrchestrator", () => {
     it("initializes all source categories by default", () => {
       const orchestrator = new BiographyEnrichmentOrchestrator()
 
-      // All 19 sources should be initialized (all categories enabled except AI)
-      expect(orchestrator.getSourceCount()).toBe(19)
+      // All 22 sources should be initialized (all categories enabled except AI)
+      expect(orchestrator.getSourceCount()).toBe(22)
     })
 
     it("initializes sources in correct priority order", () => {
@@ -323,26 +331,29 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       const names = orchestrator.getSourceNames()
 
-      // Verify order: free -> reference -> web search -> news -> obituary -> archives
+      // Verify order: free -> reference -> books -> web search -> news -> obituary -> archives
       expect(names[0]).toBe("Wikidata")
       expect(names[1]).toBe("Wikipedia")
       expect(names[2]).toBe("Britannica")
       expect(names[3]).toBe("Biography.com")
-      expect(names[4]).toBe("Google Search")
-      expect(names[5]).toBe("Bing Search")
-      expect(names[6]).toBe("DuckDuckGo")
-      expect(names[7]).toBe("Brave Search")
-      expect(names[8]).toBe("Guardian")
-      expect(names[9]).toBe("NYTimes")
-      expect(names[10]).toBe("AP News")
-      expect(names[11]).toBe("BBC News")
-      expect(names[12]).toBe("People")
-      expect(names[13]).toBe("Legacy")
-      expect(names[14]).toBe("FindAGrave")
-      expect(names[15]).toBe("Internet Archive")
-      expect(names[16]).toBe("Chronicling America")
-      expect(names[17]).toBe("Trove")
-      expect(names[18]).toBe("Europeana")
+      expect(names[4]).toBe("Google Books")
+      expect(names[5]).toBe("Open Library")
+      expect(names[6]).toBe("IA Books")
+      expect(names[7]).toBe("Google Search")
+      expect(names[8]).toBe("Bing Search")
+      expect(names[9]).toBe("DuckDuckGo")
+      expect(names[10]).toBe("Brave Search")
+      expect(names[11]).toBe("Guardian")
+      expect(names[12]).toBe("NYTimes")
+      expect(names[13]).toBe("AP News")
+      expect(names[14]).toBe("BBC News")
+      expect(names[15]).toBe("People")
+      expect(names[16]).toBe("Legacy")
+      expect(names[17]).toBe("FindAGrave")
+      expect(names[18]).toBe("Internet Archive")
+      expect(names[19]).toBe("Chronicling America")
+      expect(names[20]).toBe("Trove")
+      expect(names[21]).toBe("Europeana")
     })
 
     it("filters out unavailable sources", () => {
@@ -383,7 +394,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       const orchestrator = new BiographyEnrichmentOrchestrator()
 
-      expect(orchestrator.getSourceCount()).toBe(17)
+      expect(orchestrator.getSourceCount()).toBe(20)
       expect(orchestrator.getSourceNames()).not.toContain("Google Search")
       expect(orchestrator.getSourceNames()).not.toContain("Bing Search")
     })
@@ -397,6 +408,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -418,6 +430,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -437,6 +450,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: true,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -507,12 +521,12 @@ describe("BiographyEnrichmentOrchestrator", () => {
       ).toBe(5)
     })
 
-    it("falls back to default for Infinity", () => {
+    it("preserves Infinity to disable early stopping", () => {
       const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: Infinity })
       expect(
         (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
           .earlyStopSourceCount
-      ).toBe(5)
+      ).toBe(Infinity)
     })
 
     it("falls back to default for negative numbers", () => {
@@ -523,12 +537,12 @@ describe("BiographyEnrichmentOrchestrator", () => {
       ).toBe(5)
     })
 
-    it("falls back to default for zero", () => {
+    it("maps zero to Infinity (disable early stopping)", () => {
       const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: 0 })
       expect(
         (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
           .earlyStopSourceCount
-      ).toBe(5)
+      ).toBe(Infinity)
     })
 
     it("floors non-integer values", () => {
@@ -561,6 +575,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -590,6 +605,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -622,6 +638,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
         synthesisModel: "claude-sonnet-4-20250514",
@@ -716,6 +733,42 @@ describe("BiographyEnrichmentOrchestrator", () => {
       expect(result.rawSources).toHaveLength(3)
     })
 
+    it("always tries book sources even when early stop threshold is met", async () => {
+      // earlyStopSourceCount=2: would normally stop after 2 distinct families
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: 2 })
+
+      // Make Wikidata and Britannica succeed (2 distinct families → threshold met)
+      const wikidataMock = getMock("Wikidata")
+      ;(wikidataMock.lookup as ReturnType<typeof vi.fn>).mockResolvedValue(
+        createSuccessfulLookup({ confidence: 0.8, reliabilityScore: 0.95 })
+      )
+      const britannicaMock = getMock("Britannica")
+      ;(britannicaMock.lookup as ReturnType<typeof vi.fn>).mockResolvedValue(
+        createSuccessfulLookup({ confidence: 0.8, reliabilityScore: 0.95 })
+      )
+
+      // Set real book source types so the exemption logic recognizes them
+      const googleBooksMock = getMock("Google Books")
+      googleBooksMock.type = BiographySourceType.GOOGLE_BOOKS_BIO
+      const openLibraryMock = getMock("Open Library")
+      openLibraryMock.type = BiographySourceType.OPEN_LIBRARY_BIO
+      const iaBooksMock = getMock("IA Books")
+      iaBooksMock.type = BiographySourceType.IA_BOOKS_BIO
+
+      vi.mocked(synthesizeBiography).mockResolvedValue(createSynthesisResult())
+
+      await orchestrator.enrichActor(testActor)
+
+      // Book sources should still be tried despite early stop threshold being met
+      expect(googleBooksMock.lookup).toHaveBeenCalled()
+      expect(openLibraryMock.lookup).toHaveBeenCalled()
+      expect(iaBooksMock.lookup).toHaveBeenCalled()
+
+      // But sources after books should NOT be tried (early stop fires after books)
+      const googleSearchMock = getMock("Google Search")
+      expect(googleSearchMock.lookup).not.toHaveBeenCalled()
+    })
+
     it("does not stop early if sources do not meet both thresholds", async () => {
       // Reconfigure source constructors to have LOW reliability on the source object
       // (the orchestrator reads source.reliabilityScore, not the lookup result's)
@@ -771,6 +824,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -801,6 +855,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -832,6 +887,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -869,6 +925,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -891,6 +948,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -918,6 +976,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -947,6 +1006,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -973,6 +1033,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1047,6 +1108,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1086,6 +1148,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1117,6 +1180,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1136,6 +1200,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1160,6 +1225,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1176,6 +1242,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })

@@ -50,6 +50,14 @@ function parsePositiveInt(value: string): number {
   return n
 }
 
+export function parseNonNegativeInt(value: string): number {
+  const n = parseInt(value, 10)
+  if (isNaN(n) || !Number.isInteger(n) || n < 0) {
+    throw new InvalidArgumentError("Must be a non-negative integer")
+  }
+  return n
+}
+
 function parsePositiveFloat(value: string): number {
   const n = parseFloat(value)
   if (isNaN(n) || n <= 0) {
@@ -122,10 +130,11 @@ async function queryGoldenTestActors(pool: Pool): Promise<ActorForBiography[]> {
   return result.rows
 }
 
-async function queryActorsByPopularity(
+async function queryActorsForEnrichment(
   pool: Pool,
   limit: number,
-  minPopularity?: number
+  minPopularity?: number,
+  sortBy: "popularity" | "interestingness" = "popularity"
 ): Promise<ActorForBiography[]> {
   const conditions = ["deathday IS NOT NULL"]
   const params: (number | string)[] = []
@@ -139,12 +148,17 @@ async function queryActorsByPopularity(
 
   params.push(limit)
 
+  const orderByClause =
+    sortBy === "interestingness"
+      ? "ORDER BY interestingness_score DESC NULLS LAST"
+      : "ORDER BY popularity DESC NULLS LAST"
+
   const result = await pool.query(
     `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
             wikipedia_url, biography AS biography_raw_tmdb, biography
      FROM actors
      WHERE ${conditions.join(" AND ")}
-     ORDER BY popularity DESC NULLS LAST
+     ${orderByClause}
      LIMIT $${paramIdx}`,
     params
   )
@@ -179,8 +193,25 @@ const program = new Command()
   .option("--disable-web-search", "Disable web search sources")
   .option("--disable-news", "Disable news sources")
   .option("--disable-archives", "Disable archive sources")
+  .option("--disable-books", "Disable book sources (Google Books, Open Library, IA Books)")
+  .option(
+    "--early-stop-sources <n>",
+    "Min high-quality source families before early stopping (default 5, 0 = disable early stopping)",
+    parseNonNegativeInt
+  )
   .option("--staging", "Write to staging table for admin review")
   .option("--ignore-cache", "Ignore cached responses")
+  .option(
+    "--sort-by <field>",
+    "Sort actors by: popularity (default) or interestingness",
+    (value: string) => {
+      if (value !== "popularity" && value !== "interestingness") {
+        throw new InvalidArgumentError('Must be "popularity" or "interestingness"')
+      }
+      return value as "popularity" | "interestingness"
+    },
+    "popularity"
+  )
   .option("-y, --yes", "Skip confirmation prompt")
   .action(async (options) => {
     await run(options)
@@ -200,8 +231,11 @@ interface CliOptions {
   disableWebSearch?: boolean
   disableNews?: boolean
   disableArchives?: boolean
+  disableBooks?: boolean
+  earlyStopSources?: number
   staging?: boolean
   ignoreCache?: boolean
+  sortBy: "popularity" | "interestingness"
   yes?: boolean
 }
 
@@ -231,12 +265,16 @@ async function run(options: CliOptions): Promise<void> {
           news: !options.disableNews,
           obituary: true,
           archives: !options.disableArchives,
+          books: !options.disableBooks,
           ai: false,
         },
         contentCleaning: {
           haikuEnabled: !options.disableHaikuCleanup,
           mechanicalOnly: !!options.disableHaikuCleanup,
         },
+        ...(options.earlyStopSources !== undefined && {
+          earlyStopSourceCount: options.earlyStopSources,
+        }),
       }
 
       // Query actors based on CLI options
@@ -252,10 +290,16 @@ async function run(options: CliOptions): Promise<void> {
         console.log("Querying golden test case actors...")
         actors = await queryGoldenTestActors(pool)
       } else {
+        const sortLabel = options.sortBy === "interestingness" ? "interestingness" : "popularity"
         console.log(
-          `Querying top ${options.limit} actors by popularity${options.minPopularity ? ` (min: ${options.minPopularity})` : ""}...`
+          `Querying top ${options.limit} actors by ${sortLabel}${options.minPopularity ? ` (min popularity: ${options.minPopularity})` : ""}...`
         )
-        actors = await queryActorsByPopularity(pool, options.limit, options.minPopularity)
+        actors = await queryActorsForEnrichment(
+          pool,
+          options.limit,
+          options.minPopularity,
+          options.sortBy
+        )
       }
 
       if (actors.length === 0) {

@@ -217,7 +217,7 @@ abstract class OpenAIBaseSource extends BaseDataSource {
     if (!parsed?.related_celebrities || parsed.related_celebrities.length === 0) return []
     return parsed.related_celebrities.map((c) => ({
       name: c.name,
-      tmdbId: null,
+      tmdb_id: null,
       relationship: c.relationship,
     }))
   }

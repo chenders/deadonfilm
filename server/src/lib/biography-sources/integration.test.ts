@@ -61,6 +61,12 @@ vi.mock("wtf_wikipedia", () => {
   }
 })
 
+// Mock the database pool (used by saveRejectedFactors when invalid factors are stripped)
+const mockPoolQuery = vi.fn().mockResolvedValue({ rows: [] })
+vi.mock("../db/pool.js", () => ({
+  getPool: () => ({ query: mockPoolQuery }),
+}))
+
 // ============================================================================
 // Imports — after mocks
 // ============================================================================
@@ -185,8 +191,6 @@ const CLAUDE_SYNTHESIS_RESPONSE = {
     {
       type: "text" as const,
       text: JSON.stringify({
-        narrative_teaser:
-          "Before he became the embodiment of American ruggedness on screen, Marion Morrison was a gangly teenager in Glendale, California, playing football and working odd jobs to help his family make ends meet.",
         narrative:
           "The boy who would become John Wayne grew up far from Hollywood glamour. Born Marion Robert Morrison in a small Iowa farmhouse, he spent his earliest years watching his father struggle as a pharmacist in various small towns. When the family relocated to Southern California, young Marion found himself an outsider, a Midwestern kid in a sun-bleached California world. He threw himself into football at Glendale Union High School, where he also served as president of the Latin Society. A football scholarship took him to the University of Southern California, but a body-surfing injury ended his athletic career and, with it, his scholarship. Stranded without tuition money, he took odd jobs at the Fox Film lot — a decision that would reshape American cinema. Wayne married three times. His first marriage to Josephine Saenz produced four children but ended in 1945. His union with Esperanza Baur was turbulent, marked by jealousy and public arguments. His third marriage, to Peruvian actress Pilar Pallete, lasted until his death. He struggled with alcoholism during the 1950s. In 1964, doctors removed his entire left lung after discovering cancer — Wayne later became an advocate for cancer awareness.",
         narrative_confidence: "high",
@@ -423,6 +427,7 @@ describe("Biography Enrichment Integration Test", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -500,7 +505,6 @@ describe("Biography Enrichment Integration Test", () => {
 
       // -- Verify synthesized biography data --
       const data = result.data!
-      expect(data.narrativeTeaser).toContain("Marion Morrison")
       expect(data.narrative).toContain("Glendale Union High School")
       expect(data.narrative).toContain("married three times")
       expect(data.narrativeConfidence).toBe("high")
@@ -538,6 +542,7 @@ describe("Biography Enrichment Integration Test", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -576,6 +581,7 @@ describe("Biography Enrichment Integration Test", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -599,6 +605,7 @@ describe("Biography Enrichment Integration Test", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -618,7 +625,6 @@ describe("Biography Enrichment Integration Test", () => {
           {
             type: "text" as const,
             text: JSON.stringify({
-              narrative_teaser: "A brief teaser.",
               narrative: "Full narrative about John Wayne's life.",
               narrative_confidence: "medium",
               life_notable_factors: ["military_service", "invented_factor", "athlete", "fake_tag"],
@@ -645,6 +651,7 @@ describe("Biography Enrichment Integration Test", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -666,6 +673,7 @@ describe("Biography Enrichment Integration Test", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -695,6 +703,7 @@ describe("Biography Enrichment Integration Test", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -737,31 +746,30 @@ describe("Biography Enrichment Integration Test", () => {
 
       const upsertParams = upsertCall[1]
       expect(upsertParams[0]).toBe(testActor.id) // actor_id
-      expect(upsertParams[1]).toContain("Marion Morrison") // narrativeTeaser
-      expect(upsertParams[2]).toContain("Glendale Union High School") // narrative
-      expect(upsertParams[3]).toBe("high") // narrativeConfidence
-      expect(upsertParams[4]).toEqual(["athlete", "rags_to_riches", "addiction_recovery"]) // lifeNotableFactors
-      expect(upsertParams[5]).toContain("Winterset, Iowa") // birthplaceDetails
-      expect(upsertParams[6]).toContain("Clyde Leonard Morrison") // familyBackground
-      expect(upsertParams[7]).toContain("University of Southern California") // education
-      expect(upsertParams[8]).toContain("Fox Film") // preFameLife
-      expect(upsertParams[9]).toContain("John Ford") // fameCatalyst
-      expect(upsertParams[10]).toContain("alcoholism") // personalStruggles
-      expect(upsertParams[11]).toContain("Josephine Saenz") // relationships
-      expect(upsertParams[12]).toHaveLength(4) // lesserKnownFacts
+      expect(upsertParams[1]).toContain("Glendale Union High School") // narrative
+      expect(upsertParams[2]).toBe("high") // narrativeConfidence
+      expect(upsertParams[3]).toEqual(["athlete", "rags_to_riches", "addiction_recovery"]) // lifeNotableFactors
+      expect(upsertParams[4]).toContain("Winterset, Iowa") // birthplaceDetails
+      expect(upsertParams[5]).toContain("Clyde Leonard Morrison") // familyBackground
+      expect(upsertParams[6]).toContain("University of Southern California") // education
+      expect(upsertParams[7]).toContain("Fox Film") // preFameLife
+      expect(upsertParams[8]).toContain("John Ford") // fameCatalyst
+      expect(upsertParams[9]).toContain("alcoholism") // personalStruggles
+      expect(upsertParams[10]).toContain("Josephine Saenz") // relationships
+      expect(upsertParams[11]).toHaveLength(4) // lesserKnownFacts
 
       // Sources JSON
-      const sourcesJson = upsertParams[13]
+      const sourcesJson = upsertParams[12]
       const parsedSources = JSON.parse(sourcesJson) as BiographySourceEntry[]
       expect(parsedSources).toHaveLength(2)
       expect(parsedSources.map((s) => s.type)).toContain(BiographySourceType.WIKIDATA_BIO)
       expect(parsedSources.map((s) => s.type)).toContain(BiographySourceType.WIKIPEDIA_BIO)
 
-      // Call 4: UPDATE actors table with teaser
+      // Call 4: UPDATE actors table with narrative
       const updateCall = mockQuery.mock.calls[3]
       expect(updateCall[0]).toContain("biography = $1")
       expect(updateCall[0]).toContain("biography_version = COALESCE(biography_version, 0) + 1")
-      expect(updateCall[1][0]).toContain("Marion Morrison") // narrativeTeaser
+      expect(updateCall[1][0]).toContain("Glendale Union High School") // narrative
       expect(updateCall[1][1]).toBe(testActor.id)
 
       // Cache invalidated
@@ -770,7 +778,6 @@ describe("Biography Enrichment Integration Test", () => {
 
     it("skips biography archival when no existing biography", async () => {
       const data: BiographyData = {
-        narrativeTeaser: "A brief teaser.",
         narrative: "Full narrative.",
         narrativeConfidence: "medium",
         lifeNotableFactors: [],

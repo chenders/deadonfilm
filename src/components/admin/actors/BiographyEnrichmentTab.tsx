@@ -24,7 +24,6 @@ interface EnrichmentActor {
   deathday: string
   hasEnrichment: boolean
   narrativeConfidence: string | null
-  narrativeTeaserPreview: string | null
   lifeNotableFactors: string[]
   bioUpdatedAt: string | null
   biographyVersion: number | null
@@ -291,7 +290,7 @@ function BatchStatusPanel({
 export default function BiographyEnrichmentTab() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
-  const [minPopularity, setMinPopularity] = useState(0)
+  const [minPopularity, setMinPopularity] = useState("0")
   const [needsEnrichment, setNeedsEnrichment] = useState(true)
   const [batchLimit, setBatchLimit] = useState(10)
   const [enrichingActorId, setEnrichingActorId] = useState<number | null>(null)
@@ -320,7 +319,13 @@ export default function BiographyEnrichmentTab() {
       searchName,
     ],
     queryFn: () =>
-      fetchEnrichmentActors(page, pageSize, minPopularity, needsEnrichment, searchName),
+      fetchEnrichmentActors(
+        page,
+        pageSize,
+        parseFloat(minPopularity) || 0,
+        needsEnrichment,
+        searchName
+      ),
   })
 
   const enrichMutation = useMutation({
@@ -352,7 +357,10 @@ export default function BiographyEnrichmentTab() {
 
   const handleBatchEnrich = async () => {
     try {
-      await batchMutation.mutateAsync({ limit: batchLimit, minPopularity })
+      await batchMutation.mutateAsync({
+        limit: batchLimit,
+        minPopularity: parseFloat(minPopularity) || 0,
+      })
     } catch {
       // Error state handled by mutation
     }
@@ -445,8 +453,12 @@ export default function BiographyEnrichmentTab() {
               step="0.1"
               value={minPopularity}
               onChange={(e) => {
-                setMinPopularity(parseFloat(e.target.value) || 0)
+                setMinPopularity(e.target.value)
                 setPage(1)
+              }}
+              onBlur={() => {
+                const n = parseFloat(minPopularity)
+                setMinPopularity(String(isNaN(n) ? 0 : Math.max(0, n)))
               }}
               className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary"
               placeholder="0"
@@ -727,9 +739,6 @@ export default function BiographyEnrichmentTab() {
                     Factors
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
-                    Teaser Preview
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
                     Updated
                   </th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-admin-text-secondary">
@@ -798,9 +807,6 @@ export default function BiographyEnrichmentTab() {
                         ) : (
                           <span className="text-admin-text-muted">---</span>
                         )}
-                      </td>
-                      <td className="max-w-[200px] truncate px-4 py-3 text-sm text-admin-text-muted">
-                        {actor.narrativeTeaserPreview || "---"}
                       </td>
                       <td className="px-4 py-3 text-sm text-admin-text-muted">
                         {formatRelativeTime(actor.bioUpdatedAt)}

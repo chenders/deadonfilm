@@ -26,26 +26,30 @@ export default function StartBioEnrichmentPage() {
   const preSelectedActorIds = (location.state?.selectedActorIds as number[]) || []
 
   // Batch settings
-  const [limit, setLimit] = useState<number>(50)
-  const [minPopularity, setMinPopularity] = useState<number>(0)
+  const [limit, setLimit] = useState("50")
+  const [minPopularity, setMinPopularity] = useState("0")
 
   // Quality settings
   const [confidenceThreshold, setConfidenceThreshold] = useState<number>(0.6)
 
   // Cost limits
-  const [maxCostPerActor, setMaxCostPerActor] = useState<number>(0.5)
-  const [maxTotalCost, setMaxTotalCost] = useState<number>(25)
+  const [maxCostPerActor, setMaxCostPerActor] = useState("0.50")
+  const [maxTotalCost, setMaxTotalCost] = useState("25")
 
   // Source category toggles
   const [free, setFree] = useState(true)
   const [reference, setReference] = useState(true)
+  const [books, setBooks] = useState(true)
   const [webSearch, setWebSearch] = useState(true)
   const [news, setNews] = useState(true)
   const [obituary, setObituary] = useState(true)
   const [archives, setArchives] = useState(true)
 
+  // Sort/priority
+  const [sortBy, setSortBy] = useState<"popularity" | "interestingness">("popularity")
+
   // Other options
-  const [allowRegeneration, setAllowRegeneration] = useState(false)
+  const [allowRegeneration, setAllowRegeneration] = useState(true)
 
   // Actor selection mode
   const [selectionMode, setSelectionMode] = useState<"batch" | "specific">(
@@ -131,16 +135,26 @@ export default function StartBioEnrichmentPage() {
       return
     }
 
+    // Parse and clamp all string inputs to prevent NaN in the API payload
+    const parsedLimit = parseInt(limit, 10)
+    const parsedMinPopularity = parseFloat(minPopularity)
+    const parsedMaxCostPerActor = parseFloat(maxCostPerActor)
+    const parsedMaxTotalCost = parseFloat(maxTotalCost)
+
     try {
       const result = await startEnrichment.mutateAsync({
         ...(selectionMode === "specific" && selectedActorIds.length > 0
           ? { actorIds: selectedActorIds }
-          : { limit, minPopularity }),
+          : {
+              limit: isNaN(parsedLimit) ? 50 : Math.max(1, Math.min(500, parsedLimit)),
+              minPopularity: isNaN(parsedMinPopularity) ? 0 : Math.max(0, parsedMinPopularity),
+              sortBy,
+            }),
         confidenceThreshold,
-        maxCostPerActor,
-        maxTotalCost,
+        maxCostPerActor: isNaN(parsedMaxCostPerActor) ? 0.5 : Math.max(0.01, parsedMaxCostPerActor),
+        maxTotalCost: isNaN(parsedMaxTotalCost) ? 25 : Math.max(0.01, parsedMaxTotalCost),
         allowRegeneration,
-        sourceCategories: { free, reference, webSearch, news, obituary, archives },
+        sourceCategories: { free, reference, books, webSearch, news, obituary, archives },
       })
 
       navigate(`/admin/bio-enrichment/runs/${result.runId}`)
@@ -252,7 +266,11 @@ export default function StartBioEnrichmentPage() {
                     min="1"
                     max="500"
                     value={limit}
-                    onChange={(e) => setLimit(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    onChange={(e) => setLimit(e.target.value)}
+                    onBlur={() => {
+                      const n = parseInt(limit, 10)
+                      setLimit(String(isNaN(n) ? 50 : Math.max(1, Math.min(500, n))))
+                    }}
                     className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                   />
                 </div>
@@ -269,11 +287,36 @@ export default function StartBioEnrichmentPage() {
                     min="0"
                     step="0.1"
                     value={minPopularity}
-                    onChange={(e) => setMinPopularity(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setMinPopularity(e.target.value)}
+                    onBlur={() => {
+                      const n = parseFloat(minPopularity)
+                      setMinPopularity(String(isNaN(n) ? 0 : Math.max(0, n)))
+                    }}
                     className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                   />
                   <p className="mt-1 text-xs text-admin-text-muted">
                     Only process actors with dof_popularity above this threshold
+                  </p>
+                </div>
+                <div>
+                  <label
+                    htmlFor="sortBy"
+                    className="block text-sm font-medium text-admin-text-secondary"
+                  >
+                    Sort By
+                  </label>
+                  <select
+                    id="sortBy"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as "popularity" | "interestingness")}
+                    className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
+                  >
+                    <option value="popularity">Most Popular First</option>
+                    <option value="interestingness">Most Interesting First</option>
+                  </select>
+                  <p className="mt-1 text-xs text-admin-text-muted">
+                    Interestingness score uses multiple factors including era, demographics, death
+                    drama, life complexity, and Wikipedia/cultural interest signals
                   </p>
                 </div>
               </div>
@@ -387,6 +430,11 @@ export default function StartBioEnrichmentPage() {
                   onChange: setReference,
                 },
                 {
+                  label: "Books (Google Books, Open Library)",
+                  checked: books,
+                  onChange: setBooks,
+                },
+                {
                   label: "Web Search (Google, Bing, etc.)",
                   checked: webSearch,
                   onChange: setWebSearch,
@@ -462,7 +510,11 @@ export default function StartBioEnrichmentPage() {
                   min="0.01"
                   step="0.01"
                   value={maxCostPerActor}
-                  onChange={(e) => setMaxCostPerActor(parseFloat(e.target.value) || 0.5)}
+                  onChange={(e) => setMaxCostPerActor(e.target.value)}
+                  onBlur={() => {
+                    const n = parseFloat(maxCostPerActor)
+                    setMaxCostPerActor(isNaN(n) || n < 0.01 ? "0.50" : String(n))
+                  }}
                   className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                 />
               </div>
@@ -479,7 +531,11 @@ export default function StartBioEnrichmentPage() {
                   min="0.01"
                   step="0.01"
                   value={maxTotalCost}
-                  onChange={(e) => setMaxTotalCost(parseFloat(e.target.value) || 25)}
+                  onChange={(e) => setMaxTotalCost(e.target.value)}
+                  onBlur={() => {
+                    const n = parseFloat(maxTotalCost)
+                    setMaxTotalCost(isNaN(n) || n < 0.01 ? "25" : String(n))
+                  }}
                   className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                 />
               </div>

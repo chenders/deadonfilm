@@ -27,6 +27,7 @@ export interface BioEnrichmentRunConfig {
   maxCostPerActor?: number
   maxTotalCost?: number
   allowRegeneration?: boolean
+  sortBy?: "popularity" | "interestingness"
   sourceCategories?: {
     free?: boolean
     reference?: boolean
@@ -34,6 +35,7 @@ export interface BioEnrichmentRunConfig {
     news?: boolean
     obituary?: boolean
     archives?: boolean
+    books?: boolean
   }
 }
 
@@ -76,6 +78,7 @@ export async function startBioEnrichmentRun(config: BioEnrichmentRunConfig): Pro
         maxCostPerActor: config.maxCostPerActor,
         maxTotalCost: config.maxTotalCost,
         allowRegeneration: config.allowRegeneration ?? false,
+        sortBy: config.sortBy ?? "popularity",
         useStaging: false,
         sourceCategories: config.sourceCategories
           ? {
@@ -85,6 +88,7 @@ export async function startBioEnrichmentRun(config: BioEnrichmentRunConfig): Pro
               news: config.sourceCategories.news ?? true,
               obituary: config.sourceCategories.obituary ?? true,
               archives: config.sourceCategories.archives ?? true,
+              books: config.sourceCategories.books ?? true,
             }
           : undefined,
       },

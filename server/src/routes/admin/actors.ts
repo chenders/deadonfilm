@@ -1318,7 +1318,7 @@ router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Pro
         : null,
       entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
       enrichmentSource: "admin-inline-enrichment",
-      enrichmentVersion: "3.0.0",
+      enrichmentVersion: "4.0.0",
     }
 
     await writeToProduction(pool, enrichmentData, circumstancesData)
@@ -1443,7 +1443,6 @@ router.post("/:id(\\d+)/enrich-bio-inline", async (req: Request, res: Response):
       success: true,
       enriched: true,
       data: {
-        narrativeTeaser: result.data.narrativeTeaser,
         narrativeConfidence: result.data.narrativeConfidence,
         lifeNotableFactors: result.data.lifeNotableFactors,
         hasSubstantiveContent: result.data.hasSubstantiveContent,

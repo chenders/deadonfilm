@@ -19,6 +19,11 @@ export interface ResolvedRelatedCelebrity {
  * their internal actor IDs via tmdb_id or name match.
  * Uses canonical actor names from the database for slug generation.
  */
+/** Read tmdb_id from a related celebrity, handling legacy camelCase JSONB entries */
+export function getCelebTmdbId(c: RelatedCelebrity): number | null {
+  return c.tmdb_id ?? ((c as unknown as Record<string, unknown>).tmdbId as number | null) ?? null
+}
+
 export async function resolveRelatedCelebritySlugs(
   celebrities: RelatedCelebrity[]
 ): Promise<ResolvedRelatedCelebrity[]> {
@@ -26,7 +31,7 @@ export async function resolveRelatedCelebritySlugs(
 
   const pool = getPool()
 
-  const tmdbIds = celebrities.map((c) => c.tmdb_id).filter((id): id is number => id != null)
+  const tmdbIds = celebrities.map(getCelebTmdbId).filter((id): id is number => id != null)
   const names = celebrities.map((c) => c.name).filter((n): n is string => Boolean(n))
 
   // Batch lookup by tmdb_id
@@ -59,10 +64,11 @@ export async function resolveRelatedCelebritySlugs(
 
   return celebrities.map((celeb) => {
     let actor: { id: number; name: string } | null = null
+    const tmdbId = getCelebTmdbId(celeb)
 
     // Precedence: first try tmdb_id, then exact name match
-    if (celeb.tmdb_id != null) {
-      actor = tmdbIdToActor.get(celeb.tmdb_id) ?? null
+    if (tmdbId != null) {
+      actor = tmdbIdToActor.get(tmdbId) ?? null
     }
     if (actor == null) {
       actor = nameToActor.get(celeb.name) ?? null
@@ -70,7 +76,7 @@ export async function resolveRelatedCelebritySlugs(
 
     return {
       name: celeb.name,
-      tmdbId: celeb.tmdb_id,
+      tmdbId: tmdbId,
       relationship: celeb.relationship,
       // Use the canonical actor name from the database for slug generation
       slug: actor ? createActorSlug(actor.name, actor.id) : null,

@@ -7,7 +7,7 @@ import MobileMenu from "./MobileMenu"
 
 const NAV_LINKS = [
   { to: "/deaths/all", label: "Deaths" },
-  { to: "/genres", label: "Genres" },
+  { to: "/movies/genres", label: "Genres" },
   { to: "/causes-of-death", label: "Causes" },
 ]
 

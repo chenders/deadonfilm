@@ -388,7 +388,7 @@ export async function cleanupWithClaude(
   const relatedCelebrities: RelatedCelebrity[] | null = Array.isArray(parsed.related_celebrities)
     ? parsed.related_celebrities.map((rc) => ({
         name: rc.name,
-        tmdbId: null, // Will be looked up later when persisting
+        tmdb_id: null, // Will be looked up later when persisting
         relationship: rc.relationship,
       }))
     : null

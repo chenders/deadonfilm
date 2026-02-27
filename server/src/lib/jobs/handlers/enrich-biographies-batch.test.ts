@@ -99,7 +99,6 @@ function makeSuccessfulResult(actorId: number) {
   return {
     actorId,
     data: {
-      narrativeTeaser: "A brief teaser about the actor.",
       narrative: "A longer narrative about the actor's life.",
       narrativeConfidence: "high" as const,
       lifeNotableFactors: ["military_service"],

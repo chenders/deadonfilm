@@ -104,11 +104,35 @@ export default function ExpandableSection({
         </button>
       </h2>
 
-      {/* Content area with animated max-height */}
+      {/* Content area with animated max-height — clickable when collapsed */}
       <div
         ref={contentRef}
-        className="relative mt-3 overflow-hidden transition-[max-height] duration-300 ease-in-out"
+        className={`relative mt-3 overflow-hidden transition-[max-height] duration-300 ease-in-out ${
+          !isExpanded ? "cursor-pointer" : ""
+        }`}
         style={maxHeight !== undefined ? { maxHeight } : undefined}
+        onClick={
+          !isExpanded
+            ? (e: React.MouseEvent) => {
+                // Don't trigger expand when clicking interactive children (links, buttons)
+                const target = e.target as HTMLElement
+                if (target.closest("a, button, input, select, textarea, [role='button']")) return
+                onToggle()
+              }
+            : undefined
+        }
+        onKeyDown={
+          !isExpanded
+            ? (e: React.KeyboardEvent) => {
+                // Only handle direct events — gradient overlay has its own keyboard handler
+                if (e.target !== e.currentTarget) return
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  onToggle()
+                }
+              }
+            : undefined
+        }
         onTransitionEnd={handleTransitionEnd}
         data-testid="expandable-section-content"
       >
@@ -122,7 +146,14 @@ export default function ExpandableSection({
           style={{
             background: "linear-gradient(to bottom, transparent, var(--surface-elevated))",
           }}
-          onClick={isExpanded ? undefined : onToggle}
+          onClick={
+            isExpanded
+              ? undefined
+              : (e) => {
+                  e.stopPropagation()
+                  onToggle()
+                }
+          }
           onKeyDown={
             isExpanded
               ? undefined

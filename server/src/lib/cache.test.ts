@@ -257,7 +257,7 @@ describe("cache operations with mocked Redis", () => {
       const { getActorCacheKeys } = await import("./cache.js")
       const keys = getActorCacheKeys(5576)
 
-      expect(keys).toEqual(["actor:id:5576", "actor:id:5576:type:death"])
+      expect(keys).toEqual(["actor:id:5576:v:2", "actor:id:5576:type:death"])
     })
   })
 
@@ -269,7 +269,10 @@ describe("cache operations with mocked Redis", () => {
       await invalidateActorCache(5576)
 
       // Should invalidate both profile and death detail cache keys
-      expect(mockInstrumentedDel).toHaveBeenCalledWith("actor:id:5576", "actor:id:5576:type:death")
+      expect(mockInstrumentedDel).toHaveBeenCalledWith(
+        "actor:id:5576:v:2",
+        "actor:id:5576:type:death"
+      )
     })
   })
 
@@ -294,9 +297,12 @@ describe("cache operations with mocked Redis", () => {
 
       await invalidateActorCacheRequired(5576)
 
-      expect(mockInstrumentedDel).toHaveBeenCalledWith("actor:id:5576", "actor:id:5576:type:death")
+      expect(mockInstrumentedDel).toHaveBeenCalledWith(
+        "actor:id:5576:v:2",
+        "actor:id:5576:type:death"
+      )
       expect(logger.info).toHaveBeenCalledWith(
-        { keys: ["actor:id:5576", "actor:id:5576:type:death"], actorId: 5576 },
+        { keys: ["actor:id:5576:v:2", "actor:id:5576:type:death"], actorId: 5576 },
         "Actor cache invalidated"
       )
     })

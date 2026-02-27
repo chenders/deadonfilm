@@ -74,7 +74,7 @@ describe("MobileMenu", () => {
     renderMobileMenu(true)
 
     expect(screen.getByTestId("mobile-nav-deaths-all")).toHaveAttribute("href", "/deaths/all")
-    expect(screen.getByTestId("mobile-nav-genres")).toHaveAttribute("href", "/genres")
+    expect(screen.getByTestId("mobile-nav-movies-genres")).toHaveAttribute("href", "/movies/genres")
     expect(screen.getByTestId("mobile-nav-about")).toHaveAttribute("href", "/about")
   })
 

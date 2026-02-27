@@ -10,7 +10,7 @@ import MobileCard from "../ui/MobileCard"
 
 export default function SyncTab() {
   // Form state
-  const [syncDays, setSyncDays] = useState(1)
+  const [syncDays, setSyncDays] = useState("1")
   const [syncPeople, setSyncPeople] = useState(true)
   const [syncMovies, setSyncMovies] = useState(true)
   const [syncShows, setSyncShows] = useState(true)
@@ -75,8 +75,9 @@ export default function SyncTab() {
       return
     }
 
+    const parsedDays = parseInt(syncDays, 10)
     triggerMutation.mutate({
-      days: syncDays,
+      days: isNaN(parsedDays) ? 1 : Math.max(1, Math.min(14, parsedDays)),
       types,
       dryRun,
     })
@@ -299,9 +300,11 @@ export default function SyncTab() {
               min="1"
               max="14"
               value={syncDays}
-              onChange={(e) =>
-                setSyncDays(Math.max(1, Math.min(14, parseInt(e.target.value) || 1)))
-              }
+              onChange={(e) => setSyncDays(e.target.value)}
+              onBlur={() => {
+                const n = parseInt(syncDays, 10)
+                setSyncDays(String(isNaN(n) ? 1 : Math.max(1, Math.min(14, n))))
+              }}
               data-testid="sync-days-input"
               className="mt-2 w-32 rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-2 text-sm text-admin-text-primary focus:border-admin-interactive focus:outline-none focus:ring-2 focus:ring-admin-interactive"
             />

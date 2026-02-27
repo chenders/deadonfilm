@@ -253,6 +253,13 @@ export default function ActorManagementTab() {
     navigate("/admin/bio-enrichment/start", { state: { selectedActorIds: actorIds } })
   }
 
+  const handleEnrichAll = () => {
+    if (selectedActorIds.size === 0) return
+
+    const actorIds = Array.from(selectedActorIds)
+    navigate("/admin/enrichment/combined", { state: { selectedActorIds: actorIds } })
+  }
+
   return (
     <div className="space-y-6">
       {/* Filters */}
@@ -511,6 +518,7 @@ export default function ActorManagementTab() {
               className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
             >
               <option value="popularity">Popularity</option>
+              <option value="interestingness">Interestingness</option>
               <option value="death_date">Death Date</option>
               <option value="name">Name</option>
               <option value="enriched_at">Last Enriched</option>
@@ -1091,6 +1099,12 @@ export default function ActorManagementTab() {
                 className="min-h-[44px] rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover"
               >
                 Bio Enrich
+              </button>
+              <button
+                onClick={handleEnrichAll}
+                className="min-h-[44px] rounded bg-admin-danger px-4 py-2 text-admin-text-primary transition-colors hover:bg-red-700"
+              >
+                Enrich All
               </button>
             </div>
           </div>

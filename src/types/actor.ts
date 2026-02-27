@@ -102,7 +102,6 @@ export interface BiographySource {
 }
 
 export interface BiographyDetails {
-  narrativeTeaser: string | null
   narrative: string | null
   narrativeConfidence: "high" | "medium" | "low" | null
   lifeNotableFactors: string[]
@@ -120,6 +119,7 @@ export interface BiographyDetails {
 export interface ActorProfileResponse {
   actor: {
     id: number
+    tmdbId: number | null
     name: string
     birthday: string | null
     birthdayPrecision?: DatePrecision | null
@@ -127,7 +127,7 @@ export interface ActorProfileResponse {
     deathdayPrecision?: DatePrecision | null
     biography: string
     biographySourceUrl: string | null
-    biographySourceType: "wikipedia" | "tmdb" | "imdb" | null
+    biographySourceType: "wikipedia" | "tmdb" | "imdb" | "enriched" | null
     profilePath: string | null
     placeOfBirth: string | null
   }

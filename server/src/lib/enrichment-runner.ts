@@ -62,6 +62,7 @@ export interface EnrichmentRunnerConfig {
   maxBilling?: number
   topMovies?: number
   usActorsOnly?: boolean
+  sortBy?: "popularity" | "interestingness"
   ignoreCache?: boolean
   runId?: number
   staging?: boolean
@@ -185,6 +186,7 @@ export class EnrichmentRunner {
       maxBilling,
       topMovies,
       usActorsOnly = false,
+      sortBy = "popularity" as const,
       ignoreCache = false,
       runId,
       staging = false,
@@ -225,7 +227,8 @@ export class EnrichmentRunner {
           limit,
           minPopularity,
           recentOnly,
-          usActorsOnly
+          usActorsOnly,
+          sortBy
         )
       }
 
@@ -381,7 +384,11 @@ export class EnrichmentRunner {
                   run_id, actor_id, was_enriched, created_death_page, confidence,
                   sources_attempted, winning_source,
                   processing_time_ms, cost_usd, log_entries
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                ON CONFLICT (run_id, actor_id) DO UPDATE SET
+                  was_enriched = $3, created_death_page = $4, confidence = $5,
+                  sources_attempted = $6, winning_source = $7,
+                  processing_time_ms = $8, cost_usd = $9, log_entries = $10`,
                 [
                   runId,
                   actor.id,
@@ -545,7 +552,7 @@ export class EnrichmentRunner {
               : null,
             entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
             enrichmentSource: "multi-source-enrichment",
-            enrichmentVersion: useReliabilityThreshold ? "3.0.0" : "3.0.0-no-reliability",
+            enrichmentVersion: useReliabilityThreshold ? "4.0.0" : "4.0.0-no-reliability",
           }
 
           // Record per-actor results for all runs with a runId
@@ -583,6 +590,10 @@ export class EnrichmentRunner {
               cost_usd,
               log_entries
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (run_id, actor_id) DO UPDATE SET
+              was_enriched = $3, created_death_page = $4, confidence = $5,
+              sources_attempted = $6, winning_source = $7,
+              processing_time_ms = $8, cost_usd = $9, log_entries = $10
             RETURNING id`,
               [
                 runId,
@@ -826,7 +837,8 @@ export class EnrichmentRunner {
     limit: number,
     minPopularity: number,
     recentOnly: boolean,
-    usActorsOnly: boolean
+    usActorsOnly: boolean,
+    sortBy: "popularity" | "interestingness" = "popularity"
   ): Promise<ActorRow[]> {
     const db = getPool()
 
@@ -894,9 +906,15 @@ export class EnrichmentRunner {
           )
         )`
 
-      query += `
+      query +=
+        sortBy === "interestingness"
+          ? `
         ORDER BY
-          a.dof_popularity DESC NULLS LAST,
+          a.interestingness_score DESC NULLS LAST,`
+          : `
+        ORDER BY
+          a.dof_popularity DESC NULLS LAST,`
+      query += `
           a.birthday DESC NULLS LAST,
           (
             SELECT COUNT(*) FROM actor_show_appearances asa
@@ -909,7 +927,10 @@ export class EnrichmentRunner {
             AND (m.production_countries @> ARRAY['US']::text[] OR m.original_language = 'en')
           ) DESC`
     } else {
-      query += ` ORDER BY a.dof_popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
+      query +=
+        sortBy === "interestingness"
+          ? ` ORDER BY a.interestingness_score DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
+          : ` ORDER BY a.dof_popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
     }
 
     if (limit) {

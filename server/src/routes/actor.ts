@@ -18,12 +18,13 @@ import { resolveRelatedCelebritySlugs } from "../lib/related-celebrity-slugs.js"
 interface ActorProfileResponse {
   actor: {
     id: number
+    tmdbId: number | null
     name: string
     birthday: string | null
     deathday: string | null
     biography: string
     biographySourceUrl: string | null
-    biographySourceType: "wikipedia" | "tmdb" | "imdb" | null
+    biographySourceType: "wikipedia" | "tmdb" | "imdb" | "enriched" | null
     profilePath: string | null
     placeOfBirth: string | null
   }
@@ -68,7 +69,6 @@ interface ActorProfileResponse {
     }> | null
   } | null
   biographyDetails: {
-    narrativeTeaser: string | null
     narrative: string | null
     narrativeConfidence: "high" | "medium" | "low" | null
     lifeNotableFactors: string[]
@@ -163,7 +163,6 @@ export async function getActor(req: Request, res: Response) {
       getActorShowFilmography(tmdbIdForFetch),
       getPool()
         .query<{
-          narrative_teaser: string | null
           narrative: string | null
           narrative_confidence: string | null
           life_notable_factors: string[] | null
@@ -177,7 +176,7 @@ export async function getActor(req: Request, res: Response) {
           lesser_known_facts: string[] | null
           sources: Record<string, unknown> | null
         }>(
-          `SELECT narrative_teaser, narrative, narrative_confidence,
+          `SELECT narrative, narrative_confidence,
                   life_notable_factors, birthplace_details, family_background,
                   education, pre_fame_life, fame_catalyst,
                   personal_struggles, relationships, lesser_known_facts,
@@ -251,14 +250,18 @@ export async function getActor(req: Request, res: Response) {
 
     // Use DB biography if available, fall back to TMDB
     const biography = actorRecord.biography || person.biography
-    const biographySourceUrl =
-      actorRecord.biography_source_url ||
-      (actorRecord.tmdb_id ? `https://www.themoviedb.org/person/${actorRecord.tmdb_id}` : null)
     const biographySourceType = actorRecord.biography_source_type || (biography ? "tmdb" : null)
+    // Enriched bios don't have a single source URL; only show source link for tmdb/wikipedia/imdb
+    const biographySourceUrl =
+      biographySourceType === "enriched"
+        ? null
+        : actorRecord.biography_source_url ||
+          (actorRecord.tmdb_id ? `https://www.themoviedb.org/person/${actorRecord.tmdb_id}` : null)
 
     const response: ActorProfileResponse = {
       actor: {
-        id: person.id,
+        id: actorRecord.id,
+        tmdbId: actorRecord.tmdb_id ?? null,
         name: person.name,
         birthday: person.birthday,
         deathday: person.deathday,
@@ -273,7 +276,6 @@ export async function getActor(req: Request, res: Response) {
       deathInfo,
       biographyDetails: bioRow
         ? {
-            narrativeTeaser: bioRow.narrative_teaser || null,
             narrative: bioRow.narrative || null,
             narrativeConfidence: bioRow.narrative_confidence as "high" | "medium" | "low" | null,
             lifeNotableFactors: bioRow.life_notable_factors || [],

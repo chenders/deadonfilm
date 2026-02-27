@@ -145,6 +145,15 @@ describe("EnrichmentRunDetailsPage", () => {
       error: null,
     } as any)
 
+    vi.mocked(enrichmentHooks.useRunLogs).mockReturnValue({
+      data: {
+        logs: [],
+        pagination: { page: 1, pageSize: 50, total: 0, totalPages: 0 },
+      },
+      isLoading: false,
+      error: null,
+    } as any)
+
     vi.mocked(adminAuthHook.useAdminAuth).mockReturnValue({
       isAuthenticated: true,
       isLoading: false,

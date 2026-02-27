@@ -18,8 +18,11 @@ import {
   useBioRunSourcePerformanceStats,
   useBioEnrichmentRunProgress,
   useStopBioEnrichmentRun,
+  useBioActorEnrichmentLogs,
   type BioEnrichmentRunActor,
 } from "../../hooks/admin/useBioEnrichmentRuns"
+import { ActorLogsModal } from "../../components/admin/ActorLogsModal"
+import { RunLogsSection } from "../../components/admin/RunLogsSection"
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`
@@ -49,6 +52,11 @@ export default function BioEnrichmentRunDetailsPage() {
 
   const stopMutation = useStopBioEnrichmentRun()
   const [expandedActor, setExpandedActor] = useState<number | null>(null)
+  const [selectedActorForLogs, setSelectedActorForLogs] = useState<{
+    id: number
+    name: string
+  } | null>(null)
+  const actorLogsQuery = useBioActorEnrichmentLogs(runId, selectedActorForLogs?.id ?? null)
 
   if (isLoading) {
     return (
@@ -240,6 +248,9 @@ export default function BioEnrichmentRunDetailsPage() {
                       onToggle={() =>
                         setExpandedActor(expandedActor === actor.actor_id ? null : actor.actor_id)
                       }
+                      onViewLogs={() =>
+                        setSelectedActorForLogs({ id: actor.actor_id, name: actor.actor_name })
+                      }
                     />
                   ))}
                 </tbody>
@@ -295,7 +306,22 @@ export default function BioEnrichmentRunDetailsPage() {
             </pre>
           </div>
         )}
+
+        {/* Run Logs (structured enrichment logs from run_logs table) */}
+        {runId && <RunLogsSection runType="biography" runId={runId} />}
       </div>
+
+      {/* Actor Logs Modal */}
+      {selectedActorForLogs && (
+        <ActorLogsModal
+          title={`Enrichment Logs — ${selectedActorForLogs.name}`}
+          subtitle={`Bio enrichment run #${runId}`}
+          logEntries={actorLogsQuery.data?.logEntries}
+          isLoading={actorLogsQuery.isLoading}
+          error={actorLogsQuery.error}
+          onClose={() => setSelectedActorForLogs(null)}
+        />
+      )}
     </AdminLayout>
   )
 }
@@ -313,10 +339,12 @@ function ActorRow({
   actor,
   isExpanded,
   onToggle,
+  onViewLogs,
 }: {
   actor: BioEnrichmentRunActor
   isExpanded: boolean
   onToggle: () => void
+  onViewLogs: () => void
 }) {
   return (
     <>
@@ -384,43 +412,20 @@ function ActorRow({
         </td>
         <td className="px-4 py-2">
           <button
-            className="text-xs text-admin-text-muted hover:text-admin-text-primary"
-            aria-label={`${isExpanded ? "Hide" : "Show"} log entries for ${actor.actor_name}`}
+            onClick={(e) => {
+              e.stopPropagation()
+              onViewLogs()
+            }}
+            className="rounded px-2 py-1 text-xs text-admin-interactive hover:bg-admin-interactive-secondary hover:text-admin-interactive-hover"
+            aria-label={`View enrichment logs for ${actor.actor_name}`}
           >
-            {isExpanded ? "Hide" : "Show"} ({actor.log_entries?.length || 0})
+            View
           </button>
         </td>
       </tr>
       {isExpanded && (
         <tr>
           <td colSpan={7} className="bg-admin-surface-base px-4 py-3">
-            {/* Log entries - ALL logs, not just errors */}
-            {actor.log_entries && actor.log_entries.length > 0 && (
-              <div className="mb-3">
-                <h4 className="mb-1 text-xs font-semibold text-admin-text-muted">Log Entries</h4>
-                <div className="max-h-60 space-y-1 overflow-y-auto rounded bg-admin-surface-elevated p-2">
-                  {actor.log_entries.map((entry, i) => (
-                    <div key={i} className="flex gap-2 font-mono text-xs">
-                      <span className="shrink-0 text-admin-text-muted">
-                        {new Date(entry.timestamp).toLocaleTimeString()}
-                      </span>
-                      <span
-                        className={`shrink-0 ${
-                          entry.level === "error"
-                            ? "text-red-400"
-                            : entry.level === "warn"
-                              ? "text-yellow-400"
-                              : "text-admin-text-secondary"
-                        }`}
-                      >
-                        [{entry.level}]
-                      </span>
-                      <span className="text-admin-text-primary">{entry.message}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
             {/* Source details */}
             {actor.sources_attempted && actor.sources_attempted.length > 0 && (
               <div>

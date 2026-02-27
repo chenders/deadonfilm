@@ -80,7 +80,7 @@ export interface ActorCoverageFilters {
   deathManner?: string
   deathEnrichmentVersion?: string
   bioEnrichmentVersion?: string
-  orderBy?: "death_date" | "popularity" | "name" | "enriched_at"
+  orderBy?: "death_date" | "popularity" | "name" | "enriched_at" | "interestingness"
   orderDirection?: "asc" | "desc"
 }
 
@@ -287,6 +287,9 @@ export async function getActorsForCoverage(
       break
     case "enriched_at":
       orderByClause = `CASE WHEN ${ascParam} = 1 THEN enriched_at END ASC NULLS LAST, CASE WHEN ${descParam} = 1 THEN enriched_at END DESC NULLS LAST`
+      break
+    case "interestingness":
+      orderByClause = `CASE WHEN ${ascParam} = 1 THEN interestingness_score END ASC NULLS LAST, CASE WHEN ${descParam} = 1 THEN interestingness_score END DESC NULLS LAST`
       break
     case "popularity":
     default:

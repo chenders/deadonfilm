@@ -86,7 +86,7 @@ export function buildCacheKey(prefix: string, params?: Record<string, unknown>):
  */
 export const CACHE_KEYS = {
   actor: (actorId: number) => ({
-    profile: buildCacheKey(CACHE_PREFIX.ACTOR, { id: actorId }),
+    profile: buildCacheKey(CACHE_PREFIX.ACTOR, { id: actorId, v: 2 }),
     death: buildCacheKey(CACHE_PREFIX.ACTOR, { id: actorId, type: "death" }),
   }),
   movie: (tmdbId: number) => ({

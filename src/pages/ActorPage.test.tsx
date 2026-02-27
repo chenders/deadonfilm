@@ -17,11 +17,12 @@ vi.mock("@/services/api", () => ({
 const mockLivingActor = {
   actor: {
     id: 12345,
+    tmdbId: 99001,
     name: "Living Actor",
     birthday: "1980-05-15",
     deathday: null,
     biography: "A talented performer known for many roles.",
-    biographySourceUrl: "https://www.themoviedb.org/person/12345",
+    biographySourceUrl: "https://www.themoviedb.org/person/99001",
     biographySourceType: "tmdb" as const,
     profilePath: "/profile.jpg",
     placeOfBirth: "Los Angeles, California, USA",
@@ -54,6 +55,7 @@ const mockLivingActor = {
 const mockDeceasedActor = {
   actor: {
     id: 67890,
+    tmdbId: 99002,
     name: "Deceased Actor",
     birthday: "1940-03-10",
     deathday: "2020-08-15",
@@ -232,6 +234,30 @@ describe("ActorPage", () => {
     expect(screen.getByText(/Died of natural causes at age 80/)).toBeInTheDocument()
   })
 
+  it("omits TMDB link and OG image when tmdbId is null", async () => {
+    vi.mocked(api.getActor).mockResolvedValue({
+      ...mockLivingActor,
+      actor: {
+        ...mockLivingActor.actor,
+        tmdbId: null,
+        biographySourceUrl: null,
+      },
+    })
+
+    renderWithProviders(<ActorPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("actor-page")).toBeInTheDocument()
+    })
+
+    // TMDB link should not be present
+    expect(screen.queryByText("TMDB")).not.toBeInTheDocument()
+
+    // Profile photo should not be wrapped in a link
+    const photo = screen.getByTestId("actor-profile-photo")
+    expect(photo.closest("a")).toBeNull()
+  })
+
   it("renders external links (TMDB, Wikipedia)", async () => {
     vi.mocked(api.getActor).mockResolvedValue(mockDeceasedActor)
 
@@ -244,9 +270,9 @@ describe("ActorPage", () => {
       expect(screen.getByText("Wikipedia")).toBeInTheDocument()
     })
 
-    // Check TMDB link
+    // Check TMDB link (uses tmdbId, not id)
     const tmdbLink = screen.getByText("TMDB").closest("a")
-    expect(tmdbLink).toHaveAttribute("href", "https://www.themoviedb.org/person/67890")
+    expect(tmdbLink).toHaveAttribute("href", "https://www.themoviedb.org/person/99002")
 
     // Check Wikipedia link
     const wikiLink = screen.getByText("Wikipedia").closest("a")
@@ -686,8 +712,7 @@ describe("ActorPage", () => {
       vi.mocked(api.getActor).mockResolvedValue({
         ...mockDeceasedActor,
         biographyDetails: {
-          narrativeTeaser: "A remarkable person.",
-          narrative: null,
+          narrative: "A remarkable person.",
           narrativeConfidence: null,
           lifeNotableFactors: ["military_service", "scholar"],
           birthplaceDetails: null,
@@ -721,8 +746,7 @@ describe("ActorPage", () => {
       vi.mocked(api.getActor).mockResolvedValue({
         ...mockLivingActor,
         biographyDetails: {
-          narrativeTeaser: "A remarkable person.",
-          narrative: null,
+          narrative: "A remarkable person.",
           narrativeConfidence: null,
           lifeNotableFactors: ["prodigy", "multiple_careers"],
           birthplaceDetails: null,

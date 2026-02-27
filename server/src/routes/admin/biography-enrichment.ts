@@ -20,6 +20,7 @@ import {
   stopBioEnrichmentRun,
   getBioEnrichmentRunProgress,
 } from "../../lib/bio-enrichment-process-manager.js"
+import { createRunLogsHandler } from "./run-logs-handler.js"
 
 const router = Router()
 
@@ -72,7 +73,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     const dataParams = [...params, pageSize, offset]
     const result = await pool.query(
       `SELECT a.id, a.name, a.dof_popularity, a.deathday,
-              abd.id as bio_id, abd.narrative_confidence, abd.narrative_teaser,
+              abd.id as bio_id, abd.narrative_confidence,
               abd.life_notable_factors, abd.updated_at as bio_updated_at,
               a.biography_version
        FROM actors a
@@ -100,9 +101,6 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
         deathday: row.deathday,
         hasEnrichment: row.bio_id !== null,
         narrativeConfidence: row.narrative_confidence,
-        narrativeTeaserPreview: row.narrative_teaser
-          ? row.narrative_teaser.substring(0, 100) + "..."
-          : null,
         lifeNotableFactors: row.life_notable_factors || [],
         bioUpdatedAt: row.bio_updated_at,
         biographyVersion: row.biography_version,
@@ -189,10 +187,23 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
     limit,
     minPopularity,
     confidenceThreshold,
+    earlyStopSourceCount,
     allowRegeneration,
     useStaging,
     sourceCategories,
+    sortBy,
   } = req.body
+
+  // Validate earlyStopSourceCount before inserting run record
+  if (earlyStopSourceCount !== undefined) {
+    const n = Number(earlyStopSourceCount)
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) {
+      res.status(400).json({
+        error: { message: "earlyStopSourceCount must be a non-negative integer" },
+      })
+      return
+    }
+  }
 
   try {
     const { queueManager } = await import("../../lib/jobs/queue-manager.js")
@@ -220,6 +231,7 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
       limit: limit || 10,
       minPopularity,
       confidenceThreshold,
+      earlyStopSourceCount,
       allowRegeneration: effectiveAllowRegeneration,
       useStaging: useStaging || false,
       sourceCategories,
@@ -240,7 +252,9 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
         limit: limit || 10,
         minPopularity,
         confidenceThreshold,
+        earlyStopSourceCount,
         allowRegeneration: effectiveAllowRegeneration,
+        sortBy: sortBy === "interestingness" ? "interestingness" : "popularity",
         useStaging: useStaging || false,
         sourceCategories,
       },
@@ -427,6 +441,45 @@ router.get("/runs/:id/sources/stats", async (req: Request, res: Response): Promi
   }
 })
 
+// GET /admin/api/biography-enrichment/runs/:id/run-logs - All-level run logs
+router.get("/runs/:id/run-logs", createRunLogsHandler("biography"))
+
+// GET /admin/api/biography-enrichment/runs/:id/actors/:actorId/logs - Per-actor logs
+router.get("/runs/:id/actors/:actorId/logs", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const runId = parseInt(req.params.id, 10)
+    const actorId = parseInt(req.params.actorId, 10)
+
+    if (isNaN(runId) || isNaN(actorId)) {
+      res.status(400).json({ error: { message: "Invalid run ID or actor ID" } })
+      return
+    }
+
+    const result = await pool.query<{ log_entries: unknown[]; actor_name: string }>(
+      `SELECT bra.log_entries, a.name AS actor_name
+       FROM bio_enrichment_run_actors bra
+       JOIN actors a ON a.id = bra.actor_id
+       WHERE bra.run_id = $1 AND bra.actor_id = $2`,
+      [runId, actorId]
+    )
+
+    const row = result.rows[0]
+    if (!row) {
+      res.status(404).json({ error: { message: "Not found" } })
+      return
+    }
+
+    res.json({
+      actorName: row.actor_name,
+      logEntries: row.log_entries || [],
+    })
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch bio actor enrichment logs")
+    res.status(500).json({ error: { message: "Failed to fetch bio actor enrichment logs" } })
+  }
+})
+
 // GET /admin/api/biography-enrichment/runs/:id/progress - Real-time progress
 router.get("/runs/:id/progress", async (req: Request, res: Response): Promise<void> => {
   try {
@@ -457,6 +510,7 @@ router.post("/runs/start", async (req: Request, res: Response): Promise<void> =>
       maxTotalCost,
       allowRegeneration,
       sourceCategories,
+      sortBy,
     } = req.body
 
     // Validate: must have either actorIds or limit
@@ -482,6 +536,7 @@ router.post("/runs/start", async (req: Request, res: Response): Promise<void> =>
       maxTotalCost,
       allowRegeneration,
       sourceCategories,
+      sortBy: sortBy === "interestingness" ? "interestingness" : "popularity",
     })
 
     res.json({ success: true, runId })

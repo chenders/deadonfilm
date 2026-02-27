@@ -181,6 +181,8 @@ interface EnrichOptions {
   runId?: number // Optional run ID for tracking progress in database
   staging: boolean // Stage 4: Write to staging tables for review workflow
   disableReliabilityThreshold: boolean // A/B control: disable source reliability threshold
+  disableBooks: boolean // Disable book sources (Google Books, Open Library, IA Books)
+  sortBy: "popularity" | "interestingness" // Order actors by popularity or interestingness score
 }
 
 /**
@@ -383,6 +385,8 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     runId,
     staging,
     disableReliabilityThreshold,
+    disableBooks,
+    sortBy,
   } = options
 
   // Configure cache behavior
@@ -621,9 +625,15 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
           )`
 
         // When filtering for US actors, sort by US/English appearances instead of total
-        query += `
+        query +=
+          sortBy === "interestingness"
+            ? `
           ORDER BY
-            a.popularity DESC NULLS LAST,
+            a.interestingness_score DESC NULLS LAST,`
+            : `
+          ORDER BY
+            a.popularity DESC NULLS LAST,`
+        query += `
             a.birthday DESC NULLS LAST,
             (
               SELECT COUNT(*) FROM actor_show_appearances asa
@@ -636,7 +646,10 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
               AND (m.production_countries @> ARRAY['US']::text[] OR m.original_language = 'en')
             ) DESC`
       } else {
-        query += ` ORDER BY a.popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
+        query +=
+          sortBy === "interestingness"
+            ? ` ORDER BY a.interestingness_score DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
+            : ` ORDER BY a.popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
       }
 
       if (limit) {
@@ -816,6 +829,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         free: free,
         paid: paid,
         ai: ai,
+        books: !disableBooks,
       },
       confidenceThreshold: confidenceThreshold,
       costLimits: {
@@ -833,6 +847,16 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     }
 
     const orchestrator = new DeathEnrichmentOrchestrator(config)
+
+    // Wire up RunLogger for DB log capture if we have a run ID
+    // Keep reference for flushing after the enrichActor() loop
+    let flushRunLogs: (() => Promise<void>) | null = null
+    if (runId) {
+      const { RunLogger } = await import("../src/lib/run-logger.js")
+      const rl = new RunLogger("death", runId)
+      orchestrator.setRunLogger(rl)
+      flushRunLogs = () => rl.flush()
+    }
 
     // Convert to ActorForEnrichment format
     const actorsToEnrich: ActorForEnrichment[] = actors.map((a) => ({
@@ -1041,7 +1065,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
             }
           : null,
         enrichmentSource: "multi-source-enrichment",
-        enrichmentVersion: disableReliabilityThreshold ? "3.0.0-no-reliability" : "3.0.0",
+        enrichmentVersion: disableReliabilityThreshold ? "4.0.0-no-reliability" : "4.0.0",
       }
 
       // Stage 4: Route to staging or production based on --staging flag
@@ -1132,6 +1156,9 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       totalCostUsd: stats.totalCostUsd,
       totalTimeMs: stats.totalTimeMs,
     })
+
+    // Flush any remaining buffered run logs before completing
+    await flushRunLogs?.()
 
     // Update enrichment run completion in database
     await completeEnrichmentRun(
@@ -1224,6 +1251,7 @@ const program = new Command()
   // Source category options (enabled by default, use --disable-* to turn off)
   .option("--disable-free", "Disable free sources")
   .option("--disable-paid", "Disable paid sources")
+  .option("--disable-books", "Disable book sources (Google Books, Open Library, IA Books)")
   .option("--ai", "Include AI model fallbacks")
   .option(
     "-c, --confidence <number>",
@@ -1294,6 +1322,17 @@ const program = new Command()
     "--disable-reliability-threshold",
     "Disable source reliability threshold (A/B control mode, uses content confidence only)"
   )
+  .option(
+    "--sort-by <field>",
+    "Sort actors by: popularity (default) or interestingness",
+    (value: string) => {
+      if (value !== "popularity" && value !== "interestingness") {
+        throw new InvalidArgumentError('Must be "popularity" or "interestingness"')
+      }
+      return value as "popularity" | "interestingness"
+    },
+    "popularity"
+  )
   .action(async (options) => {
     // Validate that only one targeting mode is used at a time
     const targetingModes = [
@@ -1334,12 +1373,14 @@ const program = new Command()
       topBilledYear: options.topBilledYear,
       maxBilling: options.maxBilling,
       topMovies: options.topMovies,
+      sortBy: options.sortBy || "popularity",
       usActorsOnly: options.usActorsOnly || false,
       ignoreCache: options.ignoreCache || false,
       yes: options.yes || false,
       runId: options.runId,
       staging: options.staging || false,
       disableReliabilityThreshold: options.disableReliabilityThreshold || false,
+      disableBooks: options.disableBooks || false,
     })
   })
 

@@ -27,7 +27,6 @@ export interface TestCaseScore {
   factorsCorrect: number // Count of correct factors
   factorsMissed: string[] // expectedFactors NOT found
   unwantedContentFound: string[] // unexpectedContent that WAS found
-  teaserQuality: "compelling" | "generic" | "career_focused"
   narrativeLength: number // Character count of narrative
   score: number // 0-100 composite score
 }
@@ -89,20 +88,6 @@ export const GOLDEN_TEST_CASES: GoldenTestCase[] = [
 ]
 
 // ============================================================================
-// Career-focused teaser phrases
-// ============================================================================
-
-const CAREER_TEASER_PHRASES = [
-  "was an american actor",
-  "was a british actor",
-  "born on",
-  "was born",
-  "starred in",
-  "appeared in",
-  "known for",
-]
-
-// ============================================================================
 // Scoring Functions
 // ============================================================================
 
@@ -131,31 +116,13 @@ function combineTextFields(data: BiographyData): string {
 }
 
 /**
- * Determine the quality classification of a narrative teaser.
- */
-function classifyTeaser(teaser: string | null): "compelling" | "generic" | "career_focused" {
-  if (!teaser || teaser.trim() === "") {
-    return "generic"
-  }
-
-  const lowerTeaser = teaser.toLowerCase()
-  for (const phrase of CAREER_TEASER_PHRASES) {
-    if (lowerTeaser.startsWith(phrase)) {
-      return "career_focused"
-    }
-  }
-
-  return "compelling"
-}
-
-/**
  * Score a single biography result against a golden test case.
  */
 export function scoreResult(testCase: GoldenTestCase, data: BiographyData): TestCaseScore {
   const combinedText = combineTextFields(data)
   const lowerCombined = combinedText.toLowerCase()
 
-  // 1. Fact recall (max 60 points)
+  // 1. Fact recall (max 70 points)
   const factsMissed: string[] = []
   let factsFound = 0
   for (const fact of testCase.expectedFacts) {
@@ -167,8 +134,8 @@ export function scoreResult(testCase: GoldenTestCase, data: BiographyData): Test
   }
   const factScore =
     testCase.expectedFacts.length > 0
-      ? Math.min(60, Math.round(factsFound * (60 / testCase.expectedFacts.length)))
-      : 60
+      ? Math.min(70, Math.round(factsFound * (70 / testCase.expectedFacts.length)))
+      : 70
 
   // 2. Factor accuracy (max 20 points)
   const factorsMissed: string[] = []
@@ -194,10 +161,6 @@ export function scoreResult(testCase: GoldenTestCase, data: BiographyData): Test
   }
   const unwantedScore = unwantedContentFound.length === 0 ? 10 : 0
 
-  // 4. Teaser quality (max 10 points)
-  const teaserQuality = classifyTeaser(data.narrativeTeaser)
-  const teaserScore = teaserQuality === "compelling" ? 10 : 0
-
   // Narrative length
   const narrativeLength = (data.narrative ?? "").length
 
@@ -208,9 +171,8 @@ export function scoreResult(testCase: GoldenTestCase, data: BiographyData): Test
     factorsCorrect,
     factorsMissed,
     unwantedContentFound,
-    teaserQuality,
     narrativeLength,
-    score: factScore + factorScore + unwantedScore + teaserScore,
+    score: factScore + factorScore + unwantedScore,
   }
 }
 
@@ -237,7 +199,6 @@ export function scoreAllResults(results: Map<string, BiographyData>): {
         factorsCorrect: 0,
         factorsMissed: [...testCase.expectedFactors],
         unwantedContentFound: [],
-        teaserQuality: "generic",
         narrativeLength: 0,
         score: 0,
       })
@@ -260,7 +221,6 @@ export function scoreAllResults(results: Map<string, BiographyData>): {
     if (s.unwantedContentFound.length > 0) {
       lines.push(`  Unwanted content: ${s.unwantedContentFound.join(", ")}`)
     }
-    lines.push(`  Teaser: ${s.teaserQuality}`)
     lines.push(`  Narrative length: ${s.narrativeLength} chars`)
     lines.push("")
   }

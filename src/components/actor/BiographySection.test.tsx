@@ -5,7 +5,6 @@ import type { BiographyDetails } from "@/types/actor"
 
 function makeBiographyDetails(overrides: Partial<BiographyDetails> = {}): BiographyDetails {
   return {
-    narrativeTeaser: null,
     narrative: null,
     narrativeConfidence: null,
     lifeNotableFactors: [],
@@ -67,7 +66,6 @@ describe("BiographySection", () => {
   it("shows full narrative with gradient truncation when collapsed", () => {
     const longNarrative = "This is the beginning of a long narrative. " + "x".repeat(300)
     const details = makeBiographyDetails({
-      narrativeTeaser: "Short teaser text",
       narrative: longNarrative,
     })
     render(<BiographySection biographyDetails={details} />)
@@ -83,7 +81,6 @@ describe("BiographySection", () => {
   it("expands to show full content on header click", () => {
     const longNarrative = "Full narrative content " + "x".repeat(300)
     const details = makeBiographyDetails({
-      narrativeTeaser: "Short teaser",
       narrative: longNarrative,
     })
     render(<BiographySection biographyDetails={details} />)
@@ -99,7 +96,6 @@ describe("BiographySection", () => {
   it("collapses back to gradient view on second click", () => {
     const longNarrative = "Full narrative content " + "x".repeat(300)
     const details = makeBiographyDetails({
-      narrativeTeaser: "Short teaser",
       narrative: longNarrative,
     })
     render(<BiographySection biographyDetails={details} />)
@@ -113,7 +109,6 @@ describe("BiographySection", () => {
 
   it("sets aria-expanded correctly", () => {
     const details = makeBiographyDetails({
-      narrativeTeaser: "Teaser",
       narrative: "Full narrative " + "x".repeat(300),
     })
     render(<BiographySection biographyDetails={details} />)
@@ -125,36 +120,14 @@ describe("BiographySection", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "true")
   })
 
-  it("renders full narrative directly when no teaser", () => {
+  it("renders short narrative directly without expand toggle", () => {
     const details = makeBiographyDetails({
-      narrative: "A narrative without a teaser version",
-    })
-    render(<BiographySection biographyDetails={details} />)
-
-    // Shown directly with no toggle (short narrative, no expandable content)
-    expect(screen.getByText("A narrative without a teaser version")).toBeInTheDocument()
-    expect(screen.queryByTestId("expandable-section-toggle")).not.toBeInTheDocument()
-  })
-
-  it("renders full narrative directly when short (< 300 chars)", () => {
-    const details = makeBiographyDetails({
-      narrativeTeaser: "Short teaser",
       narrative: "Short narrative",
     })
     render(<BiographySection biographyDetails={details} />)
 
     // Short narrative shown directly, no toggle
     expect(screen.getByText("Short narrative")).toBeInTheDocument()
-    expect(screen.queryByTestId("expandable-section-toggle")).not.toBeInTheDocument()
-  })
-
-  it("renders teaser only when narrative is null", () => {
-    const details = makeBiographyDetails({
-      narrativeTeaser: "Just a teaser, no full narrative",
-    })
-    render(<BiographySection biographyDetails={details} />)
-
-    expect(screen.getByText("Just a teaser, no full narrative")).toBeInTheDocument()
     expect(screen.queryByTestId("expandable-section-toggle")).not.toBeInTheDocument()
   })
 
@@ -171,7 +144,7 @@ describe("BiographySection", () => {
 
   it("does not display life notable factors (shown in actor page header instead)", () => {
     const details = makeBiographyDetails({
-      narrativeTeaser: "Bio text",
+      narrative: "Bio text",
       lifeNotableFactors: ["military_service", "scholar"],
     })
     render(<BiographySection biographyDetails={details} />)
@@ -183,7 +156,7 @@ describe("BiographySection", () => {
 
   it("does not render lesser-known facts (rendered by ActorPage instead)", () => {
     const details = makeBiographyDetails({
-      narrativeTeaser: "Bio text",
+      narrative: "Bio text",
       lesserKnownFacts: ["Was an amateur pilot", "Spoke four languages"],
     })
     render(<BiographySection biographyDetails={details} />)
@@ -193,7 +166,7 @@ describe("BiographySection", () => {
 
   it("does not show factors section when empty", () => {
     const details = makeBiographyDetails({
-      narrativeTeaser: "Bio text",
+      narrative: "Bio text",
       lifeNotableFactors: [],
     })
     render(<BiographySection biographyDetails={details} />)
@@ -202,7 +175,7 @@ describe("BiographySection", () => {
 
   it("does not show facts section when empty", () => {
     const details = makeBiographyDetails({
-      narrativeTeaser: "Bio text",
+      narrative: "Bio text",
       lesserKnownFacts: [],
     })
     render(<BiographySection biographyDetails={details} />)
@@ -211,14 +184,14 @@ describe("BiographySection", () => {
 
   it("prefers enriched biography over old biography", () => {
     const details = makeBiographyDetails({
-      narrativeTeaser: "Enriched teaser",
+      narrative: "Enriched narrative",
     })
     render(<BiographySection biography="Old bio text" biographyDetails={details} />)
-    expect(screen.getByText("Enriched teaser")).toBeInTheDocument()
+    expect(screen.getByText("Enriched narrative")).toBeInTheDocument()
     expect(screen.queryByText("Old bio text")).not.toBeInTheDocument()
   })
 
-  it("renders nothing when biographyDetails has no narrative or teaser", () => {
+  it("renders nothing when biographyDetails has no narrative", () => {
     const details = makeBiographyDetails({
       lifeNotableFactors: ["scholar"],
       lesserKnownFacts: ["Some fact"],
@@ -229,7 +202,7 @@ describe("BiographySection", () => {
 
   it("shows biography sources when no expandable content", () => {
     const details = makeBiographyDetails({
-      narrativeTeaser: "Bio text",
+      narrative: "Bio text",
       sources: [
         {
           url: "https://en.wikipedia.org/wiki/Actor",
@@ -260,7 +233,6 @@ describe("BiographySection", () => {
 
   it("hides sources when collapsed and shows when expanded", () => {
     const details = makeBiographyDetails({
-      narrativeTeaser: "Short teaser",
       narrative: "Full narrative " + "x".repeat(300),
       sources: [
         {
@@ -286,7 +258,7 @@ describe("BiographySection", () => {
 
   it("does not show sources when sources is null", () => {
     const details = makeBiographyDetails({
-      narrativeTeaser: "Bio text",
+      narrative: "Bio text",
       sources: null,
     })
     render(<BiographySection biographyDetails={details} />)

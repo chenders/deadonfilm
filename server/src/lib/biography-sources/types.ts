@@ -49,6 +49,11 @@ export enum BiographySourceType {
   TROVE_BIO = "trove-bio",
   EUROPEANA_BIO = "europeana-bio",
 
+  // Books/Publications
+  GOOGLE_BOOKS_BIO = "google-books-bio",
+  OPEN_LIBRARY_BIO = "open-library-bio",
+  IA_BOOKS_BIO = "ia-books-bio",
+
   // AI Models
   GEMINI_BIO = "gemini-bio",
   GPT_BIO = "gpt-bio",
@@ -167,7 +172,6 @@ export interface ActorForBiography {
  * These are the user-facing fields for the biography page.
  */
 export interface BiographyData {
-  narrativeTeaser: string | null
   narrative: string | null
   narrativeConfidence: "high" | "medium" | "low" | null
   lifeNotableFactors: string[]
@@ -265,6 +269,7 @@ export interface BiographyEnrichmentConfig {
     news: boolean // Guardian, NYT, AP, BBC, People
     obituary: boolean // Legacy, Find a Grave
     archives: boolean // Internet Archive, Chronicling America, Trove, Europeana
+    books: boolean // Google Books, Open Library, IA Books
     ai: boolean // Gemini, GPT, Groq fallbacks
   }
   costLimits: {
@@ -294,6 +299,7 @@ export const DEFAULT_BIOGRAPHY_CONFIG: BiographyEnrichmentConfig = {
     news: true,
     obituary: true,
     archives: true,
+    books: true,
     ai: false,
   },
   costLimits: {

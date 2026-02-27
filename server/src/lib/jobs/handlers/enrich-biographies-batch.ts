@@ -17,6 +17,7 @@ import { getPool } from "../../db.js"
 import { BaseJobHandler } from "./base.js"
 import { JobType, QueueName, type JobResult, type EnrichBiographiesBatchPayload } from "../types.js"
 import { BiographyEnrichmentOrchestrator } from "../../biography-sources/orchestrator.js"
+import { RunLogger } from "../../run-logger.js"
 import {
   writeBiographyToProduction,
   writeBiographyToStaging,
@@ -64,7 +65,9 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       confidenceThreshold,
       maxCostPerActor,
       maxTotalCost,
+      earlyStopSourceCount,
       allowRegeneration,
+      sortBy,
       useStaging,
       sourceCategories,
     } = job.data
@@ -86,6 +89,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
         limit,
         minPopularity,
         allowRegeneration,
+        sortBy,
       })
 
       log.info({ actorCount: actors.length }, "Found actors for biography enrichment")
@@ -107,7 +111,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
             totalCostUsd: 0,
             sourceCostUsd: 0,
             synthesisCostUsd: 0,
-            exitReason: "completed",
+            exitReason: "no_actors_matched",
             costBySource: {},
             sourceHitRates: {},
             errorCount: 0,
@@ -129,6 +133,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       // 2. Create orchestrator with config
       const orchestrator = new BiographyEnrichmentOrchestrator({
         confidenceThreshold: confidenceThreshold ?? 0.6,
+        ...(earlyStopSourceCount !== undefined && { earlyStopSourceCount }),
         costLimits: {
           maxCostPerActor: maxCostPerActor ?? 0.5,
           maxTotalCost: maxTotalCost ?? 10.0,
@@ -141,10 +146,18 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
               news: sourceCategories.news ?? true,
               obituary: sourceCategories.obituary ?? true,
               archives: sourceCategories.archives ?? true,
+              books: sourceCategories.books ?? true,
               ai: false,
             }
           : undefined,
       })
+
+      // Wire up RunLogger for DB log capture if we have a run ID
+      let runLogger: RunLogger | null = null
+      if (runId) {
+        runLogger = new RunLogger("biography", runId)
+        orchestrator.setRunLogger(runLogger)
+      }
 
       // 3. Process each actor
       const results: EnrichBiographiesBatchResult["results"] = []
@@ -258,6 +271,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
               { totalCostUsd, maxTotalCost },
               "Batch total cost limit reached, stopping early"
             )
+            await runLogger?.flush()
             if (runId) {
               await this.completeBioEnrichmentRun(db, runId, {
                 actorsProcessed: i + 1,
@@ -318,6 +332,9 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
           }
         }
       }
+
+      // Flush any remaining buffered run logs before completing
+      await runLogger?.flush()
 
       // Complete the run
       if (runId) {
@@ -381,6 +398,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       limit?: number
       minPopularity?: number
       allowRegeneration?: boolean
+      sortBy?: "popularity" | "interestingness"
     }
   ): Promise<ActorForBiography[]> {
     if (opts.actorIds && opts.actorIds.length > 0) {
@@ -412,12 +430,17 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
     const limitValue = opts.limit || 10
     params.push(limitValue)
 
+    const orderByClause =
+      opts.sortBy === "interestingness"
+        ? "ORDER BY interestingness_score DESC NULLS LAST, id ASC"
+        : "ORDER BY dof_popularity DESC NULLS LAST, id ASC"
+
     const result = await db.query(
       `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
               wikipedia_url, biography AS biography_raw_tmdb, biography
        FROM actors
        ${whereClause}
-       ORDER BY dof_popularity DESC NULLS LAST, id ASC
+       ${orderByClause}
        LIMIT $${paramIndex}`,
       params
     )

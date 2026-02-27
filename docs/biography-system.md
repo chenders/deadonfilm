@@ -130,7 +130,6 @@ Internet Archive, Chronicling America, Trove, Europeana
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `narrativeTeaser` | string | 2-3 sentence hook for the collapsed preview |
 | `narrative` | string | Full personal life biography (multi-paragraph) |
 | `narrativeConfidence` | enum | `high`, `medium`, `low` |
 | `lifeNotableFactors` | string[] | Life circumstance tags (see below) |
@@ -148,9 +147,9 @@ Internet Archive, Chronicling America, Trove, Europeana
 
 | Table | Purpose |
 |-------|---------|
-| `actor_biography_details` | Enriched biography: narrative, teaser, family, education, factors, sources |
+| `actor_biography_details` | Enriched biography: narrative, family, education, factors, sources |
 | `biography_legacy` | One-time archive of old `actors.biography` before first enrichment |
-| `actors.biography` | Updated with `narrativeTeaser` from enrichment |
+| `actors.biography` | Updated with `narrative` from enrichment |
 | `actors.biography_version` | Incremented on each enrichment |
 
 ## Lesser-Known Facts
