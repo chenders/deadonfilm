@@ -73,6 +73,7 @@ describe("Header", () => {
       expect(within(desktopNav).getByText("Deaths")).toBeInTheDocument()
       expect(within(desktopNav).getByText("Genres")).toBeInTheDocument()
       expect(within(desktopNav).getByText("Causes")).toBeInTheDocument()
+      expect(within(desktopNav).getByText("In Detail")).toBeInTheDocument()
     })
 
     it("hides nav links on home page", () => {
@@ -97,6 +98,21 @@ describe("Header", () => {
         "href",
         "/causes-of-death"
       )
+      expect(within(desktopNav).getByText("In Detail").closest("a")).toHaveAttribute(
+        "href",
+        "/in-detail"
+      )
+    })
+
+    it("highlights active nav link based on current path", () => {
+      renderHeader("/in-detail")
+
+      const desktopNav = screen.getByTestId("desktop-nav")
+      const inDetailLink = within(desktopNav).getByText("In Detail").closest("a")!
+      const deathsLink = within(desktopNav).getByText("Deaths").closest("a")!
+
+      expect(inDetailLink.className).toContain("bg-brown-medium/20")
+      expect(deathsLink.className).not.toContain("bg-brown-medium/20")
     })
   })
 
