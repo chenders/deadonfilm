@@ -100,7 +100,8 @@ describe("MobileCard", () => {
       />
     )
 
-    fireEvent.keyDown(screen.getByText("John Wayne"), { key: "Enter" })
+    const toggleButton = screen.getByRole("button", { name: /john wayne/i })
+    fireEvent.keyDown(toggleButton, { key: "Enter" })
     expect(onSelectionChange).toHaveBeenCalledWith(true)
   })
 
@@ -115,7 +116,8 @@ describe("MobileCard", () => {
       />
     )
 
-    fireEvent.keyDown(screen.getByText("John Wayne"), { key: " " })
+    const toggleButton = screen.getByRole("button", { name: /john wayne/i })
+    fireEvent.keyUp(toggleButton, { key: " " })
     expect(onSelectionChange).toHaveBeenCalledWith(true)
   })
 

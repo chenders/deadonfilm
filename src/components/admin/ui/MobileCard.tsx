@@ -63,7 +63,15 @@ export default function MobileCard({
                 "aria-pressed": selected ?? false,
                 onClick: () => onSelectionChange(!(selected ?? false)),
                 onKeyDown: (e: React.KeyboardEvent) => {
-                  if (e.key === "Enter" || e.key === " ") {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    onSelectionChange(!(selected ?? false))
+                  } else if (e.key === " ") {
+                    e.preventDefault()
+                  }
+                },
+                onKeyUp: (e: React.KeyboardEvent) => {
+                  if (e.key === " ") {
                     e.preventDefault()
                     onSelectionChange(!(selected ?? false))
                   }
