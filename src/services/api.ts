@@ -376,7 +376,6 @@ export async function getSpecificCauseDetail(
 
 export interface InDetailParams {
   page?: number
-  includeObscure?: boolean
   search?: string
   sort?: string
   dir?: string
@@ -386,12 +385,9 @@ export interface InDetailParams {
  * Get paginated list of actors with thoroughly researched death information
  */
 export async function getInDetailActors(params: InDetailParams = {}): Promise<InDetailResponse> {
-  const { page = 1, includeObscure = false, search, sort, dir } = params
+  const { page = 1, search, sort, dir } = params
   const searchParams = new URLSearchParams()
   searchParams.set("page", String(page))
-  if (includeObscure) {
-    searchParams.set("includeObscure", "true")
-  }
   if (search) {
     searchParams.set("search", search)
   }

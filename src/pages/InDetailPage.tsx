@@ -15,7 +15,6 @@ export default function InDetailPage() {
   const [searchInput, setSearchInput, searchQuery] = useDebouncedSearchParam()
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
-  const includeObscure = searchParams.get("includeObscure") === "true"
   const validSorts = ["updated", "date", "name", "age"]
   const rawSort = searchParams.get("sort")
   const sort = rawSort && validSorts.includes(rawSort) ? rawSort : "updated"
@@ -23,7 +22,6 @@ export default function InDetailPage() {
 
   const { data, isLoading, error } = useInDetail({
     page,
-    includeObscure,
     search: searchQuery || undefined,
     sort,
     dir,
@@ -36,17 +34,6 @@ export default function InDetailPage() {
     } else {
       newParams.delete("page")
     }
-    setSearchParams(newParams)
-  }
-
-  const toggleIncludeObscure = (checked: boolean) => {
-    const newParams = new URLSearchParams(searchParams)
-    if (checked) {
-      newParams.set("includeObscure", "true")
-    } else {
-      newParams.delete("includeObscure")
-    }
-    newParams.delete("page")
     setSearchParams(newParams)
   }
 
@@ -108,7 +95,7 @@ export default function InDetailPage() {
           currentPage={page}
           totalPages={data.pagination.totalPages}
           basePath="/in-detail"
-          includeLinks={!searchQuery && !includeObscure}
+          includeLinks={!searchQuery}
         />
       )}
 
@@ -132,22 +119,6 @@ export default function InDetailPage() {
           />
         </div>
 
-        {/* Include obscure checkbox */}
-        <div className="mb-4 flex justify-center">
-          <label
-            className="flex cursor-pointer items-center gap-2 text-sm text-text-muted"
-            data-testid="include-obscure-filter"
-          >
-            <input
-              type="checkbox"
-              checked={includeObscure}
-              onChange={(e) => toggleIncludeObscure(e.target.checked)}
-              className="h-4 w-4 rounded border-brown-medium text-brown-dark focus:ring-brown-medium"
-            />
-            Include lesser-known actors
-          </label>
-        </div>
-
         <div className="mb-4 flex justify-center">
           <SortControl
             options={[
@@ -166,9 +137,7 @@ export default function InDetailPage() {
         {noResults ? (
           <div className="text-center text-text-muted">
             <p>No results found.</p>
-            <p className="mt-2 text-xs">
-              Try a different search term or enable "Include lesser-known actors".
-            </p>
+            <p className="mt-2 text-xs">Try a different search term.</p>
           </div>
         ) : (
           <>

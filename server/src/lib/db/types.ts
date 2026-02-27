@@ -711,7 +711,6 @@ export interface InDetailActor {
 export interface InDetailOptions {
   page?: number
   pageSize?: number
-  includeObscure?: boolean
   search?: string
   sort?: string
   dir?: string
