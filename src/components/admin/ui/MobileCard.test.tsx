@@ -64,6 +64,39 @@ describe("MobileCard", () => {
     expect(onSelectionChange).toHaveBeenCalledWith(true)
   })
 
+  it("toggles selection when clicking title area", () => {
+    const onSelectionChange = vi.fn()
+    render(
+      <MobileCard
+        title="John Wayne"
+        selectable
+        selected={false}
+        onSelectionChange={onSelectionChange}
+      />
+    )
+
+    fireEvent.click(screen.getByText("John Wayne"))
+    expect(onSelectionChange).toHaveBeenCalledWith(true)
+  })
+
+  it("untoggle selection when clicking title area on selected card", () => {
+    const onSelectionChange = vi.fn()
+    render(
+      <MobileCard title="John Wayne" selectable selected onSelectionChange={onSelectionChange} />
+    )
+
+    fireEvent.click(screen.getByText("John Wayne"))
+    expect(onSelectionChange).toHaveBeenCalledWith(false)
+  })
+
+  it("does not add click handler to title area when not selectable", () => {
+    const onSelectionChange = vi.fn()
+    render(<MobileCard title="John Wayne" onSelectionChange={onSelectionChange} />)
+
+    fireEvent.click(screen.getByText("John Wayne"))
+    expect(onSelectionChange).not.toHaveBeenCalled()
+  })
+
   it("shows checked checkbox when selected", () => {
     render(<MobileCard title="John Wayne" selectable selected />)
     expect(screen.getByRole("checkbox")).toBeChecked()
