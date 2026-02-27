@@ -54,7 +54,39 @@ export default function MobileCard({
             className="mt-1 h-4 w-4 shrink-0 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-admin-interactive"
           />
         )}
-        <div className="min-w-0 flex-1">
+        <div
+          className={[
+            "min-w-0 flex-1",
+            selectable &&
+              onSelectionChange &&
+              "cursor-pointer rounded focus:outline-none focus:ring-2 focus:ring-admin-interactive",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          {...(selectable && onSelectionChange
+            ? {
+                role: "button",
+                tabIndex: 0,
+                "aria-pressed": selected ?? false,
+                "aria-label": ariaLabel ?? (typeof title === "string" ? title : undefined),
+                onClick: () => onSelectionChange(!(selected ?? false)),
+                onKeyDown: (e: React.KeyboardEvent) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    onSelectionChange(!(selected ?? false))
+                  } else if (e.key === " ") {
+                    e.preventDefault()
+                  }
+                },
+                onKeyUp: (e: React.KeyboardEvent) => {
+                  if (e.key === " ") {
+                    e.preventDefault()
+                    onSelectionChange(!(selected ?? false))
+                  }
+                },
+              }
+            : {})}
+        >
           <div className="font-medium text-admin-text-primary">{title}</div>
           {subtitle && <div className="mt-0.5 text-sm text-admin-text-muted">{subtitle}</div>}
         </div>
