@@ -130,7 +130,7 @@ export function getPosterUrl(
 
 export function getProfileUrl(
   profilePath: string | null,
-  size: "w45" | "w185" | "h632" | "original" = "w185"
+  size: "w45" | "w92" | "w185" | "h632" | "original" = "w185"
 ): string | null {
   if (!profilePath) return null
   return `${TMDB_IMAGE_BASE}/${size}${profilePath}`

@@ -60,7 +60,8 @@ export default function ActorCard({
   children,
   testId,
 }: ActorCardProps) {
-  const profileUrl = getProfileUrl(profilePath, "w185")
+  const profileUrlSm = getProfileUrl(profilePath, "w92")
+  const profileUrlLg = getProfileUrl(profilePath, "w185")
   const nameColorClass = nameColor === "brown" ? "text-brown-dark" : "text-accent"
 
   const knownForText =
@@ -81,9 +82,11 @@ export default function ActorCard({
       data-testid={testId}
       className="flex items-start gap-4 rounded-lg bg-beige p-3 text-left transition-colors hover:bg-cream"
     >
-      {profileUrl ? (
+      {profileUrlSm ? (
         <img
-          src={profileUrl}
+          src={profileUrlSm}
+          srcSet={`${profileUrlSm} 92w, ${profileUrlLg} 185w`}
+          sizes="80px"
           alt={name}
           width={80}
           height={112}
