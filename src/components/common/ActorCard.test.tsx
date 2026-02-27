@@ -177,7 +177,7 @@ describe("ActorCard", () => {
     expect(img).not.toHaveAttribute("fetchpriority")
   })
 
-  it("applies eager loading with fetchpriority=high when priority is true", () => {
+  it("removes lazy loading and adds fetchpriority=high when priority is true", () => {
     renderCard({ priority: true })
 
     const img = screen.getByRole("img")

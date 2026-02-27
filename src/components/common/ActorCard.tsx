@@ -24,7 +24,7 @@ interface ActorCardProps {
   useCauseOfDeathBadge?: boolean
   nameColor?: "accent" | "brown"
 
-  /** When true, loads image eagerly with fetchpriority="high" (use for LCP candidates) */
+  /** When true, removes lazy loading and adds fetchpriority="high" (use for LCP candidates) */
   priority?: boolean
 
   badge?: React.ReactNode

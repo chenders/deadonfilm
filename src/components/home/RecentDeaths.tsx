@@ -45,6 +45,9 @@ export default function RecentDeaths() {
         ? data.deaths
         : data.deaths.slice(0, -1)
 
+  // Prioritize the first card that actually renders an image (LCP candidate)
+  const firstImageIndex = deaths.findIndex((d) => d.profile_path || d.fallback_profile_url)
+
   return (
     <section data-testid="recent-deaths" className="mt-6 md:mt-8">
       <div className="mb-4 flex items-center justify-between">
@@ -84,7 +87,7 @@ export default function RecentDeaths() {
               showBirthDate
               useCauseOfDeathBadge
               nameColor="accent"
-              priority={index === 0}
+              priority={index === firstImageIndex}
             />
           </div>
         ))}
