@@ -80,7 +80,7 @@ export default function ActorCard({
     <Link
       to={`/actor/${slug}`}
       data-testid={testId}
-      className="flex items-start gap-4 rounded-lg bg-beige p-3 text-left transition-colors hover:bg-cream"
+      className="flex h-full items-start gap-4 rounded-lg bg-beige p-3 text-left transition-colors hover:bg-cream"
     >
       {profileUrlSm ? (
         <img
