@@ -8,7 +8,9 @@ import * as api from "@/services/api"
 // Mock the API
 vi.mock("@/services/api", () => ({
   getRecentDeaths: vi.fn(),
-  getProfileUrl: vi.fn((path) => (path ? `https://image.tmdb.org/t/p/w185${path}` : null)),
+  getProfileUrl: vi.fn((path: string | null, size: string = "w185") =>
+    path ? `https://image.tmdb.org/t/p/${size}${path}` : null
+  ),
 }))
 
 const mockDeaths = {
@@ -150,7 +152,7 @@ describe("RecentDeaths", () => {
 
     const images = screen.getAllByRole("img")
     expect(images).toHaveLength(3) // Actors 1, 3, 4 have profile_path
-    expect(images[0]).toHaveAttribute("src", "https://image.tmdb.org/t/p/w185/path1.jpg")
+    expect(images[0]).toHaveAttribute("src", "https://image.tmdb.org/t/p/w92/path1.jpg")
   })
 
   it("renders placeholder for actors without profile_path", async () => {
@@ -260,6 +262,57 @@ describe("RecentDeaths", () => {
     })
 
     expect(screen.getByText("Actor One")).toBeInTheDocument()
+  })
+
+  it("applies fetchpriority=high to first image and lazy loading to subsequent images", async () => {
+    vi.mocked(api.getRecentDeaths).mockResolvedValue(mockDeaths)
+
+    renderWithProviders(<RecentDeaths />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("recent-deaths")).toBeInTheDocument()
+    })
+
+    // Actor One (index 0) has profile_path — should get priority
+    // Actor Two (index 1) has no image — skipped
+    // Actor Three (index 2) has profile_path — should be lazy
+    const images = screen.getAllByRole("img")
+    expect(images[0]).toHaveAttribute("fetchpriority", "high")
+    expect(images[0]).not.toHaveAttribute("loading")
+
+    expect(images[1]).toHaveAttribute("loading", "lazy")
+    expect(images[1]).not.toHaveAttribute("fetchpriority")
+
+    expect(images[2]).toHaveAttribute("loading", "lazy")
+    expect(images[2]).not.toHaveAttribute("fetchpriority")
+  })
+
+  it("applies fetchpriority to first card with image when first card lacks one", async () => {
+    // Reorder so the first death has no image
+    const reorderedDeaths = {
+      deaths: [
+        mockDeaths.deaths[1], // Actor Two - no image
+        mockDeaths.deaths[0], // Actor One - has image
+        mockDeaths.deaths[2], // Actor Three - has image
+        mockDeaths.deaths[3], // Actor Four - has image
+      ],
+    }
+    vi.mocked(api.getRecentDeaths).mockResolvedValue(reorderedDeaths)
+
+    renderWithProviders(<RecentDeaths />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("recent-deaths")).toBeInTheDocument()
+    })
+
+    const images = screen.getAllByRole("img")
+    // Actor One (index 1) is first with an image — gets priority
+    expect(images[0]).toHaveAttribute("fetchpriority", "high")
+    expect(images[0]).not.toHaveAttribute("loading")
+
+    // Actor Three (index 2) — lazy
+    expect(images[1]).toHaveAttribute("loading", "lazy")
+    expect(images[1]).not.toHaveAttribute("fetchpriority")
   })
 
   it("renders View all link to /deaths/all", async () => {

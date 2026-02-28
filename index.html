@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- New Relic browser agent - must be first script for complete instrumentation -->
-    <script src="/nr-browser.js"></script>
+    <!-- New Relic browser agent - deferred to avoid blocking FCP/LCP -->
+    <script src="/nr-browser.js" defer></script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
@@ -18,6 +18,7 @@
     <link rel="preload" href="/fonts/playfair-display-var.woff2" as="font" type="font/woff2" crossorigin>
     <!-- Preconnect to external origins -->
     <link rel="preconnect" href="https://image.tmdb.org" crossorigin>
+    <link rel="preconnect" href="https://js-agent.newrelic.com" crossorigin>
     <link rel="preconnect" href="https://www.googletagmanager.com">
     <link rel="preconnect" href="https://www.google-analytics.com">
     <!-- nosemgrep: html.security.audit.missing-integrity.missing-integrity - dns-prefetch doesn't load resources -->

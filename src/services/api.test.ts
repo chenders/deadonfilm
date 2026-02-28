@@ -54,6 +54,10 @@ describe("getProfileUrl", () => {
     expect(getProfileUrl("/profile.jpg", "w45")).toBe("https://image.tmdb.org/t/p/w45/profile.jpg")
   })
 
+  it("supports w92 size", () => {
+    expect(getProfileUrl("/profile.jpg", "w92")).toBe("https://image.tmdb.org/t/p/w92/profile.jpg")
+  })
+
   it("supports h632 size", () => {
     expect(getProfileUrl("/profile.jpg", "h632")).toBe(
       "https://image.tmdb.org/t/p/h632/profile.jpg"

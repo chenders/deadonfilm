@@ -4,8 +4,8 @@ import { MemoryRouter } from "react-router-dom"
 import ActorCard from "./ActorCard"
 
 vi.mock("@/services/api", () => ({
-  getProfileUrl: vi.fn((path: string | null) =>
-    path ? `https://image.tmdb.org/t/p/w185${path}` : null
+  getProfileUrl: vi.fn((path: string | null, size: string = "w185") =>
+    path ? `https://image.tmdb.org/t/p/${size}${path}` : null
   ),
 }))
 
@@ -32,11 +32,16 @@ describe("ActorCard", () => {
     expect(screen.getByRole("link")).toHaveAttribute("href", "/actor/john-wayne-2157")
   })
 
-  it("renders profile image from profilePath", () => {
+  it("renders profile image with srcset for responsive sizes", () => {
     renderCard({ profilePath: "/profile.jpg" })
 
     const img = screen.getByRole("img")
-    expect(img).toHaveAttribute("src", "https://image.tmdb.org/t/p/w185/profile.jpg")
+    expect(img).toHaveAttribute("src", "https://image.tmdb.org/t/p/w92/profile.jpg")
+    expect(img).toHaveAttribute(
+      "srcset",
+      "https://image.tmdb.org/t/p/w92/profile.jpg 92w, https://image.tmdb.org/t/p/w185/profile.jpg 185w"
+    )
+    expect(img).toHaveAttribute("sizes", "80px")
     expect(img).toHaveAttribute("alt", "John Wayne")
   })
 
@@ -162,5 +167,33 @@ describe("ActorCard", () => {
     renderCard({ testId: "actor-card-1" })
 
     expect(screen.getByTestId("actor-card-1")).toBeInTheDocument()
+  })
+
+  it("applies lazy loading by default", () => {
+    renderCard()
+
+    const img = screen.getByRole("img")
+    expect(img).toHaveAttribute("loading", "lazy")
+    expect(img).not.toHaveAttribute("fetchpriority")
+  })
+
+  it("removes lazy loading and adds fetchpriority=high when priority is true", () => {
+    renderCard({ priority: true })
+
+    const img = screen.getByRole("img")
+    expect(img).not.toHaveAttribute("loading")
+    expect(img).toHaveAttribute("fetchpriority", "high")
+  })
+
+  it("applies priority to fallback profile image", () => {
+    renderCard({
+      profilePath: null,
+      fallbackProfileUrl: "https://example.com/photo.jpg",
+      priority: true,
+    })
+
+    const img = screen.getByRole("img")
+    expect(img).not.toHaveAttribute("loading")
+    expect(img).toHaveAttribute("fetchpriority", "high")
   })
 })
