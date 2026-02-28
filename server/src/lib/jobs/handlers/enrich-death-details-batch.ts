@@ -46,18 +46,28 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
         runId,
       },
       async (progress) => {
-        // Update BullMQ job progress
+        // Update BullMQ job progress (always — lightweight in-memory update)
         await job.updateProgress({
           currentActorIndex: progress.currentActorIndex,
           currentActorName: progress.currentActorName,
           actorsQueried: progress.actorsQueried,
           actorsProcessed: progress.actorsProcessed,
           actorsEnriched: progress.actorsEnriched,
+          actorsWithDeathPage: progress.actorsWithDeathPage,
           totalCostUsd: progress.totalCostUsd,
         })
 
-        // Also update enrichment_runs table for admin UI
-        await this.updateRunProgress(runId, progress)
+        // "processing" phase = actor just started, only update name/index (lightweight)
+        // "completed" phase = actor finished, update all counters (full DB write)
+        if (progress.phase === "processing") {
+          await this.updateCurrentActor(
+            runId,
+            progress.currentActorIndex,
+            progress.currentActorName
+          )
+        } else {
+          await this.updateRunProgress(runId, progress)
+        }
       },
       abortController.signal
     )
@@ -94,6 +104,30 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
   }
 
   /**
+   * Lightweight update: only set current actor name/index (no counter writes).
+   * Used for "processing" phase to avoid doubling DB writes per actor.
+   */
+  private async updateCurrentActor(
+    runId: number,
+    actorIndex: number,
+    actorName: string
+  ): Promise<void> {
+    const db = getPool()
+
+    try {
+      await db.query(
+        `UPDATE enrichment_runs
+         SET current_actor_index = $1,
+             current_actor_name = $2
+         WHERE id = $3`,
+        [actorIndex, actorName, runId]
+      )
+    } catch (error) {
+      logger.error({ runId, error }, "Failed to update current actor")
+    }
+  }
+
+  /**
    * Update progress in the enrichment_runs table
    */
   private async updateRunProgress(
@@ -104,6 +138,7 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
       actorsQueried: number
       actorsProcessed: number
       actorsEnriched: number
+      actorsWithDeathPage: number
       totalCostUsd: number
     }
   ): Promise<void> {
@@ -117,8 +152,9 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
              actors_queried = $3,
              actors_processed = $4,
              actors_enriched = $5,
-             total_cost_usd = $6
-         WHERE id = $7`,
+             total_cost_usd = $6,
+             actors_with_death_page = $7
+         WHERE id = $8`,
         [
           progress.currentActorIndex,
           progress.currentActorName,
@@ -126,6 +162,7 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
           progress.actorsProcessed,
           progress.actorsEnriched,
           progress.totalCostUsd,
+          progress.actorsWithDeathPage,
           runId,
         ]
       )

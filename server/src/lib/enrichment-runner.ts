@@ -33,6 +33,7 @@ import {
 } from "./enrichment-db-writer.js"
 import { isViolentDeath } from "./death-sources/claude-cleanup.js"
 import { linkMultipleFields, hasEntityLinks } from "./entity-linker/index.js"
+import { RunLogger } from "./run-logger.js"
 import { logger } from "./logger.js"
 
 /**
@@ -76,7 +77,12 @@ export interface EnrichmentRunnerConfig {
 }
 
 /**
- * Progress information during enrichment
+ * Progress information during enrichment.
+ *
+ * `phase` indicates whether this is a lightweight "processing" update (actor just
+ * started, only name/index changed) or a full "completed" update (counts updated
+ * after an actor finished). Handlers can use this to skip heavy DB writes on the
+ * pre-enrichment update.
  */
 export interface EnrichmentProgress {
   currentActorIndex: number
@@ -84,7 +90,10 @@ export interface EnrichmentProgress {
   actorsQueried: number
   actorsProcessed: number
   actorsEnriched: number
+  actorsWithDeathPage: number
   totalCostUsd: number
+  /** "processing" = actor just started; "completed" = actor finished */
+  phase: "processing" | "completed"
 }
 
 /**
@@ -240,7 +249,9 @@ export class EnrichmentRunner {
           actorsQueried: actors.length,
           actorsProcessed: 0,
           actorsEnriched: 0,
+          actorsWithDeathPage: 0,
           totalCostUsd: 0,
+          phase: "completed",
         })
       }
 
@@ -309,6 +320,13 @@ export class EnrichmentRunner {
 
       const orchestrator = new DeathEnrichmentOrchestrator(config)
 
+      // Wire up RunLogger for DB log capture if we have a run ID
+      let runLogger: RunLogger | null = null
+      if (runId) {
+        runLogger = new RunLogger("death", runId)
+        orchestrator.setRunLogger(runLogger)
+      }
+
       // Convert to ActorForEnrichment format
       const actorsToEnrich: ActorForEnrichment[] = actors.map((a) => ({
         id: a.id,
@@ -328,6 +346,7 @@ export class EnrichmentRunner {
       let wasInterrupted = false
       const updatedActors: Array<{ name: string; id: number }> = []
       let updated = 0
+      let actorsWithDeathPage = 0
 
       // Track source hit rates: {source: {attempts: n, successes: n}}
       const sourceHitRates: Record<string, { attempts: number; successes: number }> = {}
@@ -342,6 +361,22 @@ export class EnrichmentRunner {
           }
 
           const actor = actorsToEnrich[i]
+
+          // Report progress BEFORE enrichment so UI shows actor currently being processed.
+          // Uses phase: "processing" so handlers can skip heavy DB writes.
+          if (this.onProgress) {
+            const stats = orchestrator.getStats()
+            await this.onProgress({
+              currentActorIndex: i + 1,
+              currentActorName: actor.name,
+              actorsQueried: actors.length,
+              actorsProcessed: stats.actorsProcessed,
+              actorsEnriched: stats.actorsEnriched,
+              actorsWithDeathPage,
+              totalCostUsd: stats.totalCostUsd,
+              phase: "processing",
+            })
+          }
 
           // Enrich this actor
           const enrichment = await orchestrator.enrichActor(actor)
@@ -413,7 +448,9 @@ export class EnrichmentRunner {
                 actorsQueried: actors.length,
                 actorsProcessed: stats.actorsProcessed,
                 actorsEnriched: stats.actorsEnriched,
+                actorsWithDeathPage,
                 totalCostUsd: stats.totalCostUsd,
+                phase: "completed",
               })
             }
 
@@ -484,6 +521,10 @@ export class EnrichmentRunner {
           const hasDetailedDeathInfo =
             passesQualityGate &&
             (hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths)
+
+          if (hasDetailedDeathInfo) {
+            actorsWithDeathPage++
+          }
 
           // Only include causeOfDeath if actor doesn't already have one
           const manner = cleaned?.manner || null
@@ -634,7 +675,9 @@ export class EnrichmentRunner {
               actorsQueried: actors.length,
               actorsProcessed: stats.actorsProcessed,
               actorsEnriched: stats.actorsEnriched,
+              actorsWithDeathPage,
               totalCostUsd: stats.totalCostUsd,
+              phase: "completed",
             })
           }
         }
@@ -646,8 +689,17 @@ export class EnrichmentRunner {
           )
           costLimitReached = true
         } else {
+          // Flush run logs before re-throwing so error-path logs aren't lost
+          if (runLogger) {
+            await runLogger.flush()
+          }
           throw error
         }
+      }
+
+      // Flush remaining run logs
+      if (runLogger) {
+        await runLogger.flush()
       }
 
       // Get final stats
