@@ -35,116 +35,128 @@ const CANDIDATES_PER_GENRE = 10
 export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
   const db = getPool()
 
-  // Get basic genre counts
-  const genresResult = await db.query<{ genre: string; count: string }>(`
-    SELECT unnest(genres) as genre, COUNT(*) as count
-    FROM movies
-    WHERE genres IS NOT NULL
-      AND array_length(genres, 1) > 0
-      AND deceased_count > 0
-    GROUP BY genre
-    HAVING COUNT(*) >= 5
-    ORDER BY count DESC, genre
-  `)
+  // Run all 4 queries in parallel — they are independent
+  const [genresResult, moviesResult, featuredResult, causesResult] = await Promise.all([
+    // 1. Genre counts
+    db.query<{ genre: string; count: string }>(`
+        SELECT unnest(genres) as genre, COUNT(*) as count
+        FROM movies
+        WHERE genres IS NOT NULL
+          AND array_length(genres, 1) > 0
+          AND deceased_count > 0
+        GROUP BY genre
+        HAVING COUNT(*) >= 5
+        ORDER BY count DESC, genre
+      `),
 
-  // Get top movie per genre (most popular non-obscure movie with backdrop)
-  const moviesResult = await db.query<{
-    genre: string
-    tmdb_id: number
-    title: string
-    release_year: number | null
-    backdrop_path: string | null
-  }>(`
-    WITH genre_movies AS (
-      SELECT
-        g.genre,
-        m.tmdb_id,
-        m.title,
-        m.release_year,
-        COALESCE(m.backdrop_path, m.poster_path) as backdrop_path,
-        ROW_NUMBER() OVER (
-          PARTITION BY g.genre
-          ORDER BY m.dof_popularity DESC NULLS LAST
-        ) as rn
-      FROM movies m,
-           LATERAL unnest(m.genres) AS g(genre)
-      WHERE m.genres IS NOT NULL
-        AND m.deceased_count > 0
-        AND (m.backdrop_path IS NOT NULL OR m.poster_path IS NOT NULL)
-        AND m.is_obscure = false
-    )
-    SELECT genre, tmdb_id, title, release_year, backdrop_path
-    FROM genre_movies
-    WHERE rn <= ${CANDIDATES_PER_GENRE}
-  `)
+    // 2. Top movie candidates per genre (most popular non-obscure with backdrop)
+    db.query<{
+      genre: string
+      tmdb_id: number
+      title: string
+      release_year: number | null
+      backdrop_path: string | null
+    }>(
+      `
+        WITH genre_movies AS (
+          SELECT
+            g.genre,
+            m.tmdb_id,
+            m.title,
+            m.release_year,
+            COALESCE(m.backdrop_path, m.poster_path) as backdrop_path,
+            ROW_NUMBER() OVER (
+              PARTITION BY g.genre
+              ORDER BY m.dof_popularity DESC NULLS LAST
+            ) as rn
+          FROM movies m,
+               LATERAL unnest(m.genres) AS g(genre)
+          WHERE m.genres IS NOT NULL
+            AND m.deceased_count > 0
+            AND (m.backdrop_path IS NOT NULL OR m.poster_path IS NOT NULL)
+            AND m.is_obscure = false
+        )
+        SELECT genre, tmdb_id, title, release_year, backdrop_path
+        FROM genre_movies
+        WHERE rn <= $1
+      `,
+      [CANDIDATES_PER_GENRE]
+    ),
 
-  // Get featured actor per genre (most popular deceased non-obscure actor)
-  const featuredResult = await db.query<{
-    genre: string
-    id: number
-    tmdb_id: number | null
-    name: string
-    profile_path: string | null
-    fallback_profile_url: string | null
-    cause_of_death: string | null
-  }>(`
-    WITH genre_actors AS (
-      SELECT
-        g.genre,
-        a.id,
-        a.tmdb_id,
-        a.name,
-        a.profile_path,
-        a.fallback_profile_url,
-        a.cause_of_death,
-        ROW_NUMBER() OVER (
-          PARTITION BY g.genre
-          ORDER BY a.dof_popularity DESC NULLS LAST
-        ) as rn
-      FROM actors a
-      JOIN actor_movie_appearances ama ON a.id = ama.actor_id
-      JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
-      CROSS JOIN LATERAL unnest(m.genres) AS g(genre)
-      WHERE a.deathday IS NOT NULL
-        AND a.is_obscure = false
-        AND m.genres IS NOT NULL
-    )
-    SELECT genre, id, tmdb_id, name, profile_path, fallback_profile_url, cause_of_death
-    FROM genre_actors
-    WHERE rn <= ${CANDIDATES_PER_GENRE}
-  `)
+    // 3. Featured actor candidates per genre (most popular deceased non-obscure)
+    db.query<{
+      genre: string
+      id: number
+      tmdb_id: number | null
+      name: string
+      profile_path: string | null
+      fallback_profile_url: string | null
+      cause_of_death: string | null
+    }>(
+      `
+        WITH genre_actors AS (
+          SELECT
+            g.genre,
+            a.id,
+            a.tmdb_id,
+            a.name,
+            a.profile_path,
+            a.fallback_profile_url,
+            a.cause_of_death,
+            ROW_NUMBER() OVER (
+              PARTITION BY g.genre
+              ORDER BY a.dof_popularity DESC NULLS LAST
+            ) as rn
+          FROM actors a
+          JOIN actor_movie_appearances ama ON a.id = ama.actor_id
+          JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
+          CROSS JOIN LATERAL unnest(m.genres) AS g(genre)
+          WHERE a.deathday IS NOT NULL
+            AND a.is_obscure = false
+            AND m.genres IS NOT NULL
+        )
+        SELECT genre, id, tmdb_id, name, profile_path, fallback_profile_url, cause_of_death
+        FROM genre_actors
+        WHERE rn <= $1
+      `,
+      [CANDIDATES_PER_GENRE]
+    ),
 
-  // Get top 3 causes per genre (count distinct actors to avoid inflation)
-  const causesResult = await db.query<{
-    genre: string
-    cause: string
-    count: string
-  }>(`
-    WITH genre_causes AS (
-      SELECT
-        g.genre,
-        COALESCE(n.normalized_cause, a.cause_of_death) as cause,
-        COUNT(DISTINCT a.id) as count,
-        ROW_NUMBER() OVER (
-          PARTITION BY g.genre
-          ORDER BY COUNT(DISTINCT a.id) DESC
-        ) as rn
-      FROM actors a
-      JOIN actor_movie_appearances ama ON a.id = ama.actor_id
-      JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
-      CROSS JOIN LATERAL unnest(m.genres) AS g(genre)
-      LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
-      WHERE a.deathday IS NOT NULL
-        AND a.cause_of_death IS NOT NULL
-        AND a.is_obscure = false
-        AND m.genres IS NOT NULL
-      GROUP BY g.genre, COALESCE(n.normalized_cause, a.cause_of_death)
-    )
-    SELECT genre, cause, count
-    FROM genre_causes
-    WHERE rn <= ${MAX_CAUSES_PER_GENRE}
-    ORDER BY genre, count DESC
-  `)
+    // 4. Top causes per genre (count distinct actors to avoid inflation)
+    db.query<{
+      genre: string
+      cause: string
+      count: string
+    }>(
+      `
+        WITH genre_causes AS (
+          SELECT
+            g.genre,
+            COALESCE(n.normalized_cause, a.cause_of_death) as cause,
+            COUNT(DISTINCT a.id) as count,
+            ROW_NUMBER() OVER (
+              PARTITION BY g.genre
+              ORDER BY COUNT(DISTINCT a.id) DESC
+            ) as rn
+          FROM actors a
+          JOIN actor_movie_appearances ama ON a.id = ama.actor_id
+          JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
+          CROSS JOIN LATERAL unnest(m.genres) AS g(genre)
+          LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+          WHERE a.deathday IS NOT NULL
+            AND a.cause_of_death IS NOT NULL
+            AND a.is_obscure = false
+            AND m.genres IS NOT NULL
+          GROUP BY g.genre, COALESCE(n.normalized_cause, a.cause_of_death)
+        )
+        SELECT genre, cause, count
+        FROM genre_causes
+        WHERE rn <= $1
+        ORDER BY genre, count DESC
+      `,
+      [MAX_CAUSES_PER_GENRE]
+    ),
+  ])
 
   // Build candidate lists for greedy deduplication (multiple candidates per genre)
   const movieCandidatesByGenre = new Map<string, GenreTopMovie[]>()

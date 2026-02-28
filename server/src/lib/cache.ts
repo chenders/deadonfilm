@@ -266,7 +266,7 @@ export async function invalidateDeathCaches(): Promise<void> {
     invalidateByPattern(`${CACHE_PREFIX.COVID_DEATHS}:*`),
     invalidateByPattern(`${CACHE_PREFIX.UNNATURAL_DEATHS}:*`),
     invalidateByPattern(`${CACHE_PREFIX.GENRES}:*`),
-    // STATS, TRIVIA, and GENRES use simple keys (no parameters), so use invalidateKeys
+    // STATS, TRIVIA, FEATURED_MOVIE, and GENRES also have bare keys (no colon/params), so invalidateKeys handles those
     invalidateKeys(
       CACHE_PREFIX.STATS,
       CACHE_PREFIX.TRIVIA,

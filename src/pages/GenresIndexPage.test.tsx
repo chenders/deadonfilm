@@ -111,7 +111,7 @@ describe("GenresIndexPage", () => {
       // Loading skeleton should be present
       expect(
         screen.getByText((_, element) => element?.classList.contains("animate-pulse") ?? false)
-      )
+      ).toBeInTheDocument()
     })
 
     it("renders error state when API fails", async () => {
