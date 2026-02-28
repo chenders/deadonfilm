@@ -770,12 +770,6 @@ export interface InDetailResponse {
 // Genre types
 // ============================================================================
 
-export interface GenreCategory {
-  genre: string
-  count: number
-  slug: string
-}
-
 export interface MovieByGenreRecord {
   tmdb_id: number
   title: string

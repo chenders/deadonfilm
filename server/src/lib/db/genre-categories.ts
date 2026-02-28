@@ -119,7 +119,7 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
             genre, id, tmdb_id, name, profile_path, fallback_profile_url, cause_of_death,
             ROW_NUMBER() OVER (
               PARTITION BY genre
-              ORDER BY dof_popularity DESC NULLS LAST
+              ORDER BY dof_popularity DESC NULLS LAST, id DESC
             ) as rn
           FROM distinct_genre_actors
         )
@@ -145,7 +145,7 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
             COUNT(DISTINCT a.id) as count,
             ROW_NUMBER() OVER (
               PARTITION BY g.genre
-              ORDER BY COUNT(DISTINCT a.id) DESC
+              ORDER BY COUNT(DISTINCT a.id) DESC, cause ASC
             ) as rn
           FROM actors a
           JOIN actor_movie_appearances ama ON a.id = ama.actor_id

@@ -12,11 +12,12 @@ vi.mock("./cause-categories.js", () => ({
   ),
 }))
 
-// Mock the cause-categories slug utility
+// Mock the cause-categories slug utility (matches real apostrophe removal)
 vi.mock("../cause-categories.js", () => ({
   createCauseSlug: vi.fn((cause: string) =>
     cause
       .toLowerCase()
+      .replace(/['\u2019\u02BC]/g, "")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
   ),
