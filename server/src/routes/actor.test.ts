@@ -504,7 +504,6 @@ describe("getActor", () => {
         cause_of_death: "Assassination (airstrike)",
         age_at_death: 86,
         years_lost: -17.1,
-        has_detailed_death_info: true,
       },
       matchedBy: "id",
     })
