@@ -367,7 +367,7 @@ export class EnrichmentRunner {
           if (this.onProgress) {
             const stats = orchestrator.getStats()
             await this.onProgress({
-              currentActorIndex: i,
+              currentActorIndex: i + 1,
               currentActorName: actor.name,
               actorsQueried: actors.length,
               actorsProcessed: stats.actorsProcessed,
