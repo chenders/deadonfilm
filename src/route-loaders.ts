@@ -447,8 +447,8 @@ const routes: Array<{
           queryFn: () => apiFetch(base, "/api/stats"),
         },
         {
-          queryKey: ["recent-deaths", 10],
-          queryFn: () => apiFetch(base, "/api/recent-deaths?limit=10"),
+          queryKey: ["recent-deaths", 6],
+          queryFn: () => apiFetch(base, "/api/recent-deaths?limit=6"),
         },
         {
           queryKey: ["featured-movie"],

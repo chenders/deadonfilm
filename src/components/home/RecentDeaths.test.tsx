@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter } from "react-router-dom"
+import { HelmetProvider } from "react-helmet-async"
 import RecentDeaths from "./RecentDeaths"
 import * as api from "@/services/api"
 
@@ -83,9 +84,11 @@ function renderWithProviders(ui: React.ReactElement) {
   })
 
   return render(
-    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-    </MemoryRouter>
+    <HelmetProvider>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+      </MemoryRouter>
+    </HelmetProvider>
   )
 }
 
@@ -327,5 +330,46 @@ describe("RecentDeaths", () => {
     const link = screen.getByTestId("view-all-deaths-link")
     expect(link).toHaveAttribute("href", "/deaths/all")
     expect(link).toHaveTextContent("View all")
+  })
+
+  it("renders preload link for first visible image with correct srcset", async () => {
+    vi.mocked(api.getRecentDeaths).mockResolvedValue(mockDeaths)
+
+    renderWithProviders(<RecentDeaths />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("recent-deaths")).toBeInTheDocument()
+    })
+
+    const preloadLink = document.head.querySelector('link[rel="preload"][as="image"]')
+    expect(preloadLink).not.toBeNull()
+    expect(preloadLink!.getAttribute("imagesrcset")).toContain(
+      "image.tmdb.org/t/p/w92/path1.jpg 92w"
+    )
+    expect(preloadLink!.getAttribute("imagesrcset")).toContain(
+      "image.tmdb.org/t/p/w185/path1.jpg 185w"
+    )
+    expect(preloadLink!.getAttribute("imagesizes")).toBe("80px")
+  })
+
+  it("does not render preload link when first 3 visible cards lack images", async () => {
+    const noImageDeaths = {
+      deaths: [
+        { ...mockDeaths.deaths[1], id: 10 }, // no image
+        { ...mockDeaths.deaths[1], id: 11 }, // no image
+        { ...mockDeaths.deaths[1], id: 12 }, // no image
+        { ...mockDeaths.deaths[0], id: 13 }, // has image but index >= 3 (desktop-only)
+      ],
+    }
+    vi.mocked(api.getRecentDeaths).mockResolvedValue(noImageDeaths)
+
+    renderWithProviders(<RecentDeaths />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("recent-deaths")).toBeInTheDocument()
+    })
+
+    const preloadLink = document.head.querySelector('link[rel="preload"][as="image"]')
+    expect(preloadLink).toBeNull()
   })
 })
