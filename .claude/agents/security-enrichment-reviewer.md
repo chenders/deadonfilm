@@ -27,7 +27,7 @@ Review changes in these directories for security issues:
 ### Regex Safety (ReDoS)
 - Flag patterns with nested quantifiers: `(\w+)*`, `(a+)+`, `([a-zA-Z]+)*`
 - Flag patterns built from unescaped user input (actor names contain special chars)
-- All `new RegExp()` calls with dynamic input must use the `escapeRegex()` helper
+- All `new RegExp()` calls with dynamic input must use the canonical `escapeRegex()` from `server/src/lib/text-utils.ts` (do not introduce new escape helpers)
 
 ### SSRF / URL Safety
 - Web search sources follow URLs from search results — verify URL validation
@@ -35,7 +35,7 @@ Review changes in these directories for security issues:
 - Archive fallback (`archive-fallback.ts`) should only follow archive.org URLs
 
 ### SPARQL Injection
-- Wikidata queries interpolate actor names — must use `escapeSparql()` helper
+- Wikidata queries interpolate actor names — must use `escapeSparqlString()` from `server/src/lib/wikidata-sitelinks.ts` (or the same escaping pattern)
 - Check for unescaped quotes and backslashes in SPARQL strings
 
 ### Rate Limiting & Resource Exhaustion
