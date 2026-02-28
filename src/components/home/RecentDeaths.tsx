@@ -45,8 +45,12 @@ export default function RecentDeaths() {
         ? data.deaths
         : data.deaths.slice(0, -1)
 
-  // Prioritize the first card that actually renders an image (LCP candidate)
-  const firstImageIndex = deaths.findIndex((d) => d.profile_path || d.fallback_profile_url)
+  // Prioritize the first visible card that actually renders an image (LCP candidate).
+  // Cards at index >= 3 are hidden on mobile, so limit search to the visible subset.
+  const VISIBLE_CARD_COUNT = 3
+  const firstImageIndex = deaths
+    .slice(0, VISIBLE_CARD_COUNT)
+    .findIndex((d) => d.profile_path || d.fallback_profile_url)
 
   return (
     <section data-testid="recent-deaths" className="mt-6 md:mt-8">
