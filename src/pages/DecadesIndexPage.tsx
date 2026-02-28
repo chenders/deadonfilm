@@ -16,6 +16,9 @@ interface DecadeCardProps {
 function DecadeCard({ category }: DecadeCardProps) {
   const decadeLabel = `${category.decade}s`
   const { featuredActor, topCauses, topMovie } = category
+  const featuredActorImg =
+    featuredActor &&
+    (getProfileUrl(featuredActor.profilePath, "w45") || featuredActor.fallbackProfileUrl)
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-lg bg-beige shadow-md transition-shadow hover:shadow-lg">
@@ -64,12 +67,9 @@ function DecadeCard({ category }: DecadeCardProps) {
             to={`/actor/${createActorSlug(featuredActor.name, featuredActor.id)}`}
             className="pointer-events-auto absolute bottom-3 left-3 z-10 flex items-center gap-2 rounded-full bg-overlay/80 py-1 pl-1 pr-3 transition-colors hover:bg-overlay/90"
           >
-            {featuredActor.profilePath || featuredActor.fallbackProfileUrl ? (
+            {featuredActorImg ? (
               <img
-                src={
-                  (getProfileUrl(featuredActor.profilePath, "w45") ||
-                    featuredActor.fallbackProfileUrl)!
-                }
+                src={featuredActorImg}
                 alt={featuredActor.name}
                 loading="lazy"
                 decoding="async"

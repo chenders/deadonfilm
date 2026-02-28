@@ -509,7 +509,7 @@ export async function getCauseCategory(
   )
 
   // Get notable actors (top 5 by popularity)
-  const notableResult = await db.query<ActorRecord & { fallback_profile_url: string | null }>(
+  const notableResult = await db.query<ActorRecord>(
     `SELECT
        a.id, a.tmdb_id, a.name, a.profile_path, a.fallback_profile_url, a.deathday,
        a.cause_of_death, a.cause_of_death_details, a.age_at_death
@@ -561,9 +561,7 @@ export async function getCauseCategory(
   const actorsParams: (string | number | boolean)[] = [pageSize, offset]
   if (specificCause) actorsParams.push(specificCause)
 
-  const actorsResult = await db.query<
-    ActorRecord & { fallback_profile_url: string | null; total_count: string }
-  >(
+  const actorsResult = await db.query<ActorRecord & { total_count: string }>(
     `SELECT
        a.id, a.tmdb_id, a.name, a.profile_path, a.fallback_profile_url, a.deathday,
        a.cause_of_death, a.cause_of_death_details, a.age_at_death, a.years_lost,
@@ -728,7 +726,7 @@ export async function getSpecificCause(
   )
 
   // Get notable actors (top 3 by popularity)
-  const notableResult = await db.query<ActorRecord & { fallback_profile_url: string | null }>(
+  const notableResult = await db.query<ActorRecord>(
     `SELECT
        a.id, a.tmdb_id, a.name, a.profile_path, a.fallback_profile_url, a.deathday,
        a.cause_of_death_details, a.age_at_death
@@ -759,9 +757,7 @@ export async function getSpecificCause(
 
   // Get paginated actors
   const offset = (page - 1) * pageSize
-  const actorsResult = await db.query<
-    ActorRecord & { fallback_profile_url: string | null; total_count: string }
-  >(
+  const actorsResult = await db.query<ActorRecord & { total_count: string }>(
     `SELECT
        a.id, a.tmdb_id, a.name, a.profile_path, a.fallback_profile_url, a.deathday,
        a.cause_of_death_details, a.age_at_death, a.years_lost,
