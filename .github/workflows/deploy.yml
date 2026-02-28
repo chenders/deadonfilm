@@ -95,8 +95,18 @@ jobs:
           # ─── Phase 2: Blue-green app swap ───
           echo "=== Phase 2: Blue-green app deployment ==="
 
-          # Capture current app container ID (empty on first deploy)
-          OLD_APP=$(docker compose ps -q app 2>/dev/null || true)
+          # Capture current app container IDs (empty on first deploy)
+          OLD_APPS=$(docker compose ps -q app 2>/dev/null || true)
+          OLD_APP_COUNT=$(echo "$OLD_APPS" | grep -c . 2>/dev/null || echo 0)
+
+          if [ "$OLD_APP_COUNT" -gt 1 ]; then
+            echo "WARNING: Found $OLD_APP_COUNT app containers (stale state from prior deploy)"
+            echo "Scaling down to 1 before proceeding..."
+            docker compose up -d --scale app=1 --no-recreate app
+            OLD_APPS=$(docker compose ps -q app 2>/dev/null || true)
+          fi
+
+          OLD_APP=$(echo "$OLD_APPS" | head -n1)
 
           if [ -z "$OLD_APP" ]; then
             # First deploy — no existing container, just start normally
@@ -148,12 +158,19 @@ jobs:
               exit 1
             fi
 
-            # New container is healthy — stop the old one
+            # Reload nginx while both containers are running — nginx re-resolves
+            # 'app' to both IPs and round-robins. This means when we stop the old
+            # container, proxy_next_upstream retries failed requests on the new one.
+            echo "Reloading nginx (both containers running)..."
+            docker compose exec -T nginx nginx -s reload
+
+            # Now stop the old container — requests to its IP fail fast (connection
+            # refused) and nginx retries on the new container via proxy_next_upstream
             echo "Stopping old container..."
             docker stop --time 5 "$OLD_APP" && docker rm "$OLD_APP"
 
-            # Reload nginx so it re-resolves the 'app' hostname to the new container
-            echo "Reloading nginx..."
+            # Reload nginx again to clean up — now resolves 'app' to new container only
+            echo "Reloading nginx (final, single container)..."
             docker compose exec -T nginx nginx -s reload
 
             # Reset compose state to scale=1 (so next deploy sees 1 container)
@@ -177,9 +194,9 @@ jobs:
           echo "=== All containers healthy ==="
           docker compose ps
 
-          # End-to-end health check through nginx
+          # End-to-end health check through nginx (port 3000 → proxy → app:8080)
           echo "=== Verifying health endpoint through nginx ==="
-          if ! docker compose exec -T nginx wget -q -O- --timeout=10 http://app:8080/health; then
+          if ! docker compose exec -T nginx wget -q -O- --timeout=10 http://127.0.0.1:3000/health; then
             echo "Health check through nginx failed!"
             echo "--- nginx logs ---"
             docker compose logs nginx --tail=50
