@@ -268,11 +268,14 @@ describe("enrichment-process-manager", () => {
         actors_queried: 10,
         actors_processed: 5,
         actors_enriched: 3,
+        actors_with_death_page: 2,
         total_cost_usd: "1.5000",
         started_at: new Date("2024-01-01T00:00:00Z"),
       }
 
-      mockPool.query.mockResolvedValueOnce({ rows: [mockProgress] })
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockProgress] })
+        .mockResolvedValueOnce({ rows: [{ total_ms: "10000" }] }) // SUM(processing_time_ms)
 
       const progress = await processManager.getEnrichmentRunProgress(1)
 
@@ -282,12 +285,13 @@ describe("enrichment-process-manager", () => {
       expect(progress.actorsQueried).toBe(10)
       expect(progress.actorsProcessed).toBe(5)
       expect(progress.actorsEnriched).toBe(3)
+      expect(progress.actorsWithDeathPage).toBe(2)
       expect(progress.totalCostUsd).toBe(1.5)
       expect(progress.progressPercentage).toBe(50.0)
     })
 
-    it("should calculate estimated time remaining", async () => {
-      const startedAt = new Date(Date.now() - 10000) // 10 seconds ago
+    it("should calculate estimated time remaining using actual processing time", async () => {
+      const startedAt = new Date(Date.now() - 30000) // 30 seconds ago (wall clock)
       const mockProgress = {
         status: "running",
         current_actor_index: 5,
@@ -295,17 +299,21 @@ describe("enrichment-process-manager", () => {
         actors_queried: 10,
         actors_processed: 5,
         actors_enriched: 3,
+        actors_with_death_page: 2,
         total_cost_usd: "1.5000",
         started_at: startedAt,
       }
 
-      mockPool.query.mockResolvedValueOnce({ rows: [mockProgress] })
+      // Total actual processing time: 10,000ms for 5 actors = 2000ms/actor
+      // 5 actors remaining × 2000ms = 10,000ms estimated
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockProgress] })
+        .mockResolvedValueOnce({ rows: [{ total_ms: "10000" }] }) // SUM(processing_time_ms)
 
       const progress = await processManager.getEnrichmentRunProgress(1)
 
-      // Should estimate ~10 seconds remaining (5 actors left at 2 sec/actor)
-      expect(progress.estimatedTimeRemainingMs).toBeGreaterThan(9000)
-      expect(progress.estimatedTimeRemainingMs).toBeLessThan(11000)
+      // Should estimate 10,000ms remaining (not inflated by wall clock)
+      expect(progress.estimatedTimeRemainingMs).toBe(10000)
     })
 
     it("should throw error if run not found", async () => {

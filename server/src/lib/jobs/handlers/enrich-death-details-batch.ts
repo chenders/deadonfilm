@@ -53,6 +53,7 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
           actorsQueried: progress.actorsQueried,
           actorsProcessed: progress.actorsProcessed,
           actorsEnriched: progress.actorsEnriched,
+          actorsWithDeathPage: progress.actorsWithDeathPage,
           totalCostUsd: progress.totalCostUsd,
         })
 
@@ -104,6 +105,7 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
       actorsQueried: number
       actorsProcessed: number
       actorsEnriched: number
+      actorsWithDeathPage: number
       totalCostUsd: number
     }
   ): Promise<void> {
@@ -117,8 +119,9 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
              actors_queried = $3,
              actors_processed = $4,
              actors_enriched = $5,
-             total_cost_usd = $6
-         WHERE id = $7`,
+             total_cost_usd = $6,
+             actors_with_death_page = $7
+         WHERE id = $8`,
         [
           progress.currentActorIndex,
           progress.currentActorName,
@@ -126,6 +129,7 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
           progress.actorsProcessed,
           progress.actorsEnriched,
           progress.totalCostUsd,
+          progress.actorsWithDeathPage,
           runId,
         ]
       )

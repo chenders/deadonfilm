@@ -37,6 +37,8 @@ vi.mock("./death-sources/orchestrator.js", () => {
       private actorsEnriched = 0
       private totalCost = 0
 
+      setRunLogger = vi.fn()
+
       enrichActor = vi.fn().mockImplementation(async () => {
         this.actorsProcessed++
         const hasSubstantiveEnrichment =
@@ -63,6 +65,17 @@ vi.mock("./death-sources/orchestrator.js", () => {
     CostExceededError: class CostExceededError extends Error {},
   }
 })
+
+// Mock RunLogger
+vi.mock("./run-logger.js", () => ({
+  RunLogger: class MockRunLogger {
+    info = vi.fn()
+    warn = vi.fn()
+    error = vi.fn()
+    debug = vi.fn()
+    flush = vi.fn().mockResolvedValue(undefined)
+  },
+}))
 
 // Mock cache
 vi.mock("./cache.js", () => ({
