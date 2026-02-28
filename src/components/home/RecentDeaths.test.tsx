@@ -343,6 +343,7 @@ describe("RecentDeaths", () => {
 
     const preloadLink = document.head.querySelector('link[rel="preload"][as="image"]')
     expect(preloadLink).not.toBeNull()
+    expect(preloadLink!.getAttribute("href")).toBe("https://image.tmdb.org/t/p/w92/path1.jpg")
     expect(preloadLink!.getAttribute("imagesrcset")).toContain(
       "image.tmdb.org/t/p/w92/path1.jpg 92w"
     )
@@ -350,6 +351,34 @@ describe("RecentDeaths", () => {
       "image.tmdb.org/t/p/w185/path1.jpg 185w"
     )
     expect(preloadLink!.getAttribute("imagesizes")).toBe("80px")
+  })
+
+  it("renders preload link with href for fallback profile URL", async () => {
+    const fallbackDeaths = {
+      deaths: [
+        {
+          ...mockDeaths.deaths[1], // no profile_path
+          id: 20,
+          fallback_profile_url: "https://example.com/fallback.jpg",
+        },
+        mockDeaths.deaths[0],
+        mockDeaths.deaths[2],
+        mockDeaths.deaths[3],
+      ],
+    }
+    vi.mocked(api.getRecentDeaths).mockResolvedValue(fallbackDeaths)
+
+    renderWithProviders(<RecentDeaths />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("recent-deaths")).toBeInTheDocument()
+    })
+
+    const preloadLink = document.head.querySelector('link[rel="preload"][as="image"]')
+    expect(preloadLink).not.toBeNull()
+    expect(preloadLink!.getAttribute("href")).toBe("https://example.com/fallback.jpg")
+    expect(preloadLink!.getAttribute("fetchpriority")).toBe("high")
+    expect(preloadLink!.getAttribute("imagesrcset")).toBeNull()
   })
 
   it("does not render preload link when first 3 visible cards lack images", async () => {

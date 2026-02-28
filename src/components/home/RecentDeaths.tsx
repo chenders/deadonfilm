@@ -65,6 +65,7 @@ export default function RecentDeaths() {
           {
             rel: "preload",
             as: "image",
+            href: lcpSrcSm,
             imagesrcset: `${lcpSrcSm} 92w, ${lcpSrcLg} 185w`,
             imagesizes: "80px",
             fetchpriority: "high",
