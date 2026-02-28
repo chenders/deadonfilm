@@ -91,7 +91,7 @@ services:
 
   app:
     image: ghcr.io/chenders/deadonfilm:${IMAGE_TAG:-latest}
-    container_name: deadonfilm-app
+    # No container_name — allows `docker compose --scale app=2` for blue-green deploys
     restart: unless-stopped
     expose:
       - "8080"

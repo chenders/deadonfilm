@@ -87,36 +87,119 @@ jobs:
           # Pull images, ignoring those with build configs (like db)
           docker compose pull --ignore-buildable
 
-          # Start containers and wait for all to be healthy
-          # Using --force-recreate to ensure containers use the new image
-          echo "=== Starting containers ==="
-          if ! docker compose up -d --force-recreate --remove-orphans --wait --wait-timeout 120; then
-            echo "=== Container health check failed! ==="
+          # ─── Phase 1: Non-traffic services ───
+          # Recreate worker, cron, and agent first — these don't serve user traffic
+          echo "=== Phase 1: Updating non-traffic services ==="
+          docker compose up -d --force-recreate --no-deps worker cron agent
+
+          # ─── Phase 2: Blue-green app swap ───
+          echo "=== Phase 2: Blue-green app deployment ==="
+
+          # Capture current app container IDs (empty on first deploy)
+          OLD_APPS=$(docker compose ps -q app 2>/dev/null || true)
+          OLD_APP_COUNT=$(echo "$OLD_APPS" | grep -c . || true)
+
+          if [ "$OLD_APP_COUNT" -gt 1 ]; then
+            echo "WARNING: Found $OLD_APP_COUNT app containers (stale state from prior deploy)"
+            echo "Scaling down to 1 before proceeding..."
+            docker compose up -d --scale app=1 --no-recreate app
+            OLD_APPS=$(docker compose ps -q app 2>/dev/null || true)
+          fi
+
+          OLD_APP=$(echo "$OLD_APPS" | head -n1)
+
+          if [ -z "$OLD_APP" ]; then
+            # First deploy — no existing container, just start normally
+            echo "No existing app container — performing initial deploy"
+            docker compose up -d --wait --wait-timeout 120 app
+          else
+            echo "Old app container: $OLD_APP"
+
+            # Scale to 2: keeps old container (--no-recreate), starts new one with fresh image
+            docker compose up -d --scale app=2 --no-recreate app
+
+            # Identify the new container (the one that isn't OLD_APP)
+            NEW_APP=""
+            for cid in $(docker compose ps -q app); do
+              if [ "$cid" != "$OLD_APP" ]; then
+                NEW_APP="$cid"
+                break
+              fi
+            done
+
+            if [ -z "$NEW_APP" ]; then
+              echo "ERROR: Could not identify new app container"
+              docker compose ps -a
+              exit 1
+            fi
+            echo "New app container: $NEW_APP"
+
+            # Poll health on new container directly (bypasses Docker's start_period)
+            echo "Waiting for new container to become healthy..."
+            ATTEMPTS=0
+            MAX_ATTEMPTS=30
+            while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+              if docker exec "$NEW_APP" wget -T 5 -q --spider http://localhost:8080/health 2>/dev/null; then
+                echo "New container is healthy after $((ATTEMPTS * 2))s"
+                break
+              fi
+              ATTEMPTS=$((ATTEMPTS + 1))
+              sleep 2
+            done
+
+            if [ $ATTEMPTS -eq $MAX_ATTEMPTS ]; then
+              echo "ERROR: New container failed health check after $((MAX_ATTEMPTS * 2))s"
+              echo "--- new container logs ---"
+              docker logs "$NEW_APP" --tail=100
+              echo "Rolling back: stopping new container, old container is untouched"
+              docker stop --time 5 "$NEW_APP" && docker rm "$NEW_APP" 2>/dev/null || true
+              # Reset scale back to 1 (the old container)
+              docker compose up -d --scale app=1 --no-recreate app
+              exit 1
+            fi
+
+            # Reload nginx while both containers are running — nginx re-resolves
+            # 'app' to both IPs and round-robins. This means when we stop the old
+            # container, proxy_next_upstream retries failed requests on the new one.
+            echo "Reloading nginx (both containers running)..."
+            docker compose exec -T nginx nginx -s reload
+
+            # Now stop the old container — requests to its IP fail fast (connection
+            # refused) and nginx retries on the new container via proxy_next_upstream
+            echo "Stopping old container..."
+            docker stop --time 5 "$OLD_APP" && docker rm "$OLD_APP"
+
+            # Reload nginx again to clean up — now resolves 'app' to new container only
+            echo "Reloading nginx (final, single container)..."
+            docker compose exec -T nginx nginx -s reload
+
+            # Reset compose state to scale=1 (so next deploy sees 1 container)
+            docker compose up -d --scale app=1 --no-recreate app
+          fi
+
+          # ─── Phase 3: Final verification ───
+          echo "=== Phase 3: Final verification ==="
+
+          # Ensure all services are up and healthy
+          if ! docker compose up -d --wait --wait-timeout 120 --no-recreate --remove-orphans; then
+            echo "=== Post-deploy health check failed! ==="
             docker compose ps -a
-            echo "--- db logs ---"
-            docker compose logs db --tail=50
             echo "--- app logs ---"
             docker compose logs app --tail=100
             echo "--- nginx logs ---"
             docker compose logs nginx --tail=100
-            echo "--- cron logs ---"
-            docker compose logs cron --tail=50
             exit 1
           fi
 
           echo "=== All containers healthy ==="
           docker compose ps
 
-          # Verify health endpoint from within Docker network
-          # Note: Can't use localhost:3000 because self-hosted runner is Docker-in-Docker
-          # The runner container can't reach ports bound to the Docker host
-          echo "=== Verifying health endpoint ==="
-          if ! docker compose exec -T nginx wget -q -O- --timeout=10 http://app:8080/health; then
-            echo "Health check failed!"
-            echo ""
+          # End-to-end health check through nginx (port 3000 → proxy → app:8080)
+          echo "=== Verifying health endpoint through nginx ==="
+          if ! docker compose exec -T nginx wget -q -O- --timeout=10 http://127.0.0.1:3000/health; then
+            echo "Health check through nginx failed!"
             echo "--- nginx logs ---"
             docker compose logs nginx --tail=50
-            echo ""
             echo "--- app logs ---"
             docker compose logs app --tail=100
             exit 1

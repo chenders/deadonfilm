@@ -479,7 +479,6 @@ services:
 
   app:
     image: ghcr.io/chenders/deadonfilm:${IMAGE_TAG:-latest}
-    container_name: deadonfilm-app
     restart: unless-stopped
     ports:
       - "3000:3000"   # nginx (frontend + API proxy)
