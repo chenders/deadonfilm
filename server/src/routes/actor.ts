@@ -188,9 +188,13 @@ export async function getActor(req: Request, res: Response) {
         .then((r) => r.rows[0] ?? null),
     ])
 
+    // Prefer DB values for birthday/deathday (DB may be updated before TMDB)
+    const effectiveBirthday = actorRecord.birthday ?? person.birthday
+    const effectiveDeathday = actorRecord.deathday ?? person.deathday
+
     // Get death info if deceased
     let deathInfo: ActorProfileResponse["deathInfo"] = null
-    if (person.deathday) {
+    if (effectiveDeathday) {
       // Fetch detailed death info flag and circumstances in parallel
       const [hasDetailedInfo, circumstancesRow] = await Promise.all([
         actorRecord.tmdb_id !== null
@@ -233,7 +237,7 @@ export async function getActor(req: Request, res: Response) {
         causeOfDeath: actorRecord.cause_of_death,
         causeOfDeathDetails: actorRecord.cause_of_death_details,
         wikipediaUrl: actorRecord.wikipedia_url,
-        ageAtDeath: actorRecord.age_at_death ?? calculateAge(person.birthday, person.deathday),
+        ageAtDeath: actorRecord.age_at_death ?? calculateAge(effectiveBirthday, effectiveDeathday),
         yearsLost: actorRecord.years_lost,
         hasDetailedDeathInfo: hasDetailedInfo,
         notableFactors: circumstancesRow?.notable_factors ?? null,
@@ -263,8 +267,8 @@ export async function getActor(req: Request, res: Response) {
         id: actorRecord.id,
         tmdbId: actorRecord.tmdb_id ?? null,
         name: person.name,
-        birthday: person.birthday,
-        deathday: person.deathday,
+        birthday: effectiveBirthday,
+        deathday: effectiveDeathday,
         biography,
         biographySourceUrl,
         biographySourceType,

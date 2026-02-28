@@ -88,6 +88,7 @@ export const CACHE_KEYS = {
   actor: (actorId: number) => ({
     profile: buildCacheKey(CACHE_PREFIX.ACTOR, { id: actorId, v: 2 }),
     death: buildCacheKey(CACHE_PREFIX.ACTOR, { id: actorId, type: "death" }),
+    related: buildCacheKey(CACHE_PREFIX.RELATED_ACTORS, { id: actorId }),
   }),
   movie: (tmdbId: number) => ({
     details: buildCacheKey(CACHE_PREFIX.MOVIE, { id: tmdbId }),
