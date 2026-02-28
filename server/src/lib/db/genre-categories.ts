@@ -2,41 +2,35 @@
  * Genre category database functions.
  *
  * Provides enriched genre data for the genres index page, including
- * featured actors, top causes of death, and top movies per genre.
+ * top causes of death and top movies per genre.
  */
 
 import { getPool } from "./pool.js"
-import type {
-  GenreCategoryEnriched,
-  GenreFeaturedActor,
-  GenreTopCause,
-  GenreTopMovie,
-} from "./types.js"
+import type { GenreCategoryEnriched, GenreTopCause, GenreTopMovie } from "./types.js"
 import { filterRedundantCauses } from "./cause-categories.js"
 import { createCauseSlug } from "../cause-categories.js"
 
 // Maximum number of top causes to display per genre
 const MAX_CAUSES_PER_GENRE = 3
 
-// Candidates per genre for greedy deduplication (movie/actor uniqueness across genres)
+// Candidates per genre for greedy deduplication (movie uniqueness across genres)
 const CANDIDATES_PER_GENRE = 10
 
 /**
  * Get enriched genre categories for the index page.
  *
- * Runs 4 parallel queries keyed by genre name:
+ * Runs 3 parallel queries keyed by genre name:
  * 1. Genre counts (movies with deceased cast per genre)
  * 2. Top movie per genre (most popular with backdrop)
- * 3. Featured actor per genre (most popular deceased non-obscure)
- * 4. Top 3 causes per genre (normalized, deduplicated by actor)
+ * 3. Top 3 causes per genre (normalized, deduplicated by actor)
  *
  * @returns Array of enriched genre categories sorted by movie count desc
  */
 export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
   const db = getPool()
 
-  // Run all 4 queries in parallel — they are independent
-  const [genresResult, moviesResult, featuredResult, causesResult] = await Promise.all([
+  // Run all 3 queries in parallel — they are independent
+  const [genresResult, moviesResult, causesResult] = await Promise.all([
     // 1. Genre counts
     db.query<{ genre: string; count: string }>(`
         SELECT unnest(genres) as genre, COUNT(*) as count
@@ -84,54 +78,7 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
       [CANDIDATES_PER_GENRE]
     ),
 
-    // 3. Featured actor candidates per genre (most popular deceased non-obscure)
-    db.query<{
-      genre: string
-      id: number
-      tmdb_id: number | null
-      name: string
-      profile_path: string | null
-      fallback_profile_url: string | null
-      cause_of_death: string | null
-    }>(
-      `
-        WITH distinct_genre_actors AS (
-          SELECT DISTINCT ON (g.genre, a.id)
-            g.genre,
-            a.id,
-            a.tmdb_id,
-            a.name,
-            a.profile_path,
-            a.fallback_profile_url,
-            a.cause_of_death,
-            a.dof_popularity
-          FROM actors a
-          JOIN actor_movie_appearances ama ON a.id = ama.actor_id
-          JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
-          CROSS JOIN LATERAL unnest(m.genres) AS g(genre)
-          WHERE a.deathday IS NOT NULL
-            AND a.is_obscure = false
-            AND m.genres IS NOT NULL
-          ORDER BY g.genre, a.id, a.dof_popularity DESC NULLS LAST
-        ),
-        genre_actors AS (
-          SELECT
-            genre, id, tmdb_id, name, profile_path, fallback_profile_url, cause_of_death,
-            ROW_NUMBER() OVER (
-              PARTITION BY genre
-              ORDER BY dof_popularity DESC NULLS LAST, id DESC
-            ) as rn
-          FROM distinct_genre_actors
-        )
-        SELECT genre, id, tmdb_id, name, profile_path, fallback_profile_url, cause_of_death
-        FROM genre_actors
-        WHERE rn <= $1
-        ORDER BY genre, rn
-      `,
-      [CANDIDATES_PER_GENRE]
-    ),
-
-    // 4. Top causes per genre (count distinct actors to avoid inflation)
+    // 3. Top causes per genre (count distinct actors to avoid inflation)
     db.query<{
       genre: string
       cause: string
@@ -180,25 +127,9 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
     movieCandidatesByGenre.set(row.genre, existing)
   }
 
-  const actorCandidatesByGenre = new Map<string, GenreFeaturedActor[]>()
-  for (const row of featuredResult.rows) {
-    const existing = actorCandidatesByGenre.get(row.genre) || []
-    existing.push({
-      id: row.id,
-      tmdbId: row.tmdb_id,
-      name: row.name,
-      profilePath: row.profile_path,
-      fallbackProfileUrl: row.fallback_profile_url,
-      causeOfDeath: row.cause_of_death,
-    })
-    actorCandidatesByGenre.set(row.genre, existing)
-  }
-
-  // Greedy assignment: iterate genres by count desc, pick first unused movie/actor
+  // Greedy assignment: iterate genres by count desc, pick first unused movie
   const usedMovieIds = new Set<number>()
-  const usedActorIds = new Set<number>()
   const moviesByGenre = new Map<string, GenreTopMovie>()
-  const featuredByGenre = new Map<string, GenreFeaturedActor>()
 
   for (const row of genresResult.rows) {
     const movieCandidates = movieCandidatesByGenre.get(row.genre) || []
@@ -206,13 +137,6 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
     if (picked) {
       usedMovieIds.add(picked.tmdbId)
       moviesByGenre.set(row.genre, picked)
-    }
-
-    const actorCandidates = actorCandidatesByGenre.get(row.genre) || []
-    const pickedActor = actorCandidates.find((a) => !usedActorIds.has(a.id))
-    if (pickedActor) {
-      usedActorIds.add(pickedActor.id)
-      featuredByGenre.set(row.genre, pickedActor)
     }
   }
 
@@ -229,7 +153,6 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
 
   // Filter out redundant causes and keep only top N
   for (const [genre, causes] of causesByGenre) {
-    // filterRedundantCauses accepts { cause, count, slug }[] — same shape
     const filtered = filterRedundantCauses(causes)
     causesByGenre.set(genre, filtered.slice(0, MAX_CAUSES_PER_GENRE))
   }
@@ -241,7 +164,6 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, ""),
-    featuredActor: featuredByGenre.get(row.genre) || null,
     topCauses: causesByGenre.get(row.genre) || [],
     topMovie: moviesByGenre.get(row.genre) || null,
   }))

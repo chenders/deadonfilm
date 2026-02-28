@@ -490,15 +490,6 @@ export interface DeathsByDecadeOptions {
 }
 
 // Genre category types (enriched for index page cards)
-export interface GenreFeaturedActor {
-  id: number
-  tmdbId: number | null
-  name: string
-  profilePath: string | null
-  fallbackProfileUrl: string | null
-  causeOfDeath: string | null
-}
-
 export interface GenreTopCause {
   cause: string
   count: number
@@ -516,7 +507,6 @@ export interface GenreCategoryEnriched {
   genre: string
   count: number
   slug: string
-  featuredActor: GenreFeaturedActor | null
   topCauses: GenreTopCause[]
   topMovie: GenreTopMovie | null
 }

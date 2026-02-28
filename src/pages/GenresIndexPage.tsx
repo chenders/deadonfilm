@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useGenreCategories } from "@/hooks/useMoviesByGenre"
-import { FilmReelIcon, SkullIcon } from "@/components/icons"
+import { FilmReelIcon } from "@/components/icons"
 import type { GenreCategory } from "@/types"
-import { getProfileUrl, getBackdropUrl } from "@/services/api"
-import { createMovieSlug, createActorSlug } from "@/utils/slugify"
+import { getBackdropUrl } from "@/services/api"
+import { createMovieSlug } from "@/utils/slugify"
 
 // Maximum number of top causes to display per genre card
 const MAX_DISPLAYED_CAUSES = 3
@@ -14,10 +14,7 @@ interface GenreCardProps {
 }
 
 function GenreCard({ category }: GenreCardProps) {
-  const { featuredActor, topCauses, topMovie } = category
-  const featuredActorImg =
-    featuredActor &&
-    (getProfileUrl(featuredActor.profilePath, "w45") || featuredActor.fallbackProfileUrl)
+  const { topCauses, topMovie } = category
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-lg bg-beige shadow-md transition-shadow hover:shadow-lg">
@@ -56,31 +53,6 @@ function GenreCard({ category }: GenreCardProps) {
             <span className="text-xs text-overlay-text/90">
               {topMovie.title}
               {topMovie.releaseYear && ` (${topMovie.releaseYear})`}
-            </span>
-          </Link>
-        )}
-
-        {/* Featured Actor Badge (links to actor page) */}
-        {featuredActor && (
-          <Link
-            to={`/actor/${createActorSlug(featuredActor.name, featuredActor.id)}`}
-            className="pointer-events-auto absolute bottom-3 left-3 z-10 flex items-center gap-2 rounded-full bg-overlay/80 py-1 pl-1 pr-3 transition-colors hover:bg-overlay/90"
-          >
-            {featuredActorImg ? (
-              <img
-                src={featuredActorImg}
-                alt={featuredActor.name}
-                loading="lazy"
-                decoding="async"
-                className="h-7 w-7 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brown-medium/50">
-                <SkullIcon size={14} className="text-overlay-text/70" />
-              </div>
-            )}
-            <span className="text-[10px] font-medium uppercase tracking-wide text-overlay-text">
-              Top Actor: {featuredActor.name}
             </span>
           </Link>
         )}

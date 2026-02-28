@@ -64,31 +64,7 @@ describe("getGenreCategories", () => {
       ],
     })
 
-    // Query 3: Featured actor candidates per genre (multiple per genre for dedup)
-    mockQuery.mockResolvedValueOnce({
-      rows: [
-        {
-          genre: "Action",
-          id: 1001,
-          tmdb_id: 1001,
-          name: "Bruce Willis",
-          profile_path: "/bruce.jpg",
-          fallback_profile_url: null,
-          cause_of_death: "Frontotemporal dementia",
-        },
-        {
-          genre: "Drama",
-          id: 2002,
-          tmdb_id: 2002,
-          name: "Philip Seymour Hoffman",
-          profile_path: "/philip.jpg",
-          fallback_profile_url: "https://example.com/philip.jpg",
-          cause_of_death: "Drug overdose",
-        },
-      ],
-    })
-
-    // Query 4: Top causes per genre
+    // Query 3: Top causes per genre
     mockQuery.mockResolvedValueOnce({
       rows: [
         { genre: "Action", cause: "Cancer", count: "50" },
@@ -107,14 +83,6 @@ describe("getGenreCategories", () => {
       genre: "Drama",
       count: 200,
       slug: "drama",
-      featuredActor: {
-        id: 2002,
-        tmdbId: 2002,
-        name: "Philip Seymour Hoffman",
-        profilePath: "/philip.jpg",
-        fallbackProfileUrl: "https://example.com/philip.jpg",
-        causeOfDeath: "Drug overdose",
-      },
       topCauses: [
         { cause: "Natural Causes", count: 80, slug: "natural-causes" },
         { cause: "Cancer", count: 60, slug: "cancer" },
@@ -132,14 +100,6 @@ describe("getGenreCategories", () => {
       genre: "Action",
       count: 150,
       slug: "action",
-      featuredActor: {
-        id: 1001,
-        tmdbId: 1001,
-        name: "Bruce Willis",
-        profilePath: "/bruce.jpg",
-        fallbackProfileUrl: null,
-        causeOfDeath: "Frontotemporal dementia",
-      },
       topCauses: [
         { cause: "Cancer", count: 50, slug: "cancer" },
         { cause: "Heart Attack", count: 30, slug: "heart-attack" },
@@ -153,7 +113,7 @@ describe("getGenreCategories", () => {
     })
   })
 
-  it("deduplicates movies and actors across genres", async () => {
+  it("deduplicates movies across genres", async () => {
     // Query 1: Genre counts (Drama first = highest count, then Comedy)
     mockQuery.mockResolvedValueOnce({
       rows: [
@@ -198,65 +158,19 @@ describe("getGenreCategories", () => {
       ],
     })
 
-    // Query 3: Same actor (Robin Williams) is top candidate for both genres
-    mockQuery.mockResolvedValueOnce({
-      rows: [
-        // Drama candidates
-        {
-          genre: "Drama",
-          id: 7468,
-          tmdb_id: 2157,
-          name: "Robin Williams",
-          profile_path: "/robin.jpg",
-          fallback_profile_url: null,
-          cause_of_death: "Suicide",
-        },
-        {
-          genre: "Drama",
-          id: 1001,
-          tmdb_id: 1001,
-          name: "Philip Seymour Hoffman",
-          profile_path: "/philip.jpg",
-          fallback_profile_url: null,
-          cause_of_death: "Drug overdose",
-        },
-        // Comedy candidates — Robin Williams also top here
-        {
-          genre: "Comedy",
-          id: 7468,
-          tmdb_id: 2157,
-          name: "Robin Williams",
-          profile_path: "/robin.jpg",
-          fallback_profile_url: null,
-          cause_of_death: "Suicide",
-        },
-        {
-          genre: "Comedy",
-          id: 2002,
-          tmdb_id: 2002,
-          name: "John Candy",
-          profile_path: "/candy.jpg",
-          fallback_profile_url: null,
-          cause_of_death: "Heart attack",
-        },
-      ],
-    })
-
-    // Query 4: Causes
+    // Query 3: Causes
     mockQuery.mockResolvedValueOnce({ rows: [] })
 
     const result = await getGenreCategories()
 
-    // Drama (highest count) gets Titanic and Robin Williams
+    // Drama (highest count) gets Titanic
     expect(result[0].topMovie?.title).toBe("Titanic")
-    expect(result[0].featuredActor?.name).toBe("Robin Williams")
 
-    // Comedy gets the next available: The Hangover and John Candy
+    // Comedy gets the next available: The Hangover
     expect(result[1].topMovie?.title).toBe("The Hangover")
-    expect(result[1].featuredActor?.name).toBe("John Candy")
   })
 
-  it("returns null for missing featured actor and top movie", async () => {
+  it("returns null for missing top movie", async () => {
     // Query 1: Genre counts
     mockQuery.mockResolvedValueOnce({
       rows: [{ genre: "Western", count: "10" }],
@@ -265,10 +179,7 @@ describe("getGenreCategories", () => {
     // Query 2: No top movie
     mockQuery.mockResolvedValueOnce({ rows: [] })
 
-    // Query 3: No featured actor
-    mockQuery.mockResolvedValueOnce({ rows: [] })
-
-    // Query 4: No causes
+    // Query 3: No causes
     mockQuery.mockResolvedValueOnce({ rows: [] })
 
     const result = await getGenreCategories()
@@ -278,7 +189,6 @@ describe("getGenreCategories", () => {
       genre: "Western",
       count: 10,
       slug: "western",
-      featuredActor: null,
       topCauses: [],
       topMovie: null,
     })
@@ -293,10 +203,7 @@ describe("getGenreCategories", () => {
     // Query 2: Top movie
     mockQuery.mockResolvedValueOnce({ rows: [] })
 
-    // Query 3: Featured actor
-    mockQuery.mockResolvedValueOnce({ rows: [] })
-
-    // Query 4: Causes
+    // Query 3: Causes
     mockQuery.mockResolvedValueOnce({
       rows: [
         { genre: "Horror", cause: "Cancer", count: "20" },
@@ -319,8 +226,7 @@ describe("getGenreCategories", () => {
     // Query 1: No genres
     mockQuery.mockResolvedValueOnce({ rows: [] })
 
-    // Query 2-4: Empty
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+    // Query 2-3: Empty
     mockQuery.mockResolvedValueOnce({ rows: [] })
     mockQuery.mockResolvedValueOnce({ rows: [] })
 
@@ -335,8 +241,7 @@ describe("getGenreCategories", () => {
       rows: [{ genre: "Science Fiction", count: "75" }],
     })
 
-    // Query 2-4: Empty
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+    // Query 2-3: Empty
     mockQuery.mockResolvedValueOnce({ rows: [] })
     mockQuery.mockResolvedValueOnce({ rows: [] })
 
@@ -345,14 +250,13 @@ describe("getGenreCategories", () => {
     expect(result[0].slug).toBe("science-fiction")
   })
 
-  it("runs exactly 4 queries", async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+  it("runs exactly 3 queries", async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] })
     mockQuery.mockResolvedValueOnce({ rows: [] })
     mockQuery.mockResolvedValueOnce({ rows: [] })
 
     await getGenreCategories()
 
-    expect(mockQuery).toHaveBeenCalledTimes(4)
+    expect(mockQuery).toHaveBeenCalledTimes(3)
   })
 })
