@@ -35,11 +35,11 @@ describe("getGenreCategories", () => {
   })
 
   it("returns enriched genre categories with all data", async () => {
-    // Query 1: Genre counts
+    // Query 1: Genre counts (ordered by count DESC as in production SQL)
     mockQuery.mockResolvedValueOnce({
       rows: [
-        { genre: "Action", count: "150" },
         { genre: "Drama", count: "200" },
+        { genre: "Action", count: "150" },
       ],
     })
 
@@ -101,33 +101,8 @@ describe("getGenreCategories", () => {
 
     expect(result).toHaveLength(2)
 
-    // Action genre
+    // Drama genre (highest count, first in results)
     expect(result[0]).toEqual({
-      genre: "Action",
-      count: 150,
-      slug: "action",
-      featuredActor: {
-        id: 1001,
-        tmdbId: 1001,
-        name: "Bruce Willis",
-        profilePath: "/bruce.jpg",
-        fallbackProfileUrl: null,
-        causeOfDeath: "Frontotemporal dementia",
-      },
-      topCauses: [
-        { cause: "Cancer", count: 50, slug: "cancer" },
-        { cause: "Heart Attack", count: 30, slug: "heart-attack" },
-      ],
-      topMovie: {
-        tmdbId: 694,
-        title: "Die Hard",
-        releaseYear: 1988,
-        backdropPath: "/diehard.jpg",
-      },
-    })
-
-    // Drama genre
-    expect(result[1]).toEqual({
       genre: "Drama",
       count: 200,
       slug: "drama",
@@ -148,6 +123,31 @@ describe("getGenreCategories", () => {
         title: "Schindler's List",
         releaseYear: 1993,
         backdropPath: "/schindlers.jpg",
+      },
+    })
+
+    // Action genre (second by count)
+    expect(result[1]).toEqual({
+      genre: "Action",
+      count: 150,
+      slug: "action",
+      featuredActor: {
+        id: 1001,
+        tmdbId: 1001,
+        name: "Bruce Willis",
+        profilePath: "/bruce.jpg",
+        fallbackProfileUrl: null,
+        causeOfDeath: "Frontotemporal dementia",
+      },
+      topCauses: [
+        { cause: "Cancer", count: 50, slug: "cancer" },
+        { cause: "Heart Attack", count: 30, slug: "heart-attack" },
+      ],
+      topMovie: {
+        tmdbId: 694,
+        title: "Die Hard",
+        releaseYear: 1988,
+        backdropPath: "/diehard.jpg",
       },
     })
   })

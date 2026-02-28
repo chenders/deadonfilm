@@ -218,8 +218,9 @@ describe("GenresIndexPage", () => {
       renderWithProviders(<GenresIndexPage />)
 
       await waitFor(() => {
-        // Western genre has no top movie
-        expect(screen.queryByRole("link", { name: /Western\)/ })).not.toBeInTheDocument()
+        // Only Action and Drama have movie badges (with year in parens)
+        const movieBadgeLinks = screen.getAllByRole("link", { name: /\(\d{4}\)/ })
+        expect(movieBadgeLinks).toHaveLength(2) // Die Hard (1988) and Schindler's List (1993)
       })
     })
   })

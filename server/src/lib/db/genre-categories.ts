@@ -94,8 +94,8 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
       cause_of_death: string | null
     }>(
       `
-        WITH genre_actors AS (
-          SELECT
+        WITH distinct_genre_actors AS (
+          SELECT DISTINCT ON (g.genre, a.id)
             g.genre,
             a.id,
             a.tmdb_id,
@@ -103,10 +103,7 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
             a.profile_path,
             a.fallback_profile_url,
             a.cause_of_death,
-            ROW_NUMBER() OVER (
-              PARTITION BY g.genre
-              ORDER BY a.dof_popularity DESC NULLS LAST
-            ) as rn
+            a.dof_popularity
           FROM actors a
           JOIN actor_movie_appearances ama ON a.id = ama.actor_id
           JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
@@ -114,6 +111,16 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
           WHERE a.deathday IS NOT NULL
             AND a.is_obscure = false
             AND m.genres IS NOT NULL
+          ORDER BY g.genre, a.id, a.dof_popularity DESC NULLS LAST
+        ),
+        genre_actors AS (
+          SELECT
+            genre, id, tmdb_id, name, profile_path, fallback_profile_url, cause_of_death,
+            ROW_NUMBER() OVER (
+              PARTITION BY genre
+              ORDER BY dof_popularity DESC NULLS LAST
+            ) as rn
+          FROM distinct_genre_actors
         )
         SELECT genre, id, tmdb_id, name, profile_path, fallback_profile_url, cause_of_death
         FROM genre_actors
