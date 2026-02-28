@@ -251,20 +251,22 @@ export async function getEnrichmentRunProgress(runId: number) {
     actors_queried: number
     actors_processed: number
     actors_enriched: number
+    actors_with_death_page: number
     total_cost_usd: number
     started_at: Date
   }>(
     `SELECT
-      status,
-      current_actor_index,
-      current_actor_name,
-      actors_queried,
-      actors_processed,
-      actors_enriched,
-      total_cost_usd,
-      started_at
-    FROM enrichment_runs
-    WHERE id = $1`,
+      er.status,
+      er.current_actor_index,
+      er.current_actor_name,
+      er.actors_queried,
+      er.actors_processed,
+      er.actors_enriched,
+      er.actors_with_death_page,
+      er.total_cost_usd,
+      er.started_at
+    FROM enrichment_runs er
+    WHERE er.id = $1`,
     [runId]
   )
 
@@ -281,12 +283,22 @@ export async function getEnrichmentRunProgress(runId: number) {
   // Calculate elapsed time
   const elapsedMs = Date.now() - new Date(row.started_at).getTime()
 
-  // Estimate time remaining (if running)
+  // Estimate time remaining using actual processing time (sum of per-actor times)
+  // instead of wall clock, which inflates when a slow actor is in progress
   let estimatedTimeRemainingMs: number | null = null
   if (row.status === "running" && row.actors_processed > 0 && row.actors_queried > 0) {
-    const msPerActor = elapsedMs / row.actors_processed
-    const actorsRemaining = row.actors_queried - row.actors_processed
-    estimatedTimeRemainingMs = Math.round(msPerActor * actorsRemaining)
+    const timeResult = await pool.query<{ total_ms: string }>(
+      `SELECT COALESCE(SUM(processing_time_ms), 0) as total_ms
+       FROM enrichment_run_actors WHERE run_id = $1`,
+      [runId]
+    )
+    const totalProcessingMs = parseInt(timeResult.rows[0]?.total_ms ?? "0", 10)
+
+    if (totalProcessingMs > 0) {
+      const msPerActor = totalProcessingMs / row.actors_processed
+      const actorsRemaining = row.actors_queried - row.actors_processed
+      estimatedTimeRemainingMs = Math.round(msPerActor * actorsRemaining)
+    }
   }
 
   return {
@@ -296,6 +308,7 @@ export async function getEnrichmentRunProgress(runId: number) {
     actorsQueried: row.actors_queried,
     actorsProcessed: row.actors_processed,
     actorsEnriched: row.actors_enriched,
+    actorsWithDeathPage: row.actors_with_death_page,
     totalCostUsd: parseFloat(row.total_cost_usd.toString()),
     progressPercentage: Math.round(progressPercentage * 10) / 10, // Round to 1 decimal
     elapsedMs,

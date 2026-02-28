@@ -272,6 +272,7 @@ export interface EnrichmentRunProgress {
   actorsQueried: number
   actorsProcessed: number
   actorsEnriched: number
+  actorsWithDeathPage: number
   totalCostUsd: number
   progressPercentage: number
   elapsedMs: number
@@ -574,8 +575,7 @@ export function useRunLogs(
   pageSize: number = 50,
   level?: string
 ): UseQueryResult<RunLogsResponse> {
-  const baseUrl =
-    runType === "death" ? "/admin/api/enrichment" : "/admin/api/biography-enrichment"
+  const baseUrl = runType === "death" ? "/admin/api/enrichment" : "/admin/api/biography-enrichment"
 
   return useQuery({
     queryKey: ["run-logs", runType, runId, page, pageSize, level],

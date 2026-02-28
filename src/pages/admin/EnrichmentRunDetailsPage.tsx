@@ -101,6 +101,8 @@ export default function EnrichmentRunDetailsPage() {
   // Overlay progress data on summary stats for real-time updates while running
   const displayProcessed = isRunning && progress ? progress.actorsProcessed : run.actors_processed
   const displayEnriched = isRunning && progress ? progress.actorsEnriched : run.actors_enriched
+  const displayDeathPage =
+    isRunning && progress ? progress.actorsWithDeathPage : run.actors_with_death_page
   const displayCost = isRunning && progress ? progress.totalCostUsd : parseFloat(run.total_cost_usd)
 
   return (
@@ -207,7 +209,7 @@ export default function EnrichmentRunDetailsPage() {
                   ? `${run.fill_rate}%`
                   : "N/A"
             }
-            subtext={`${run.actors_with_death_page} with death page`}
+            subtext={`${displayDeathPage} with death page`}
           />
           <StatCard
             label="Total Cost"
@@ -232,14 +234,6 @@ export default function EnrichmentRunDetailsPage() {
             <div>
               <dt className="text-admin-text-muted">Errors</dt>
               <dd className="text-admin-text-primary">{run.error_count}</dd>
-            </div>
-            <div>
-              <dt className="text-admin-text-muted">Links Followed</dt>
-              <dd className="text-admin-text-primary">{run.links_followed}</dd>
-            </div>
-            <div>
-              <dt className="text-admin-text-muted">Pages Fetched</dt>
-              <dd className="text-admin-text-primary">{run.pages_fetched}</dd>
             </div>
             {run.script_name && (
               <div>
