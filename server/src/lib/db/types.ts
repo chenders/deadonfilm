@@ -489,6 +489,38 @@ export interface DeathsByDecadeOptions {
   includeObscure?: boolean
 }
 
+// Genre category types (enriched for index page cards)
+export interface GenreFeaturedActor {
+  id: number
+  tmdbId: number | null
+  name: string
+  profilePath: string | null
+  fallbackProfileUrl: string | null
+  causeOfDeath: string | null
+}
+
+export interface GenreTopCause {
+  cause: string
+  count: number
+  slug: string
+}
+
+export interface GenreTopMovie {
+  tmdbId: number
+  title: string
+  releaseYear: number | null
+  backdropPath: string | null
+}
+
+export interface GenreCategoryEnriched {
+  genre: string
+  count: number
+  slug: string
+  featuredActor: GenreFeaturedActor | null
+  topCauses: GenreTopCause[]
+  topMovie: GenreTopMovie | null
+}
+
 export interface CauseCategoryStats {
   slug: string
   label: string
@@ -737,12 +769,6 @@ export interface InDetailResponse {
 // ============================================================================
 // Genre types
 // ============================================================================
-
-export interface GenreCategory {
-  genre: string
-  count: number
-  slug: string
-}
 
 export interface MovieByGenreRecord {
   tmdb_id: number

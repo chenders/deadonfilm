@@ -421,11 +421,13 @@ describe("cache operations with mocked Redis", () => {
       expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.DECADES}:*`, 100)
       expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.COVID_DEATHS}:*`, 100)
       expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.UNNATURAL_DEATHS}:*`, 100)
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.GENRES}:*`, 100)
       // Should delete simple key caches directly (no pattern)
       expect(mockInstrumentedDel).toHaveBeenCalledWith(
         CACHE_PREFIX.STATS,
         CACHE_PREFIX.TRIVIA,
-        CACHE_PREFIX.FEATURED_MOVIE
+        CACHE_PREFIX.FEATURED_MOVIE,
+        CACHE_PREFIX.GENRES
       )
       // Should invalidate prerender caches for death-related pages
       expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.PRERENDER}:*/deaths*`, 100)
