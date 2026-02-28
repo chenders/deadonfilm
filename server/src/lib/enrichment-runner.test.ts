@@ -510,7 +510,12 @@ describe("EnrichmentRunner", () => {
       expect(lastRunLoggerInstance!.flush).toHaveBeenCalled()
     })
 
-    it("should include actorsWithDeathPage in progress callbacks", async () => {
+    it("should track actorsWithDeathPage counter and phase in progress callbacks", async () => {
+      // Use circumstances longer than MIN_CIRCUMSTANCES_LENGTH (200) so
+      // hasDetailedDeathInfo is true and actorsWithDeathPage increments
+      const longCircumstances = "A".repeat(201)
+      mockEnrichResult = { ...defaultEnrichResult, circumstances: longCircumstances }
+
       mockQuery
         .mockResolvedValueOnce({
           rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
@@ -529,16 +534,23 @@ describe("EnrichmentRunner", () => {
 
       await runner.run()
 
-      // All progress calls should include actorsWithDeathPage
-      for (const call of onProgress.mock.calls) {
-        expect(call[0]).toHaveProperty("actorsWithDeathPage")
-        expect(typeof call[0].actorsWithDeathPage).toBe("number")
-      }
-
       // Should have both "processing" and "completed" phase updates
-      const phases = onProgress.mock.calls.map((call) => call[0].phase)
-      expect(phases).toContain("processing")
-      expect(phases).toContain("completed")
+      // Initial progress (completed, actorsProcessed=0), then per-actor: processing + completed
+      const processingCalls = onProgress.mock.calls.filter((c) => c[0].phase === "processing")
+      const completedCalls = onProgress.mock.calls.filter((c) => c[0].phase === "completed")
+      expect(processingCalls.length).toBe(1)
+      expect(completedCalls.length).toBe(2) // initial + post-enrichment
+
+      // Pre-enrichment: counter should be 0 (actor hasn't been processed yet)
+      expect(processingCalls[0][0].actorsWithDeathPage).toBe(0)
+
+      // Initial progress: counter should be 0
+      expect(completedCalls[0][0].actorsWithDeathPage).toBe(0)
+      expect(completedCalls[0][0].actorsProcessed).toBe(0)
+
+      // Post-enrichment: counter should be 1 (actor had substantive circumstances)
+      expect(completedCalls[1][0].actorsWithDeathPage).toBe(1)
+      expect(completedCalls[1][0].actorsProcessed).toBe(1)
     })
   })
 })
