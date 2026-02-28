@@ -250,23 +250,26 @@ gh api graphql -f query='
   }
 '
 
-# 9. Request Copilot re-review after all fixes
-gh pr edit 123 --add-reviewer Copilot
+# 9. Tell user to re-request Copilot review manually (no API exists for re-reviews)
+echo "To trigger Copilot re-review, click the 🔄 button next to Copilot in the Reviewers section on the PR page."
 ```
 
 ## Copilot Review Workflow
 
 ### Requesting Initial Review
 
-When creating a PR, Copilot auto-reviews if enabled in repo settings. To manually request:
+When creating a PR, Copilot auto-reviews if enabled in repo settings. To manually request the **first** review:
 
 ```bash
-# Assign Copilot as reviewer
+# Assign Copilot as reviewer on new PR (works for initial review only)
 gh pr create --reviewer Copilot --title "..." --body "..."
 
-# Or add to existing PR
-gh pr edit 123 --add-reviewer Copilot
+# Or add to existing PR that Copilot hasn't reviewed yet
+gh api repos/chenders/deadonfilm/pulls/123/requested_reviewers \
+  -X POST -f "reviewers[]=Copilot"
 ```
+
+**Re-reviews:** There is no API or CLI to re-request a review from Copilot (or any reviewer) after it has already submitted one. The API returns success but silently does nothing. This is a [known GitHub limitation](https://github.com/orgs/community/discussions/186152). Re-reviews must be requested manually via the GitHub web UI (click 🔄 next to Copilot's name in the Reviewers section).
 
 ### Reading Copilot Comments
 
@@ -290,7 +293,7 @@ gh pr view 123 --json reviews | \
 4. **Commit the fix** - Use descriptive commit message (see Commit Formatting section)
 5. **Reply to the comment** - Explain what you did
 6. **Resolve the thread** - Only after implementing AND replying
-7. **Request re-review** - Let Copilot verify your changes
+7. **Request re-review** - Tell user to click 🔄 in GitHub UI (no API exists for re-reviews)
 
 ### Responding to Copilot
 
@@ -310,16 +313,15 @@ gh api -X POST "repos/chenders/deadonfilm/pulls/123/comments/1234567/replies" \
 
 ### Requesting Re-review
 
-After implementing fixes and replying to comments:
+After implementing fixes and replying to comments, tell the user to re-request Copilot review manually:
 
-```bash
-# Re-assign Copilot to trigger re-review
-gh pr edit 123 --add-reviewer Copilot
-```
+> "To trigger a Copilot re-review, click the 🔄 re-request button next to Copilot's name in the Reviewers section on the PR page."
+
+**There is no API or CLI for re-reviews.** See [GitHub community discussion #186152](https://github.com/orgs/community/discussions/186152).
 
 **When Copilot re-reviews**:
-- After you re-assign it as reviewer
-- When you push new commits (if auto-review is enabled)
+- After the user clicks the re-request button in the GitHub UI
+- When you push new commits (if auto-review on push is enabled in repo settings)
 - When you mark the PR as ready for review (from draft)
 
 ## Commit Message Formatting
@@ -800,8 +802,8 @@ gh api graphql -f query='
   }
 '
 
-# 9. Request Copilot re-review
-gh pr edit 123 --add-reviewer Copilot
+# 9. Tell user to re-request Copilot review manually
+echo "To trigger Copilot re-review, click the 🔄 button next to Copilot in the Reviewers section on the PR page."
 ```
 
 ### Example 2: Complete Screenshot Workflow
@@ -924,19 +926,17 @@ gh api "repos/chenders/deadonfilm/pulls/123/comments" | \
 
 # Implement fixes, commit, reply, resolve (see Example 1)
 
-# Round 2: Request re-review
-gh pr edit 123 --add-reviewer Copilot
+# Round 2: Tell user to re-request review manually (no API for re-reviews)
+echo "Click 🔄 next to Copilot in the PR Reviewers section to trigger re-review."
 
-# Wait for Copilot to re-review (check PR page or use gh pr checks)
-
-# Read new comments
+# Wait for Copilot to re-review, then read new comments
 gh api "repos/chenders/deadonfilm/pulls/123/comments" | \
   jq '.[] | select(.user.login == "Copilot") | select(.created_at > "2026-01-25T12:00:00Z")'
 
 # Implement any remaining fixes, commit, reply, resolve
 
-# Round 3: Final re-review
-gh pr edit 123 --add-reviewer Copilot
+# Round 3: Tell user to re-request again
+echo "Click 🔄 next to Copilot in the PR Reviewers section to trigger re-review."
 
 # Once Copilot approves, merge
 gh pr merge 123 --squash
@@ -959,8 +959,11 @@ gh api graphql -f query='query { repository(owner: "OWNER", name: "REPO") { pull
 # Resolve thread
 gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "PRRT_..."}) { thread { isResolved } } }'
 
-# Request Copilot re-review
-gh pr edit PR --add-reviewer Copilot
+# Request Copilot re-review — NO API EXISTS for re-reviews
+# Tell user: "Click 🔄 next to Copilot in the PR Reviewers section"
+# Initial review only (before Copilot has reviewed):
+gh api repos/OWNER/REPO/pulls/PR/requested_reviewers \
+  -X POST -f "reviewers[]=Copilot"
 
 # Commit with heredoc
 git commit -m "$(cat <<'EOF'
@@ -992,4 +995,4 @@ Before committing/pushing:
 - [ ] Replied to review comments before resolving threads
 - [ ] Only resolved threads for implemented fixes (not declined suggestions)
 - [ ] Used thread IDs (`PRRT_`) for resolving, not comment IDs (`PRRC_`)
-- [ ] Requested Copilot re-review after implementing fixes
+- [ ] Told user to click 🔄 re-request button in GitHub UI for Copilot re-review

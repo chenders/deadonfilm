@@ -13,7 +13,7 @@ Focused guidance for GitHub Copilot code review on the Dead on Film repository.
 3. **NEVER use string interpolation in SQL** — always use parameterized queries (`$1`, `$2`)
 4. **NEVER skip tests** — PRs are not ready without tests; never defer to follow-up PRs
 5. **ALWAYS import `dotenv/config` first** in `server/scripts/*.ts`
-
+6. **Review ALL files thoroughly and surface ALL issues in a single pass, NOT just the most prominent ones.**
 ---
 
 ## Null Safety / Row Access

@@ -100,13 +100,12 @@ Review and respond to GitHub Copilot review comments on a pull request.
    - ✅ Resolve threads where you implemented the suggested fix
    - ❌ Do NOT resolve threads where you declined to make changes
 
-9. **Request another Copilot review if changes were made**
-   If any changes were committed and pushed, request a new Copilot review:
-   ```bash
-   gh pr edit {pr_number} --add-reviewer Copilot
-   ```
+9. **Notify user to request Copilot re-review**
+   If any changes were committed and pushed, tell the user:
 
-   This ensures Copilot reviews the fixes and any new issues introduced by the changes.
+   > "Changes pushed. To trigger a Copilot re-review, click the 🔄 re-request button next to Copilot's name in the Reviewers section on the PR page."
+
+   **Why manual?** GitHub has no API or CLI to re-request a review from a reviewer that has already submitted one. The REST API `POST /pulls/{pr}/requested_reviewers` and `gh pr edit --add-reviewer` only work for initial requests — they return success but silently do nothing for re-reviews. This is a [known GitHub limitation](https://github.com/orgs/community/discussions/186152).
 
 ## Example Responses
 
@@ -135,7 +134,7 @@ Before finishing, verify you have completed ALL of these steps:
 - [ ] Committed and pushed changes
 - [ ] Responded to each comment on GitHub
 - [ ] **Resolved implemented comment threads** (step 8 - don't skip!)
-- [ ] Requested Copilot re-review (if changes were made)
+- [ ] Notified user to manually re-request Copilot review (if changes were made)
 
 ## Notes
 
