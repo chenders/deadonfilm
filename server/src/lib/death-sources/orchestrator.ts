@@ -57,6 +57,7 @@ import { HollywoodReporterSource } from "./sources/hollywood-reporter.js"
 import { TMZSource } from "./sources/tmz.js"
 import { PeopleSource } from "./sources/people.js"
 import { BBCNewsSource } from "./sources/bbc-news.js"
+import { ReutersSource } from "./sources/reuters.js"
 import { GoogleNewsRSSSource } from "./sources/google-news-rss.js"
 import { BraveSearchSource } from "./sources/brave.js"
 import { FamilySearchSource } from "./sources/familysearch.js"
@@ -254,6 +255,7 @@ export class DeathEnrichmentOrchestrator {
       new GuardianSource(), // Guardian API - UK news (requires API key)
       new NYTimesSource(), // NYT Article Search API (requires API key)
       new APNewsSource(), // AP News (scraped)
+      new ReutersSource(), // Reuters - international wire service (scraped + archive.org fallback)
       new NewsAPISource(), // NewsAPI - aggregates 80,000+ sources (requires API key)
       new DeadlineSource(), // Deadline Hollywood - entertainment news (scraped)
       new VarietySource(), // Variety - entertainment trade publication (scraped)
@@ -464,11 +466,15 @@ export class DeathEnrichmentOrchestrator {
         if (error instanceof SourceAccessBlockedError) {
           this.logger.sourceBlocked(actor.name, source.type, error.statusCode, error.url)
           this.statusBar.log(`    BLOCKED (${error.statusCode}) - flagged for review`)
-          this.runLogger?.warn("Source blocked", {
-            actorId: actor.id,
-            statusCode: error.statusCode,
-            url: error.url,
-          }, source.name)
+          this.runLogger?.warn(
+            "Source blocked",
+            {
+              actorId: actor.id,
+              statusCode: error.statusCode,
+              url: error.url,
+            },
+            source.name
+          )
           logEntries.push({
             timestamp: new Date().toISOString(),
             level: "warn",
@@ -497,11 +503,15 @@ export class DeathEnrichmentOrchestrator {
           } else {
             this.statusBar.log(`    TIMEOUT (${error.timeoutMs}ms) - low-priority source, skipping`)
           }
-          this.runLogger?.warn("Source timeout", {
-            actorId: actor.id,
-            timeoutMs: error.timeoutMs,
-            highPriority: error.isHighPriority,
-          }, source.name)
+          this.runLogger?.warn(
+            "Source timeout",
+            {
+              actorId: actor.id,
+              timeoutMs: error.timeoutMs,
+              highPriority: error.isHighPriority,
+            },
+            source.name
+          )
           logEntries.push({
             timestamp: new Date().toISOString(),
             level: "warn",
@@ -574,10 +584,14 @@ export class DeathEnrichmentOrchestrator {
       if (!lookupResult.success || !lookupResult.data) {
         this.logger.sourceFailed(actor.name, source.type, lookupResult.error || "No data")
         this.statusBar.log(`    Failed: ${lookupResult.error || "No data"}`)
-        this.runLogger?.debug("Source failed", {
-          actorId: actor.id,
-          error: lookupResult.error || "No data",
-        }, source.name)
+        this.runLogger?.debug(
+          "Source failed",
+          {
+            actorId: actor.id,
+            error: lookupResult.error || "No data",
+          },
+          source.name
+        )
         logEntries.push({
           timestamp: new Date().toISOString(),
           level: "warn",
@@ -610,13 +624,17 @@ export class DeathEnrichmentOrchestrator {
       this.statusBar.log(
         `    Success! Content: ${lookupResult.source.confidence.toFixed(2)} | Reliability: ${srcReliability.toFixed(2)}`
       )
-      this.runLogger?.info("Source success", {
-        actorId: actor.id,
-        confidence: lookupResult.source.confidence,
-        reliability: srcReliability,
-        fieldsFound,
-        costUsd: sourceCost,
-      }, source.name)
+      this.runLogger?.info(
+        "Source success",
+        {
+          actorId: actor.id,
+          confidence: lookupResult.source.confidence,
+          reliability: srcReliability,
+          fieldsFound,
+          costUsd: sourceCost,
+        },
+        source.name
+      )
       logEntries.push({
         timestamp: new Date().toISOString(),
         level: "info",
