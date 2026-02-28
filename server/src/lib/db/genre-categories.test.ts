@@ -43,7 +43,7 @@ describe("getGenreCategories", () => {
       ],
     })
 
-    // Query 2: Top movie per genre
+    // Query 2: Top movie candidates per genre (multiple per genre for dedup)
     mockQuery.mockResolvedValueOnce({
       rows: [
         {
@@ -63,7 +63,7 @@ describe("getGenreCategories", () => {
       ],
     })
 
-    // Query 3: Featured actor per genre
+    // Query 3: Featured actor candidates per genre (multiple per genre for dedup)
     mockQuery.mockResolvedValueOnce({
       rows: [
         {
@@ -150,6 +150,109 @@ describe("getGenreCategories", () => {
         backdropPath: "/schindlers.jpg",
       },
     })
+  })
+
+  it("deduplicates movies and actors across genres", async () => {
+    // Query 1: Genre counts (Drama first = highest count, then Comedy)
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { genre: "Drama", count: "200" },
+        { genre: "Comedy", count: "150" },
+      ],
+    })
+
+    // Query 2: Same movie (Titanic) is top candidate for both genres
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        // Drama candidates
+        {
+          genre: "Drama",
+          tmdb_id: 597,
+          title: "Titanic",
+          release_year: 1997,
+          backdrop_path: "/titanic.jpg",
+        },
+        {
+          genre: "Drama",
+          tmdb_id: 100,
+          title: "Drama Backup",
+          release_year: 2000,
+          backdrop_path: "/backup.jpg",
+        },
+        // Comedy candidates — Titanic also top here, but should be skipped
+        {
+          genre: "Comedy",
+          tmdb_id: 597,
+          title: "Titanic",
+          release_year: 1997,
+          backdrop_path: "/titanic.jpg",
+        },
+        {
+          genre: "Comedy",
+          tmdb_id: 200,
+          title: "The Hangover",
+          release_year: 2009,
+          backdrop_path: "/hangover.jpg",
+        },
+      ],
+    })
+
+    // Query 3: Same actor (Robin Williams) is top candidate for both genres
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        // Drama candidates
+        {
+          genre: "Drama",
+          id: 7468,
+          tmdb_id: 2157,
+          name: "Robin Williams",
+          profile_path: "/robin.jpg",
+          fallback_profile_url: null,
+          cause_of_death: "Suicide",
+        },
+        {
+          genre: "Drama",
+          id: 1001,
+          tmdb_id: 1001,
+          name: "Philip Seymour Hoffman",
+          profile_path: "/philip.jpg",
+          fallback_profile_url: null,
+          cause_of_death: "Drug overdose",
+        },
+        // Comedy candidates — Robin Williams also top here
+        {
+          genre: "Comedy",
+          id: 7468,
+          tmdb_id: 2157,
+          name: "Robin Williams",
+          profile_path: "/robin.jpg",
+          fallback_profile_url: null,
+          cause_of_death: "Suicide",
+        },
+        {
+          genre: "Comedy",
+          id: 2002,
+          tmdb_id: 2002,
+          name: "John Candy",
+          profile_path: "/candy.jpg",
+          fallback_profile_url: null,
+          cause_of_death: "Heart attack",
+        },
+      ],
+    })
+
+    // Query 4: Causes
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const result = await getGenreCategories()
+
+    // Drama (highest count) gets Titanic and Robin Williams
+    expect(result[0].topMovie?.title).toBe("Titanic")
+    expect(result[0].featuredActor?.name).toBe("Robin Williams")
+
+    // Comedy gets the next available: The Hangover and John Candy
+    expect(result[1].topMovie?.title).toBe("The Hangover")
+    expect(result[1].featuredActor?.name).toBe("John Candy")
   })
 
   it("returns null for missing featured actor and top movie", async () => {

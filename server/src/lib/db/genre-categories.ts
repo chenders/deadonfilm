@@ -18,6 +18,9 @@ import { createCauseSlug } from "../cause-categories.js"
 // Maximum number of top causes to display per genre
 const MAX_CAUSES_PER_GENRE = 3
 
+// Candidates per genre for greedy deduplication (movie/actor uniqueness across genres)
+const CANDIDATES_PER_GENRE = 10
+
 /**
  * Get enriched genre categories for the index page.
  *
@@ -72,7 +75,7 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
     )
     SELECT genre, tmdb_id, title, release_year, backdrop_path
     FROM genre_movies
-    WHERE rn = 1
+    WHERE rn <= ${CANDIDATES_PER_GENRE}
   `)
 
   // Get featured actor per genre (most popular deceased non-obscure actor)
@@ -108,7 +111,7 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
     )
     SELECT genre, id, tmdb_id, name, profile_path, fallback_profile_url, cause_of_death
     FROM genre_actors
-    WHERE rn = 1
+    WHERE rn <= ${CANDIDATES_PER_GENRE}
   `)
 
   // Get top 3 causes per genre (count distinct actors to avoid inflation)
@@ -143,20 +146,23 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
     ORDER BY genre, count DESC
   `)
 
-  // Build maps for assembly
-  const moviesByGenre = new Map<string, GenreTopMovie>()
+  // Build candidate lists for greedy deduplication (multiple candidates per genre)
+  const movieCandidatesByGenre = new Map<string, GenreTopMovie[]>()
   for (const row of moviesResult.rows) {
-    moviesByGenre.set(row.genre, {
+    const existing = movieCandidatesByGenre.get(row.genre) || []
+    existing.push({
       tmdbId: row.tmdb_id,
       title: row.title,
       releaseYear: row.release_year,
       backdropPath: row.backdrop_path,
     })
+    movieCandidatesByGenre.set(row.genre, existing)
   }
 
-  const featuredByGenre = new Map<string, GenreFeaturedActor>()
+  const actorCandidatesByGenre = new Map<string, GenreFeaturedActor[]>()
   for (const row of featuredResult.rows) {
-    featuredByGenre.set(row.genre, {
+    const existing = actorCandidatesByGenre.get(row.genre) || []
+    existing.push({
       id: row.id,
       tmdbId: row.tmdb_id,
       name: row.name,
@@ -164,6 +170,29 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
       fallbackProfileUrl: row.fallback_profile_url,
       causeOfDeath: row.cause_of_death,
     })
+    actorCandidatesByGenre.set(row.genre, existing)
+  }
+
+  // Greedy assignment: iterate genres by count desc, pick first unused movie/actor
+  const usedMovieIds = new Set<number>()
+  const usedActorIds = new Set<number>()
+  const moviesByGenre = new Map<string, GenreTopMovie>()
+  const featuredByGenre = new Map<string, GenreFeaturedActor>()
+
+  for (const row of genresResult.rows) {
+    const movieCandidates = movieCandidatesByGenre.get(row.genre) || []
+    const picked = movieCandidates.find((m) => !usedMovieIds.has(m.tmdbId))
+    if (picked) {
+      usedMovieIds.add(picked.tmdbId)
+      moviesByGenre.set(row.genre, picked)
+    }
+
+    const actorCandidates = actorCandidatesByGenre.get(row.genre) || []
+    const pickedActor = actorCandidates.find((a) => !usedActorIds.has(a.id))
+    if (pickedActor) {
+      usedActorIds.add(pickedActor.id)
+      featuredByGenre.set(row.genre, pickedActor)
+    }
   }
 
   const causesByGenre = new Map<string, GenreTopCause[]>()
