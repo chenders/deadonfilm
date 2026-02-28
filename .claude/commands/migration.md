@@ -17,7 +17,7 @@ Create a new database migration with proper naming and validation.
    ```bash
    cd server && npm run migrate:create -- $ARGUMENTS
    ```
-   This generates a timestamped `.js` file in `server/migrations/`. Rename it to `.cjs` to match the project convention (89 of 98 migrations use `.cjs` with CommonJS exports).
+   This generates a timestamped `.js` file in `server/migrations/`. Rename it to `.cjs` to match the project convention (most migrations use `.cjs` with CommonJS exports).
 
 3. **Verify no timestamp conflicts**
    ```bash
@@ -60,7 +60,7 @@ Create a new database migration with proper naming and validation.
 ## Rules
 
 - **CRITICAL**: Never manually set migration timestamps — always use `npm run migrate:create`
-- Migration files should be `.cjs` (CommonJS) with `exports.up`/`exports.down` — this is the project convention (9 legacy `.js` migrations with ESM exports also exist but `.cjs` is preferred for new migrations)
+- Migration files should be `.cjs` (CommonJS) with `exports.up`/`exports.down` — this is the project convention (a small number of legacy `.js` migrations with ESM exports also exist but `.cjs` is preferred for new migrations)
 - Use JSDoc for types (not TypeScript imports)
 - Always implement both `up` AND `down`
 - The `down` must be a perfect reverse of `up` (drop what was added, restore what was removed)

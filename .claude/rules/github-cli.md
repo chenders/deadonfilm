@@ -293,7 +293,7 @@ gh pr view 123 --json reviews | \
 4. **Commit the fix** - Use descriptive commit message (see Commit Formatting section)
 5. **Reply to the comment** - Explain what you did
 6. **Resolve the thread** - Only after implementing AND replying
-7. **Request re-review** - Let Copilot verify your changes
+7. **Request re-review** - Tell user to click 🔄 in GitHub UI (no API exists for re-reviews)
 
 ### Responding to Copilot
 
@@ -995,4 +995,4 @@ Before committing/pushing:
 - [ ] Replied to review comments before resolving threads
 - [ ] Only resolved threads for implemented fixes (not declined suggestions)
 - [ ] Used thread IDs (`PRRT_`) for resolving, not comment IDs (`PRRC_`)
-- [ ] Requested Copilot re-review after implementing fixes
+- [ ] Told user to click 🔄 re-request button in GitHub UI for Copilot re-review
