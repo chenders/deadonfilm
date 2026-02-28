@@ -1,0 +1,27 @@
+{
+  "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$CLAUDE_FILE_PATH\" | grep -qE '\\.(ts|tsx|js|jsx|json|css)$' && npx prettier --write \"$CLAUDE_FILE_PATH\" 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$CLAUDE_FILE_PATH\" | grep -qE '\\.env($|\\.)' && echo 'BLOCK: .env files should not be edited by Claude — edit manually' && exit 1 || exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
