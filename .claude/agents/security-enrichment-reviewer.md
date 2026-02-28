@@ -19,8 +19,8 @@ Review changes in these directories for security issues:
 ## What to Check
 
 ### HTML Sanitization
-- All untrusted HTML MUST go through `htmlToText()` from `server/src/lib/death-sources/html-utils.ts`
-- Or through `sanitizeSourceText()` from `server/src/lib/shared/sanitize-source-text.ts`
+- All untrusted HTML MUST go through `htmlToText()` from `server/src/lib/death-sources/html-utils.ts` (or an equivalent HTML-to-text pipeline)
+- `sanitizeSourceText()` from `server/src/lib/shared/sanitize-source-text.ts` MAY be used **after** HTML has been converted to plain text as an additional text cleanup step — it is **not** an HTML sanitizer and MUST NOT be used directly on raw HTML
 - Simple regex like `/<[^>]+>/g` is INSUFFICIENT — flag it
 - Check for XSS vectors in text that gets stored in the database
 

@@ -1,23 +1,28 @@
 # Enrich Actor
 
-Run the full enrichment workflow for a single actor by name or TMDB ID.
+Run the full enrichment workflow for a single actor by name or TMDB actor ID.
 
 ## Arguments
 
-- `$ARGUMENTS` - Actor name (e.g., "John Wayne") or TMDB ID (e.g., 4165)
+- `$ARGUMENTS` - Actor name (e.g., "John Wayne") or TMDB actor ID as a bare number (e.g., 4165). Bare numeric values are always treated as TMDB IDs, not internal `actors.id` values.
 
 ## Instructions
 
 1. **Find the actor**
-   - If a TMDB ID is provided (numeric), look up directly
-   - If a name is provided, search the database (using parameterized query):
+   - If the argument is a bare number, treat it as a TMDB actor ID and look up the internal record:
      ```sql
      SELECT id, name, deathday, enriched_at, cause_of_death, biography_version
-     FROM actors WHERE name ILIKE '%' || $1 || '%' AND deathday IS NOT NULL
+     FROM actors WHERE tmdb_id = $1 AND deathday IS NOT NULL;
+     ```
+     Use the returned `id` as `<actor_id>` in subsequent steps.
+   - If a name is provided (non-numeric), search the database (using parameterized query):
+     ```sql
+     SELECT id, name, deathday, enriched_at, cause_of_death, biography_version
+     FROM actors WHERE name ILIKE $1 ESCAPE '\\' AND deathday IS NOT NULL
      ORDER BY dof_popularity DESC LIMIT 5;
      ```
-     Pass the actor name as `$1`. Escape any `%` or `_` characters in the input.
-   - If multiple matches, show them and ask the user which one
+     Build `$1` as a search pattern: escape `%`, `_`, and `\` in the actor name by prefixing with `\`, then wrap with `%` on both sides.
+   - If multiple matches, show them and ask the user which one. Use the selected record's `id` as `<actor_id>`.
 
 2. **Check current enrichment state**
    ```sql
