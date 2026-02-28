@@ -178,40 +178,13 @@ import { getPool } from "./db/pool.js"
 // Import types for local use (also re-exported above)
 import type { DeathInfoSource } from "./db/types.js"
 
+// Re-export genre-categories functions for backward compatibility
+export { getGenreCategories } from "./db/genre-categories.js"
+export type { GenreCategoryEnriched } from "./db/types.js"
+
 // ============================================================================
 // Movies by Genre functions (SEO category pages)
 // ============================================================================
-
-export interface GenreCategory {
-  genre: string
-  count: number
-  slug: string
-}
-
-export async function getGenreCategories(): Promise<GenreCategory[]> {
-  const db = getPool()
-
-  // Unnest the genres array and count movies per genre
-  const result = await db.query<{ genre: string; count: string }>(`
-    SELECT unnest(genres) as genre, COUNT(*) as count
-    FROM movies
-    WHERE genres IS NOT NULL
-      AND array_length(genres, 1) > 0
-      AND deceased_count > 0
-    GROUP BY genre
-    HAVING COUNT(*) >= 5
-    ORDER BY count DESC, genre
-  `)
-
-  return result.rows.map((row) => ({
-    genre: row.genre,
-    count: parseInt(row.count, 10),
-    slug: row.genre
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, ""),
-  }))
-}
 
 export interface MovieByGenreRecord {
   tmdb_id: number

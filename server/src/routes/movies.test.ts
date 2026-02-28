@@ -17,8 +17,37 @@ describe("getGenreCategoriesHandler", () => {
   let statusSpy: ReturnType<typeof vi.fn>
 
   const mockGenres = [
-    { genre: "Action", slug: "action", count: 150 },
-    { genre: "Drama", slug: "drama", count: 200 },
+    {
+      genre: "Action",
+      slug: "action",
+      count: 150,
+      featuredActor: {
+        id: 1001,
+        tmdbId: 1001,
+        name: "Bruce Willis",
+        profilePath: "/bruce.jpg",
+        fallbackProfileUrl: null,
+        causeOfDeath: "Cancer",
+      },
+      topCauses: [
+        { cause: "Cancer", count: 50, slug: "cancer" },
+        { cause: "Heart Attack", count: 30, slug: "heart-attack" },
+      ],
+      topMovie: {
+        tmdbId: 694,
+        title: "Die Hard",
+        releaseYear: 1988,
+        backdropPath: "/diehard.jpg",
+      },
+    },
+    {
+      genre: "Drama",
+      slug: "drama",
+      count: 200,
+      featuredActor: null,
+      topCauses: [],
+      topMovie: null,
+    },
   ]
 
   beforeEach(() => {

@@ -265,8 +265,14 @@ export async function invalidateDeathCaches(): Promise<void> {
     invalidateByPattern(`${CACHE_PREFIX.DECADES}:*`),
     invalidateByPattern(`${CACHE_PREFIX.COVID_DEATHS}:*`),
     invalidateByPattern(`${CACHE_PREFIX.UNNATURAL_DEATHS}:*`),
-    // STATS and TRIVIA use simple keys (no parameters), so use invalidateKeys
-    invalidateKeys(CACHE_PREFIX.STATS, CACHE_PREFIX.TRIVIA, CACHE_PREFIX.FEATURED_MOVIE),
+    invalidateByPattern(`${CACHE_PREFIX.GENRES}:*`),
+    // STATS, TRIVIA, and GENRES use simple keys (no parameters), so use invalidateKeys
+    invalidateKeys(
+      CACHE_PREFIX.STATS,
+      CACHE_PREFIX.TRIVIA,
+      CACHE_PREFIX.FEATURED_MOVIE,
+      CACHE_PREFIX.GENRES
+    ),
     // Invalidate prerendered pages that show death data (targeted, not all pages)
     invalidatePrerenderCache("/deaths"),
     invalidatePrerenderCache("/causes-of-death"),

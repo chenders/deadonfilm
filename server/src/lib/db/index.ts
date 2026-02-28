@@ -106,6 +106,9 @@ export {
 } from "./cause-categories.js"
 export type { CauseCategoryKey } from "./cause-categories.js"
 
+// Re-export genre-categories functions
+export { getGenreCategories } from "./genre-categories.js"
+
 // Re-export death-circumstances functions
 export {
   getActorDeathCircumstances,
