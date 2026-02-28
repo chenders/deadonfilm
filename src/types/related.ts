@@ -5,6 +5,7 @@ export interface RelatedActor {
   tmdbId: number | null
   name: string
   profilePath: string | null
+  fallbackProfileUrl: string | null
   deathday: string | null
   causeOfDeath: string | null
   birthday: string | null

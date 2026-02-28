@@ -190,6 +190,7 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
     tmdb_id: number | null
     name: string
     profile_path: string | null
+    fallback_profile_url: string | null
     cause_of_death: string | null
   }>(`
     WITH ranked_actors AS (
@@ -199,6 +200,7 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
         tmdb_id,
         name,
         profile_path,
+        fallback_profile_url,
         cause_of_death,
         ROW_NUMBER() OVER (
           PARTITION BY (EXTRACT(YEAR FROM deathday)::int / 10 * 10)
@@ -208,7 +210,7 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
       WHERE deathday IS NOT NULL
         AND is_obscure = false
     )
-    SELECT decade, id, tmdb_id, name, profile_path, cause_of_death
+    SELECT decade, id, tmdb_id, name, profile_path, fallback_profile_url, cause_of_death
     FROM ranked_actors
     WHERE rn = 1
   `)
@@ -279,6 +281,7 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
       tmdbId: row.tmdb_id,
       name: row.name,
       profilePath: row.profile_path,
+      fallbackProfileUrl: row.fallback_profile_url,
       causeOfDeath: row.cause_of_death,
     })
   }
@@ -508,7 +511,7 @@ export async function getCauseCategory(
   // Get notable actors (top 5 by popularity)
   const notableResult = await db.query<ActorRecord>(
     `SELECT
-       a.id, a.tmdb_id, a.name, a.profile_path, a.deathday,
+       a.id, a.tmdb_id, a.name, a.profile_path, a.fallback_profile_url, a.deathday,
        a.cause_of_death, a.cause_of_death_details, a.age_at_death
      FROM actors a
      ${mannerJoin}
@@ -560,7 +563,7 @@ export async function getCauseCategory(
 
   const actorsResult = await db.query<ActorRecord & { total_count: string }>(
     `SELECT
-       a.id, a.tmdb_id, a.name, a.profile_path, a.deathday,
+       a.id, a.tmdb_id, a.name, a.profile_path, a.fallback_profile_url, a.deathday,
        a.cause_of_death, a.cause_of_death_details, a.age_at_death, a.years_lost,
        COUNT(*) OVER() as total_count
      FROM actors a
@@ -592,6 +595,7 @@ export async function getCauseCategory(
       tmdbId: a.tmdb_id,
       name: a.name,
       profilePath: a.profile_path,
+      fallbackProfileUrl: a.fallback_profile_url,
       deathday: a.deathday!,
       causeOfDeath: a.cause_of_death!,
       causeOfDeathDetails: a.cause_of_death_details,
@@ -613,6 +617,7 @@ export async function getCauseCategory(
       tmdbId: a.tmdb_id,
       name: a.name,
       profilePath: a.profile_path,
+      fallbackProfileUrl: a.fallback_profile_url,
       deathday: a.deathday!,
       causeOfDeath: a.cause_of_death!,
       causeOfDeathDetails: a.cause_of_death_details,
@@ -723,7 +728,7 @@ export async function getSpecificCause(
   // Get notable actors (top 3 by popularity)
   const notableResult = await db.query<ActorRecord>(
     `SELECT
-       a.id, a.tmdb_id, a.name, a.profile_path, a.deathday,
+       a.id, a.tmdb_id, a.name, a.profile_path, a.fallback_profile_url, a.deathday,
        a.cause_of_death_details, a.age_at_death
      FROM actors a
      LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
@@ -754,7 +759,7 @@ export async function getSpecificCause(
   const offset = (page - 1) * pageSize
   const actorsResult = await db.query<ActorRecord & { total_count: string }>(
     `SELECT
-       a.id, a.tmdb_id, a.name, a.profile_path, a.deathday,
+       a.id, a.tmdb_id, a.name, a.profile_path, a.fallback_profile_url, a.deathday,
        a.cause_of_death_details, a.age_at_death, a.years_lost,
        COUNT(*) OVER() as total_count
      FROM actors a
@@ -784,6 +789,7 @@ export async function getSpecificCause(
       tmdbId: a.tmdb_id,
       name: a.name,
       profilePath: a.profile_path,
+      fallbackProfileUrl: a.fallback_profile_url,
       deathday: a.deathday!,
       causeOfDeathDetails: a.cause_of_death_details,
       ageAtDeath: a.age_at_death,
@@ -798,6 +804,7 @@ export async function getSpecificCause(
       tmdbId: a.tmdb_id,
       name: a.name,
       profilePath: a.profile_path,
+      fallbackProfileUrl: a.fallback_profile_url,
       deathday: a.deathday!,
       causeOfDeathDetails: a.cause_of_death_details,
       ageAtDeath: a.age_at_death,

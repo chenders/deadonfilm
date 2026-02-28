@@ -23,6 +23,7 @@ describe("useDeathsByDecade", () => {
         deathday: "1995-05-15",
         causeOfDeath: "Cancer",
         profilePath: "/path.jpg",
+        fallbackProfileUrl: null,
         ageAtDeath: 60,
         yearsLost: 10,
       },
@@ -98,6 +99,7 @@ describe("useDecadeCategories", () => {
           tmdbId: 123,
           name: "John Doe",
           profilePath: "/test.jpg",
+          fallbackProfileUrl: null,
           causeOfDeath: "Natural causes",
         },
         topCauses: [
@@ -119,6 +121,7 @@ describe("useDecadeCategories", () => {
           tmdbId: 456,
           name: "Jane Doe",
           profilePath: "/test2.jpg",
+          fallbackProfileUrl: null,
           causeOfDeath: "Cancer",
         },
         topCauses: [

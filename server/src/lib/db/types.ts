@@ -28,6 +28,7 @@ export interface ActorRecord {
   deathday: string | null // null for living actors
   deathday_precision?: DatePrecision | null // null/undefined means 'day' (full precision)
   profile_path: string | null
+  fallback_profile_url: string | null // Non-TMDB profile image fallback
   tmdb_popularity: number | null // Renamed from 'popularity' for clarity
 
   // DOF popularity scoring
@@ -354,6 +355,7 @@ export interface ThisWeekDeathRecord {
   name: string
   deathday: string
   profile_path: string | null
+  fallback_profile_url: string | null
   cause_of_death: string | null
   age_at_death: number | null
   year_of_death: number
@@ -446,6 +448,7 @@ export interface DecadeFeaturedActor {
   tmdbId: number | null
   name: string
   profilePath: string | null
+  fallbackProfileUrl: string | null
   causeOfDeath: string | null
 }
 
@@ -515,6 +518,7 @@ export interface CauseCategoryDetailResponse {
     tmdbId: number | null
     name: string
     profilePath: string | null
+    fallbackProfileUrl: string | null
     deathday: string
     causeOfDeath: string
     causeOfDeathDetails: string | null
@@ -528,6 +532,7 @@ export interface CauseCategoryDetailResponse {
     tmdbId: number | null
     name: string
     profilePath: string | null
+    fallbackProfileUrl: string | null
     deathday: string
     causeOfDeath: string
     causeOfDeathDetails: string | null
@@ -562,6 +567,7 @@ export interface SpecificCauseResponse {
     tmdbId: number | null
     name: string
     profilePath: string | null
+    fallbackProfileUrl: string | null
     deathday: string
     causeOfDeathDetails: string | null
     ageAtDeath: number | null
@@ -573,6 +579,7 @@ export interface SpecificCauseResponse {
     tmdbId: number | null
     name: string
     profilePath: string | null
+    fallbackProfileUrl: string | null
     deathday: string
     causeOfDeathDetails: string | null
     ageAtDeath: number | null
@@ -696,6 +703,7 @@ export interface InDetailActor {
   tmdbId: number | null
   name: string
   profilePath: string | null
+  fallbackProfileUrl: string | null
   deathday: string | null
   ageAtDeath: number | null
   causeOfDeath: string | null

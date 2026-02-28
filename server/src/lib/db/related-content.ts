@@ -16,6 +16,7 @@ export interface RelatedActor {
   tmdbId: number | null
   name: string
   profilePath: string | null
+  fallbackProfileUrl: string | null
   deathday: string | null
   causeOfDeath: string | null
   birthday: string | null
@@ -76,11 +77,12 @@ export async function getRelatedActors(
       tmdb_id: number | null
       name: string
       profile_path: string | null
+      fallback_profile_url: string | null
       deathday: string | null
       cause_of_death: string | null
       birthday: string | null
     }>(
-      `SELECT a.id, a.tmdb_id, a.name, a.profile_path, a.deathday, a.cause_of_death, a.birthday
+      `SELECT a.id, a.tmdb_id, a.name, a.profile_path, a.fallback_profile_url, a.deathday, a.cause_of_death, a.birthday
        FROM actors a
        WHERE a.cause_of_death = $1
          AND a.id != $2
@@ -104,11 +106,12 @@ export async function getRelatedActors(
       tmdb_id: number | null
       name: string
       profile_path: string | null
+      fallback_profile_url: string | null
       deathday: string | null
       cause_of_death: string | null
       birthday: string | null
     }>(
-      `SELECT a.id, a.tmdb_id, a.name, a.profile_path, a.deathday, a.cause_of_death, a.birthday
+      `SELECT a.id, a.tmdb_id, a.name, a.profile_path, a.fallback_profile_url, a.deathday, a.cause_of_death, a.birthday
        FROM actors a
        WHERE a.birthday >= make_date($1, 1, 1)
          AND a.birthday < make_date($2, 1, 1)
@@ -132,6 +135,7 @@ function mapActorRow(row: {
   tmdb_id: number | null
   name: string
   profile_path: string | null
+  fallback_profile_url: string | null
   deathday: string | null
   cause_of_death: string | null
   birthday: string | null
@@ -141,6 +145,7 @@ function mapActorRow(row: {
     tmdbId: row.tmdb_id,
     name: row.name,
     profilePath: row.profile_path,
+    fallbackProfileUrl: row.fallback_profile_url,
     deathday: row.deathday,
     causeOfDeath: row.cause_of_death,
     birthday: row.birthday,

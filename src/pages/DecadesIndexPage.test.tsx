@@ -27,6 +27,7 @@ const mockDecadeCategories = {
         tmdbId: 1001,
         name: "John Wayne",
         profilePath: "/john.jpg",
+        fallbackProfileUrl: null,
         causeOfDeath: "Cancer",
       },
       topCauses: [
@@ -49,6 +50,7 @@ const mockDecadeCategories = {
         tmdbId: 2002,
         name: "Jane Doe",
         profilePath: null,
+        fallbackProfileUrl: null,
         causeOfDeath: "Heart Attack",
       },
       topCauses: [

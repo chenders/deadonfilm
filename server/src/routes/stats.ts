@@ -258,6 +258,7 @@ export async function getThisWeekDeathsHandler(req: Request, res: Response) {
         name: string
         deathday: string | null
         profilePath: string | null
+        fallbackProfileUrl: string | null
         causeOfDeath: string | null
         ageAtDeath: number | null
         yearOfDeath: number | null
@@ -278,6 +279,7 @@ export async function getThisWeekDeathsHandler(req: Request, res: Response) {
         name: d.name,
         deathday: d.deathday,
         profilePath: d.profile_path,
+        fallbackProfileUrl: d.fallback_profile_url,
         causeOfDeath: d.cause_of_death,
         ageAtDeath: d.age_at_death,
         yearOfDeath: d.year_of_death,

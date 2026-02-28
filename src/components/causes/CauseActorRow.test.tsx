@@ -15,6 +15,7 @@ const mockActor: CauseActor = {
   tmdbId: 456,
   name: "Jane Doe",
   profilePath: "/path/to/image.jpg",
+  fallbackProfileUrl: null,
   deathday: "2024-03-20",
   causeOfDeath: "Cancer",
   causeOfDeathDetails: "Lung cancer",

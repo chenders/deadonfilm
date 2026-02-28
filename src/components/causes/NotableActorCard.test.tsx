@@ -14,6 +14,7 @@ const mockActor: NotableActor = {
   tmdbId: 456,
   name: "John Smith",
   profilePath: "/path/to/image.jpg",
+  fallbackProfileUrl: null,
   deathday: "2024-01-15",
   causeOfDeath: "Natural causes",
   causeOfDeathDetails: "Died peacefully",
