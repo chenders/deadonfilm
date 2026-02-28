@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo \"$CLAUDE_FILE_PATH\" | grep -qE '\\.(ts|tsx|js|jsx|json|css)$' && npx prettier --write \"$CLAUDE_FILE_PATH\" || true"
+            "command": "case \"$CLAUDE_FILE_PATH\" in *.ts|*.tsx|*.js|*.jsx|*.json|*.css) npx prettier --write \"$CLAUDE_FILE_PATH\" || true ;; esac"
           }
         ]
       }
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_FILE_PATH\" | grep -qE '\\.env($|\\.)' && echo \"$CLAUDE_FILE_PATH\" | grep -qv '\\.example$'; then echo 'BLOCK: .env files should not be edited by Claude — edit manually'; exit 1; else exit 0; fi"
+            "command": "case \"$CLAUDE_FILE_PATH\" in *.example) exit 0 ;; *.env|*.env.*) echo 'BLOCK: .env files should not be edited by Claude — edit manually'; exit 1 ;; esac"
           }
         ]
       }
