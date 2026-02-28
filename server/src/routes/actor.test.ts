@@ -491,6 +491,50 @@ describe("getActor", () => {
     )
   })
 
+  it("uses DB deathday when TMDB still shows actor as alive", async () => {
+    mockReq.params = { slug: "deceased-actor-4" }
+    vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+      // DB has deathday set but TMDB hasn't updated yet
+      actor: {
+        ...mockActorRecord,
+        id: 4,
+        tmdb_id: 12345,
+        birthday: "1940-03-10",
+        deathday: "2026-02-28",
+        cause_of_death: "Assassination (airstrike)",
+        age_at_death: 86,
+        years_lost: -17.1,
+        has_detailed_death_info: true,
+      },
+      matchedBy: "id",
+    })
+    // TMDB still reports the actor as alive (deathday: null)
+    vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce({
+      ...mockLivingPerson,
+      id: 12345,
+      name: "Deceased Actor",
+      birthday: "1940-03-10",
+    })
+    vi.mocked(db.getActorFilmography).mockResolvedValueOnce([])
+    vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce([])
+
+    await getActor(mockReq as Request, mockRes as Response)
+
+    expect(jsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: expect.objectContaining({
+          deathday: "2026-02-28",
+          birthday: "1940-03-10",
+        }),
+        deathInfo: expect.objectContaining({
+          causeOfDeath: "Assassination (airstrike)",
+          ageAtDeath: 86,
+          yearsLost: -17.1,
+        }),
+      })
+    )
+  })
+
   it("returns empty filmography when actor has no movies in database", async () => {
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockLivingPerson)
     vi.mocked(db.getActorFilmography).mockResolvedValueOnce([])

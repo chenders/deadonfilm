@@ -303,7 +303,7 @@ export async function getActor(req: Request, res: Response) {
       actorId: actorRecord.id,
       ...(actorRecord.tmdb_id !== null && { tmdbId: actorRecord.tmdb_id }),
       name: person.name,
-      isDeceased: !!person.deathday,
+      isDeceased: !!effectiveDeathday,
       filmographyCount: filmography.length,
       tvFilmographyCount: tvFilmography.length,
       hasCauseOfDeath: !!deathInfo?.causeOfDeath,
