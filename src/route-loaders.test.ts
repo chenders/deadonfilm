@@ -178,7 +178,7 @@ describe("matchRouteLoaders", () => {
     const specs = getSpecs("/")
     expect(specs).toHaveLength(3)
     expect(specs![0].queryKey).toEqual(["site-stats"])
-    expect(specs![1].queryKey).toEqual(["recent-deaths", 10])
+    expect(specs![1].queryKey).toEqual(["recent-deaths", 6])
     expect(specs![2].queryKey).toEqual(["featured-movie"])
   })
 
@@ -225,7 +225,7 @@ describe("matchRouteLoaders", () => {
     try {
       await Promise.all(specs.map((s) => s.queryFn()))
       expect(fetchedUrls).toContain("http://127.0.0.1:8080/api/stats")
-      expect(fetchedUrls).toContain("http://127.0.0.1:8080/api/recent-deaths?limit=10")
+      expect(fetchedUrls).toContain("http://127.0.0.1:8080/api/recent-deaths?limit=6")
       expect(fetchedUrls).toContain("http://127.0.0.1:8080/api/featured-movie")
     } finally {
       globalThis.fetch = originalFetch
