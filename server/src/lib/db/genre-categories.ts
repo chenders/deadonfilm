@@ -145,7 +145,7 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
             COUNT(DISTINCT a.id) as count,
             ROW_NUMBER() OVER (
               PARTITION BY g.genre
-              ORDER BY COUNT(DISTINCT a.id) DESC, cause ASC
+              ORDER BY COUNT(DISTINCT a.id) DESC, COALESCE(n.normalized_cause, a.cause_of_death) ASC
             ) as rn
           FROM actors a
           JOIN actor_movie_appearances ama ON a.id = ama.actor_id
