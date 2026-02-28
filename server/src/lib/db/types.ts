@@ -518,6 +518,7 @@ export interface CauseCategoryDetailResponse {
     tmdbId: number | null
     name: string
     profilePath: string | null
+    fallbackProfileUrl: string | null
     deathday: string
     causeOfDeath: string
     causeOfDeathDetails: string | null
@@ -531,6 +532,7 @@ export interface CauseCategoryDetailResponse {
     tmdbId: number | null
     name: string
     profilePath: string | null
+    fallbackProfileUrl: string | null
     deathday: string
     causeOfDeath: string
     causeOfDeathDetails: string | null
@@ -565,6 +567,7 @@ export interface SpecificCauseResponse {
     tmdbId: number | null
     name: string
     profilePath: string | null
+    fallbackProfileUrl: string | null
     deathday: string
     causeOfDeathDetails: string | null
     ageAtDeath: number | null
@@ -576,6 +579,7 @@ export interface SpecificCauseResponse {
     tmdbId: number | null
     name: string
     profilePath: string | null
+    fallbackProfileUrl: string | null
     deathday: string
     causeOfDeathDetails: string | null
     ageAtDeath: number | null
