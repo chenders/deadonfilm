@@ -9,9 +9,6 @@ import * as api from "@/services/api"
 // Mock the API
 vi.mock("@/services/api", () => ({
   getGenreCategories: vi.fn(),
-  getProfileUrl: vi.fn((path: string | null) =>
-    path ? `https://image.tmdb.org/t/p/w45${path}` : null
-  ),
   getBackdropUrl: vi.fn((path: string | null) =>
     path ? `https://image.tmdb.org/t/p/w500${path}` : null
   ),
@@ -23,14 +20,6 @@ const mockGenreCategories = {
       genre: "Action",
       count: 500,
       slug: "action",
-      featuredActor: {
-        id: 1001,
-        tmdbId: 1001,
-        name: "Bruce Willis",
-        profilePath: "/bruce.jpg",
-        fallbackProfileUrl: null,
-        causeOfDeath: "Cancer",
-      },
       topCauses: [
         { cause: "Cancer", count: 200, slug: "cancer" },
         { cause: "Heart Attack", count: 150, slug: "heart-attack" },
@@ -47,14 +36,6 @@ const mockGenreCategories = {
       genre: "Drama",
       count: 750,
       slug: "drama",
-      featuredActor: {
-        id: 2002,
-        tmdbId: 2002,
-        name: "Philip Seymour Hoffman",
-        profilePath: null,
-        fallbackProfileUrl: null,
-        causeOfDeath: "Drug overdose",
-      },
       topCauses: [
         { cause: "Natural Causes", count: 300, slug: "natural-causes" },
         { cause: "AIDS", count: 200, slug: "aids" },
@@ -70,7 +51,6 @@ const mockGenreCategories = {
       genre: "Western",
       count: 100,
       slug: "western",
-      featuredActor: null,
       topCauses: [],
       topMovie: null,
     },
@@ -225,45 +205,6 @@ describe("GenresIndexPage", () => {
     })
   })
 
-  describe("actor badge links", () => {
-    beforeEach(() => {
-      vi.mocked(api.getGenreCategories).mockResolvedValue(mockGenreCategories)
-    })
-
-    it("actor badge links to actor page", async () => {
-      renderWithProviders(<GenresIndexPage />)
-
-      await waitFor(() => {
-        const actorLink = screen.getByRole("link", { name: /Top Actor: Bruce Willis/ })
-        expect(actorLink).toHaveAttribute("href", "/actor/bruce-willis-1001")
-      })
-    })
-
-    it("renders all actor badges with correct links", async () => {
-      renderWithProviders(<GenresIndexPage />)
-
-      await waitFor(() => {
-        const bruceLink = screen.getByRole("link", { name: /Top Actor: Bruce Willis/ })
-        expect(bruceLink).toHaveAttribute("href", "/actor/bruce-willis-1001")
-
-        const philipLink = screen.getByRole("link", {
-          name: /Top Actor: Philip Seymour Hoffman/,
-        })
-        expect(philipLink).toHaveAttribute("href", "/actor/philip-seymour-hoffman-2002")
-      })
-    })
-
-    it("does not render actor badge when no featured actor", async () => {
-      renderWithProviders(<GenresIndexPage />)
-
-      await waitFor(() => {
-        // Western genre has no featured actor
-        const actorBadges = screen.queryAllByText(/Top Actor:/)
-        expect(actorBadges).toHaveLength(2) // Only Action and Drama
-      })
-    })
-  })
-
   describe("cause links", () => {
     beforeEach(() => {
       vi.mocked(api.getGenreCategories).mockResolvedValue(mockGenreCategories)
@@ -332,27 +273,6 @@ describe("GenresIndexPage", () => {
       })
     })
 
-    it("renders actor profile images", async () => {
-      renderWithProviders(<GenresIndexPage />)
-
-      await waitFor(() => {
-        const bruceImg = screen.getByAltText("Bruce Willis")
-        expect(bruceImg).toHaveAttribute("src", "https://image.tmdb.org/t/p/w45/bruce.jpg")
-      })
-    })
-
-    it("renders placeholder when actor has no profile image", async () => {
-      renderWithProviders(<GenresIndexPage />)
-
-      await waitFor(() => {
-        // Philip Seymour Hoffman has no profile path, so should show placeholder skull icon
-        const philipLink = screen.getByRole("link", {
-          name: /Top Actor: Philip Seymour Hoffman/,
-        })
-        expect(philipLink.querySelector("svg")).toBeInTheDocument()
-      })
-    })
-
     it("renders placeholder when genre has no movie", async () => {
       renderWithProviders(<GenresIndexPage />)
 
@@ -366,8 +286,7 @@ describe("GenresIndexPage", () => {
         expect(screen.getByAltText("Die Hard")).toBeInTheDocument()
         expect(screen.getByAltText("Schindler's List")).toBeInTheDocument()
 
-        // Western has no movie image — verify via "View movies in Western" overlay link
-        // existing without a movie badge link nearby
+        // Western has no movie image — verify via overlay link
         expect(screen.getByRole("link", { name: "View movies in Western" })).toBeInTheDocument()
       })
     })
