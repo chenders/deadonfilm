@@ -61,6 +61,8 @@ describe("ReutersSource", () => {
 
   beforeEach(() => {
     source = new ReutersSource()
+    // Disable rate limiting for tests to avoid real wall-clock sleeps
+    ;(source as unknown as { minDelayMs: number }).minDelayMs = 0
     mockFetch.mockReset()
     vi.mocked(fetchFromArchive).mockReset()
     vi.mocked(fetchFromArchive).mockResolvedValue({
