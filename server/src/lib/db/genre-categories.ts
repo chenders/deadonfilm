@@ -79,6 +79,7 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
         SELECT genre, tmdb_id, title, release_year, backdrop_path
         FROM genre_movies
         WHERE rn <= $1
+        ORDER BY genre, rn
       `,
       [CANDIDATES_PER_GENRE]
     ),
@@ -125,6 +126,7 @@ export async function getGenreCategories(): Promise<GenreCategoryEnriched[]> {
         SELECT genre, id, tmdb_id, name, profile_path, fallback_profile_url, cause_of_death
         FROM genre_actors
         WHERE rn <= $1
+        ORDER BY genre, rn
       `,
       [CANDIDATES_PER_GENRE]
     ),

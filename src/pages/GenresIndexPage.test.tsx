@@ -357,10 +357,18 @@ describe("GenresIndexPage", () => {
       renderWithProviders(<GenresIndexPage />)
 
       await waitFor(() => {
-        // Western genre has no movie, check for grid rendering
-        const genresGrid = screen.getByTestId("genres-grid")
-        const cards = genresGrid.querySelectorAll(".group")
-        expect(cards).toHaveLength(3)
+        // All 3 genres render headings
+        expect(screen.getByText("Action")).toBeInTheDocument()
+        expect(screen.getByText("Drama")).toBeInTheDocument()
+        expect(screen.getByText("Western")).toBeInTheDocument()
+
+        // Only Action and Drama have movie backdrop images
+        expect(screen.getByAltText("Die Hard")).toBeInTheDocument()
+        expect(screen.getByAltText("Schindler's List")).toBeInTheDocument()
+
+        // Western has no movie image — verify via "View movies in Western" overlay link
+        // existing without a movie badge link nearby
+        expect(screen.getByRole("link", { name: "View movies in Western" })).toBeInTheDocument()
       })
     })
   })
