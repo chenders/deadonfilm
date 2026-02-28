@@ -97,7 +97,7 @@ jobs:
 
           # Capture current app container IDs (empty on first deploy)
           OLD_APPS=$(docker compose ps -q app 2>/dev/null || true)
-          OLD_APP_COUNT=$(echo "$OLD_APPS" | grep -c . 2>/dev/null || echo 0)
+          OLD_APP_COUNT=$(echo "$OLD_APPS" | grep -c . || true)
 
           if [ "$OLD_APP_COUNT" -gt 1 ]; then
             echo "WARNING: Found $OLD_APP_COUNT app containers (stale state from prior deploy)"
