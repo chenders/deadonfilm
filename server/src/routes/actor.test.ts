@@ -465,7 +465,8 @@ describe("getActor", () => {
   it("calculates age at death when deceased record not in database", async () => {
     mockReq.params = { slug: "deceased-actor-3" }
     vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
-      actor: { ...mockActorRecord, id: 3, tmdb_id: 67890 },
+      // DB birthday is null so TMDB birthday (1940) is used for age calculation
+      actor: { ...mockActorRecord, id: 3, tmdb_id: 67890, birthday: null },
       matchedBy: "id",
     })
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockDeceasedPerson)
