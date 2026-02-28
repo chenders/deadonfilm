@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom"
+import { Helmet } from "react-helmet-async"
 import { useRecentDeaths } from "@/hooks/useRecentDeaths"
 import { createActorSlug } from "@/utils/slugify"
+import { getProfileUrl } from "@/services/api"
 import ActorCard from "@/components/common/ActorCard"
 
 export default function RecentDeaths() {
@@ -52,8 +54,38 @@ export default function RecentDeaths() {
     .slice(0, VISIBLE_CARD_COUNT)
     .findIndex((d) => d.profile_path || d.fallback_profile_url)
 
+  // Build <link rel="preload"> for the LCP image so the browser discovers it during HTML parse
+  const lcpDeath = firstImageIndex >= 0 ? deaths[firstImageIndex] : null
+  const lcpProfilePath = lcpDeath?.profile_path ?? null
+  const lcpSrcSm = getProfileUrl(lcpProfilePath, "w92")
+  const lcpSrcLg = getProfileUrl(lcpProfilePath, "w185")
+  const lcpPreloadLink =
+    lcpSrcSm && lcpSrcLg
+      ? [
+          {
+            rel: "preload",
+            as: "image",
+            href: lcpSrcSm,
+            imagesrcset: `${lcpSrcSm} 92w, ${lcpSrcLg} 185w`,
+            imagesizes: "80px",
+            fetchpriority: "high",
+          } as Record<string, string>,
+        ]
+      : // Fallback profile URL (no srcset)
+        lcpDeath?.fallback_profile_url
+        ? [
+            {
+              rel: "preload",
+              as: "image",
+              href: lcpDeath.fallback_profile_url,
+              fetchpriority: "high",
+            } as Record<string, string>,
+          ]
+        : []
+
   return (
     <section data-testid="recent-deaths" className="mt-6 md:mt-8">
+      {lcpPreloadLink.length > 0 && <Helmet link={lcpPreloadLink} />}
       <div className="mb-4 flex items-center justify-between">
         <h2 data-testid="recent-deaths-title" className="font-display text-xl text-brown-dark">
           Recent Passings
