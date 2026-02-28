@@ -32,7 +32,7 @@ Review changes in these directories for security issues:
 ### SSRF / URL Safety
 - Web search sources follow URLs from search results — verify URL validation
 - Link follower (`link-follower.ts`) should not follow internal/private IPs
-- Archive fallback (`archive-fallback.ts`) should only follow archive.org URLs
+- Archive fallback (`archive-fallback.ts`) should only follow archive URLs from allowed domains: archive.org, archive.is, archive.today, archive.ph
 
 ### SPARQL Injection
 - Wikidata queries interpolate actor names — must use `escapeSparqlString()` from `server/src/lib/wikidata-sitelinks.ts` (or the same escaping pattern)
