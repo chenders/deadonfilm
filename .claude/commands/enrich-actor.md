@@ -40,13 +40,13 @@ Run the full enrichment workflow for a single actor by name or TMDB actor ID.
 
 3. **Run death enrichment** (if missing cause_of_death or user requests re-enrichment)
    ```bash
-   cd server && npx tsx scripts/enrich-death-details.ts --actor-id <id>
+   cd server && npx tsx scripts/enrich-death-details.ts --actor-id <actor_id>
    ```
    Free sources, link following, and Claude cleanup are enabled by default. Use `--disable-free`, `--disable-follow-links`, or `--disable-claude-cleanup` to turn them off.
 
 4. **Run biography enrichment** (if missing narrative or user requests re-enrichment)
    ```bash
-   cd server && npm run enrich:biographies -- --actor-id <id>
+   cd server && npm run enrich:biographies -- --actor-id <actor_id>
    ```
 
 5. **Run field sync** (bulk operation: updates computed fields like death_manner, categories, age_at_death for all relevant actors)

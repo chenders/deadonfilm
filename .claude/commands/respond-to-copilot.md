@@ -134,7 +134,7 @@ Before finishing, verify you have completed ALL of these steps:
 - [ ] Committed and pushed changes
 - [ ] Responded to each comment on GitHub
 - [ ] **Resolved implemented comment threads** (step 8 - don't skip!)
-- [ ] Requested Copilot re-review (if changes were made)
+- [ ] Notified user to manually re-request Copilot review (if changes were made)
 
 ## Notes
 
