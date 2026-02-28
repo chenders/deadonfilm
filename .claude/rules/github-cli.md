@@ -251,7 +251,8 @@ gh api graphql -f query='
 '
 
 # 9. Request Copilot re-review after all fixes
-gh pr edit 123 --add-reviewer Copilot
+gh api repos/chenders/deadonfilm/pulls/123/requested_reviewers \
+  -X POST -f "reviewers[]=Copilot"
 ```
 
 ## Copilot Review Workflow
@@ -261,11 +262,12 @@ gh pr edit 123 --add-reviewer Copilot
 When creating a PR, Copilot auto-reviews if enabled in repo settings. To manually request:
 
 ```bash
-# Assign Copilot as reviewer
+# Assign Copilot as reviewer on new PR
 gh pr create --reviewer Copilot --title "..." --body "..."
 
-# Or add to existing PR
-gh pr edit 123 --add-reviewer Copilot
+# Or add to existing PR (MUST use REST API — gh pr edit silently fails for bots)
+gh api repos/chenders/deadonfilm/pulls/123/requested_reviewers \
+  -X POST -f "reviewers[]=Copilot"
 ```
 
 ### Reading Copilot Comments
@@ -313,8 +315,9 @@ gh api -X POST "repos/chenders/deadonfilm/pulls/123/comments/1234567/replies" \
 After implementing fixes and replying to comments:
 
 ```bash
-# Re-assign Copilot to trigger re-review
-gh pr edit 123 --add-reviewer Copilot
+# Request Copilot re-review (MUST use REST API — gh pr edit silently fails for bots)
+gh api repos/chenders/deadonfilm/pulls/123/requested_reviewers \
+  -X POST -f "reviewers[]=Copilot"
 ```
 
 **When Copilot re-reviews**:
@@ -800,8 +803,9 @@ gh api graphql -f query='
   }
 '
 
-# 9. Request Copilot re-review
-gh pr edit 123 --add-reviewer Copilot
+# 9. Request Copilot re-review (MUST use REST API — gh pr edit silently fails for bots)
+gh api repos/chenders/deadonfilm/pulls/123/requested_reviewers \
+  -X POST -f "reviewers[]=Copilot"
 ```
 
 ### Example 2: Complete Screenshot Workflow
@@ -924,8 +928,9 @@ gh api "repos/chenders/deadonfilm/pulls/123/comments" | \
 
 # Implement fixes, commit, reply, resolve (see Example 1)
 
-# Round 2: Request re-review
-gh pr edit 123 --add-reviewer Copilot
+# Round 2: Request re-review (MUST use REST API — gh pr edit silently fails for bots)
+gh api repos/chenders/deadonfilm/pulls/123/requested_reviewers \
+  -X POST -f "reviewers[]=Copilot"
 
 # Wait for Copilot to re-review (check PR page or use gh pr checks)
 
@@ -936,7 +941,8 @@ gh api "repos/chenders/deadonfilm/pulls/123/comments" | \
 # Implement any remaining fixes, commit, reply, resolve
 
 # Round 3: Final re-review
-gh pr edit 123 --add-reviewer Copilot
+gh api repos/chenders/deadonfilm/pulls/123/requested_reviewers \
+  -X POST -f "reviewers[]=Copilot"
 
 # Once Copilot approves, merge
 gh pr merge 123 --squash
@@ -959,8 +965,9 @@ gh api graphql -f query='query { repository(owner: "OWNER", name: "REPO") { pull
 # Resolve thread
 gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "PRRT_..."}) { thread { isResolved } } }'
 
-# Request Copilot re-review
-gh pr edit PR --add-reviewer Copilot
+# Request Copilot re-review (MUST use REST API — gh pr edit silently fails for bots)
+gh api repos/OWNER/REPO/pulls/PR/requested_reviewers \
+  -X POST -f "reviewers[]=Copilot"
 
 # Commit with heredoc
 git commit -m "$(cat <<'EOF'

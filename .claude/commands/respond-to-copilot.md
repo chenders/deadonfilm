@@ -103,8 +103,12 @@ Review and respond to GitHub Copilot review comments on a pull request.
 9. **Request another Copilot review if changes were made**
    If any changes were committed and pushed, request a new Copilot review:
    ```bash
-   gh pr edit {pr_number} --add-reviewer Copilot
+   gh api repos/{owner}/{repo}/pulls/{pr_number}/requested_reviewers \
+     -X POST -f "reviewers[]=Copilot"
    ```
+
+   **IMPORTANT:** Do NOT use `gh pr edit --add-reviewer Copilot` — it silently fails for bot accounts.
+   The REST API above is the only reliable method.
 
    This ensures Copilot reviews the fixes and any new issues introduced by the changes.
 
