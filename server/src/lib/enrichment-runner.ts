@@ -77,7 +77,12 @@ export interface EnrichmentRunnerConfig {
 }
 
 /**
- * Progress information during enrichment
+ * Progress information during enrichment.
+ *
+ * `phase` indicates whether this is a lightweight "processing" update (actor just
+ * started, only name/index changed) or a full "completed" update (counts updated
+ * after an actor finished). Handlers can use this to skip heavy DB writes on the
+ * pre-enrichment update.
  */
 export interface EnrichmentProgress {
   currentActorIndex: number
@@ -87,6 +92,8 @@ export interface EnrichmentProgress {
   actorsEnriched: number
   actorsWithDeathPage: number
   totalCostUsd: number
+  /** "processing" = actor just started; "completed" = actor finished */
+  phase: "processing" | "completed"
 }
 
 /**
@@ -244,6 +251,7 @@ export class EnrichmentRunner {
           actorsEnriched: 0,
           actorsWithDeathPage: 0,
           totalCostUsd: 0,
+          phase: "completed",
         })
       }
 
@@ -354,7 +362,8 @@ export class EnrichmentRunner {
 
           const actor = actorsToEnrich[i]
 
-          // Report progress BEFORE enrichment so UI shows actor currently being processed
+          // Report progress BEFORE enrichment so UI shows actor currently being processed.
+          // Uses phase: "processing" so handlers can skip heavy DB writes.
           if (this.onProgress) {
             const stats = orchestrator.getStats()
             await this.onProgress({
@@ -365,6 +374,7 @@ export class EnrichmentRunner {
               actorsEnriched: stats.actorsEnriched,
               actorsWithDeathPage,
               totalCostUsd: stats.totalCostUsd,
+              phase: "processing",
             })
           }
 
@@ -440,6 +450,7 @@ export class EnrichmentRunner {
                 actorsEnriched: stats.actorsEnriched,
                 actorsWithDeathPage,
                 totalCostUsd: stats.totalCostUsd,
+                phase: "completed",
               })
             }
 
@@ -666,6 +677,7 @@ export class EnrichmentRunner {
               actorsEnriched: stats.actorsEnriched,
               actorsWithDeathPage,
               totalCostUsd: stats.totalCostUsd,
+              phase: "completed",
             })
           }
         }

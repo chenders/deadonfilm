@@ -29,6 +29,13 @@ const defaultEnrichResult = {
 // Module-level variable tests can override to control enrichActor return value
 let mockEnrichResult: Record<string, unknown> = { ...defaultEnrichResult }
 
+// Track mock orchestrator instances for test assertions
+let lastOrchestratorInstance: {
+  setRunLogger: ReturnType<typeof vi.fn>
+  enrichActor: ReturnType<typeof vi.fn>
+  getStats: ReturnType<typeof vi.fn>
+} | null = null
+
 // Mock orchestrator as a proper class
 vi.mock("./death-sources/orchestrator.js", () => {
   return {
@@ -38,6 +45,11 @@ vi.mock("./death-sources/orchestrator.js", () => {
       private totalCost = 0
 
       setRunLogger = vi.fn()
+
+      constructor() {
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        lastOrchestratorInstance = this as unknown as typeof lastOrchestratorInstance
+      }
 
       enrichActor = vi.fn().mockImplementation(async () => {
         this.actorsProcessed++
@@ -66,6 +78,9 @@ vi.mock("./death-sources/orchestrator.js", () => {
   }
 })
 
+// Track mock RunLogger instances for test assertions
+let lastRunLoggerInstance: { flush: ReturnType<typeof vi.fn> } | null = null
+
 // Mock RunLogger
 vi.mock("./run-logger.js", () => ({
   RunLogger: class MockRunLogger {
@@ -74,6 +89,11 @@ vi.mock("./run-logger.js", () => ({
     error = vi.fn()
     debug = vi.fn()
     flush = vi.fn().mockResolvedValue(undefined)
+
+    constructor() {
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
+      lastRunLoggerInstance = this as unknown as typeof lastRunLoggerInstance
+    }
   },
 }))
 
@@ -113,6 +133,9 @@ describe("EnrichmentRunner", () => {
     mockQuery.mockResolvedValue({ rows: [] })
     // Reset enrichment result to default (enriched path)
     mockEnrichResult = { ...defaultEnrichResult }
+    // Reset tracked instances
+    lastOrchestratorInstance = null
+    lastRunLoggerInstance = null
   })
 
   describe("constructor", () => {
@@ -429,6 +452,93 @@ describe("EnrichmentRunner", () => {
           typeof call[0] === "string" && call[0].includes("INSERT INTO actor_death_circumstances")
       )
       expect(productionWriteCall).toBeDefined()
+    })
+
+    it("should call setRunLogger on orchestrator when runId is provided", async () => {
+      mockQuery
+        .mockResolvedValueOnce({
+          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
+        })
+        .mockResolvedValue({ rows: [{ id: 123 }] })
+
+      const runner = new EnrichmentRunner({
+        actorIds: [1],
+        runId: 42,
+        staging: false,
+      })
+
+      await runner.run()
+
+      expect(lastOrchestratorInstance).not.toBeNull()
+      expect(lastOrchestratorInstance!.setRunLogger).toHaveBeenCalledTimes(1)
+    })
+
+    it("should not call setRunLogger when runId is not provided", async () => {
+      mockQuery
+        .mockResolvedValueOnce({
+          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
+        })
+        .mockResolvedValue({ rows: [] })
+
+      const runner = new EnrichmentRunner({
+        actorIds: [1],
+        staging: false,
+      })
+
+      await runner.run()
+
+      expect(lastOrchestratorInstance).not.toBeNull()
+      expect(lastOrchestratorInstance!.setRunLogger).not.toHaveBeenCalled()
+    })
+
+    it("should flush RunLogger after enrichment completes", async () => {
+      mockQuery
+        .mockResolvedValueOnce({
+          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
+        })
+        .mockResolvedValue({ rows: [{ id: 123 }] })
+
+      const runner = new EnrichmentRunner({
+        actorIds: [1],
+        runId: 42,
+        staging: false,
+      })
+
+      await runner.run()
+
+      expect(lastRunLoggerInstance).not.toBeNull()
+      expect(lastRunLoggerInstance!.flush).toHaveBeenCalled()
+    })
+
+    it("should include actorsWithDeathPage in progress callbacks", async () => {
+      mockQuery
+        .mockResolvedValueOnce({
+          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
+        })
+        .mockResolvedValue({ rows: [{ id: 123 }] })
+
+      const onProgress = vi.fn()
+      const runner = new EnrichmentRunner(
+        {
+          actorIds: [1],
+          runId: 42,
+          staging: false,
+        },
+        onProgress
+      )
+
+      await runner.run()
+
+      // All progress calls should include actorsWithDeathPage
+      for (const call of onProgress.mock.calls) {
+        expect(call[0]).toHaveProperty("actorsWithDeathPage")
+        expect(typeof call[0].actorsWithDeathPage).toBe("number")
+      }
+
+      // Should have both "processing" and "completed" phase updates
+      const phases = onProgress.mock.calls.map((call) => call[0].phase)
+      expect(phases).toContain("processing")
+      expect(phases).toContain("completed")
     })
   })
 })
