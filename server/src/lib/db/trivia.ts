@@ -226,7 +226,7 @@ export async function getDeathsThisWeek(): Promise<ThisWeekDeathRecord[]> {
   // Get current week's start (Sunday) and end (Saturday)
   // Using ISO week would be Monday-Sunday, but we'll use the more common US week
   const result = await db.query<ThisWeekDeathRecord>(`
-    SELECT tmdb_id, name, deathday::text, profile_path, cause_of_death, age_at_death,
+    SELECT tmdb_id, name, deathday::text, profile_path, fallback_profile_url, cause_of_death, age_at_death,
            EXTRACT(YEAR FROM deathday)::int as year_of_death
     FROM actors
     WHERE deathday IS NOT NULL
@@ -270,6 +270,7 @@ export async function getDeathsThisWeekSimple(): Promise<ThisWeekDeathRecord[]> 
       dp.name,
       dp.deathday::text,
       dp.profile_path,
+      dp.fallback_profile_url,
       dp.cause_of_death,
       dp.age_at_death,
       EXTRACT(YEAR FROM dp.deathday)::int as year_of_death

@@ -552,7 +552,7 @@ export default function ActorPage() {
                 href: `/actor/${createActorSlug(a.name, a.id)}`,
                 title: a.name,
                 subtitle: a.causeOfDeath ? toTitleCase(a.causeOfDeath) : undefined,
-                imageUrl: getProfileUrl(a.profilePath, "w185"),
+                imageUrl: getProfileUrl(a.profilePath, "w185") || a.fallbackProfileUrl,
               }))}
               placeholderIcon={<PersonIcon size={20} className="text-text-muted" />}
             />

@@ -64,9 +64,12 @@ function DecadeCard({ category }: DecadeCardProps) {
             to={`/actor/${createActorSlug(featuredActor.name, featuredActor.id)}`}
             className="pointer-events-auto absolute bottom-3 left-3 z-10 flex items-center gap-2 rounded-full bg-overlay/80 py-1 pl-1 pr-3 transition-colors hover:bg-overlay/90"
           >
-            {featuredActor.profilePath ? (
+            {featuredActor.profilePath || featuredActor.fallbackProfileUrl ? (
               <img
-                src={getProfileUrl(featuredActor.profilePath, "w45") || ""}
+                src={
+                  (getProfileUrl(featuredActor.profilePath, "w45") ||
+                    featuredActor.fallbackProfileUrl)!
+                }
                 alt={featuredActor.name}
                 loading="lazy"
                 decoding="async"

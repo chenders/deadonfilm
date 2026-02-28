@@ -288,6 +288,7 @@ describe("getDecadeCategoriesHandler", () => {
         tmdbId: 123,
         name: "Test Actor",
         profilePath: "/test.jpg",
+        fallbackProfileUrl: null,
         causeOfDeath: "Natural causes",
       },
       topCauses: [{ cause: "Natural causes", count: 20, slug: "natural-causes" }],

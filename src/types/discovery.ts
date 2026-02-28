@@ -65,6 +65,7 @@ export interface DecadeFeaturedActor {
   tmdbId: number | null
   name: string
   profilePath: string | null
+  fallbackProfileUrl: string | null
   causeOfDeath: string | null
 }
 
@@ -138,6 +139,7 @@ export interface NotableActor {
   tmdbId: number | null
   name: string
   profilePath: string | null
+  fallbackProfileUrl: string | null
   deathday: string
   causeOfDeath?: string
   causeOfDeathDetails: string | null
@@ -165,6 +167,7 @@ export interface CauseActor {
   tmdbId: number | null
   name: string
   profilePath: string | null
+  fallbackProfileUrl: string | null
   deathday: string
   causeOfDeath?: string
   causeOfDeathDetails: string | null

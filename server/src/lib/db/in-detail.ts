@@ -63,6 +63,7 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
     tmdb_id: number | null
     name: string
     profile_path: string | null
+    fallback_profile_url: string | null
     deathday: string | null
     age_at_death: number | null
     cause_of_death: string | null
@@ -74,7 +75,7 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
     top_films: Array<{ title: string; year: number | null }> | null
   }>(
     `SELECT
-       a.id, a.tmdb_id, a.name, a.profile_path, a.deathday,
+       a.id, a.tmdb_id, a.name, a.profile_path, a.fallback_profile_url, a.deathday,
        a.age_at_death, a.cause_of_death, a.death_manner,
        COALESCE(GREATEST(a.enriched_at, abd.updated_at), a.enriched_at, abd.updated_at) as enriched_at_combined,
        adc.circumstances_confidence,
@@ -108,6 +109,7 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
         tmdbId: row.tmdb_id,
         name: row.name,
         profilePath: row.profile_path,
+        fallbackProfileUrl: row.fallback_profile_url,
         deathday: row.deathday,
         ageAtDeath: row.age_at_death,
         causeOfDeath: row.cause_of_death,

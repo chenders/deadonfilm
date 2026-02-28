@@ -43,9 +43,9 @@ export default function ThisWeekDeaths() {
             className="animate-fade-slide-in flex w-20 flex-col items-center rounded-lg bg-beige p-2 text-center transition-colors hover:bg-cream"
             style={{ animationDelay: `${index * 50}ms` }}
           >
-            {death.profilePath ? (
+            {death.profilePath || death.fallbackProfileUrl ? (
               <img
-                src={getProfileUrl(death.profilePath, "w185")!}
+                src={(getProfileUrl(death.profilePath, "w185") || death.fallbackProfileUrl)!}
                 alt={death.name}
                 width={56}
                 height={70}

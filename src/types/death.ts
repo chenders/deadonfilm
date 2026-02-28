@@ -128,6 +128,7 @@ export interface ThisWeekDeath {
   name: string
   deathday: string
   profilePath: string | null
+  fallbackProfileUrl: string | null
   causeOfDeath: string | null
   ageAtDeath: number | null
   yearOfDeath: number
@@ -290,6 +291,7 @@ export interface InDetailActor {
   tmdbId: number | null
   name: string
   profilePath: string | null
+  fallbackProfileUrl: string | null
   deathday: string | null
   ageAtDeath: number | null
   causeOfDeath: string | null

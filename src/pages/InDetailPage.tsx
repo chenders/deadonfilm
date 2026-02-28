@@ -148,6 +148,7 @@ export default function InDetailPage() {
                   name={actor.name}
                   slug={actor.slug}
                   profilePath={actor.profilePath}
+                  fallbackProfileUrl={actor.fallbackProfileUrl}
                   deathday={actor.deathday}
                   ageAtDeath={actor.ageAtDeath}
                   causeOfDeath={actor.causeOfDeath}

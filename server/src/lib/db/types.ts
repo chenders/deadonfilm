@@ -354,6 +354,7 @@ export interface ThisWeekDeathRecord {
   name: string
   deathday: string
   profile_path: string | null
+  fallback_profile_url: string | null
   cause_of_death: string | null
   age_at_death: number | null
   year_of_death: number
@@ -446,6 +447,7 @@ export interface DecadeFeaturedActor {
   tmdbId: number | null
   name: string
   profilePath: string | null
+  fallbackProfileUrl: string | null
   causeOfDeath: string | null
 }
 
@@ -696,6 +698,7 @@ export interface InDetailActor {
   tmdbId: number | null
   name: string
   profilePath: string | null
+  fallbackProfileUrl: string | null
   deathday: string | null
   ageAtDeath: number | null
   causeOfDeath: string | null

@@ -16,7 +16,7 @@ interface CauseActorRowProps {
 export default function CauseActorRow({ actor, rank, showCauseBadge = true }: CauseActorRowProps) {
   const actorId = actor.id
   const slug = createActorSlug(actor.name, actorId)
-  const profileUrl = getProfileUrl(actor.profilePath, "w185")
+  const profileUrl = getProfileUrl(actor.profilePath, "w185") || actor.fallbackProfileUrl
 
   // For category pages, show the cause. For specific cause pages, show details only.
   const shouldShowBadge = showCauseBadge ? actor.causeOfDeath : actor.causeOfDeathDetails

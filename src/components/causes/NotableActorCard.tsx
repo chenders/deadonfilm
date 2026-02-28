@@ -11,7 +11,7 @@ interface NotableActorCardProps {
 
 export default function NotableActorCard({ actor }: NotableActorCardProps) {
   const slug = createActorSlug(actor.name, actor.id)
-  const profileUrl = getProfileUrl(actor.profilePath, "w185")
+  const profileUrl = getProfileUrl(actor.profilePath, "w185") || actor.fallbackProfileUrl
 
   return (
     <Link
