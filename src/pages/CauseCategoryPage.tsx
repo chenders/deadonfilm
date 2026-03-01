@@ -207,7 +207,7 @@ export default function CauseCategoryPage() {
             <button
               onClick={() => goToPage(page - 1)}
               disabled={page <= 1}
-              className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded bg-brown-medium px-4 py-2 text-sm text-cream transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
             >
               Previous
             </button>
@@ -219,7 +219,7 @@ export default function CauseCategoryPage() {
             <button
               onClick={() => goToPage(page + 1)}
               disabled={page >= data.pagination.totalPages}
-              className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded bg-brown-medium px-4 py-2 text-sm text-cream transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
             >
               Next
             </button>
