@@ -762,9 +762,9 @@ function DeathActorRow({
                   Sources Attempted ({actor.sources_attempted.length})
                 </h4>
                 <div className="flex flex-wrap gap-1">
-                  {actor.sources_attempted.map((s, i) => (
+                  {actor.sources_attempted.map((s) => (
                     <span
-                      key={i}
+                      key={s.source}
                       className={`inline-flex rounded px-2 py-0.5 text-xs ${
                         s.success
                           ? "bg-green-900/50 text-green-300"
@@ -779,8 +779,8 @@ function DeathActorRow({
                 {failedSources.length > 0 && (
                   <div className="mt-2 space-y-0.5">
                     <h4 className="text-xs font-semibold text-red-400">Failure Details</h4>
-                    {failedSources.map((s, i) => (
-                      <div key={i} className="text-xs text-red-300/80">
+                    {failedSources.map((s) => (
+                      <div key={s.source} className="text-xs text-red-300/80">
                         <span className="font-medium">{s.source}:</span> {s.error}
                       </div>
                     ))}

@@ -438,6 +438,14 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
       return
     }
 
+    if (config.concurrency !== undefined) {
+      const n = Number(config.concurrency)
+      if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) {
+        res.status(400).json({ error: { message: "concurrency must be a positive integer" } })
+        return
+      }
+    }
+
     if (config.actorIds !== undefined) {
       if (!Array.isArray(config.actorIds) || config.actorIds.length === 0) {
         res.status(400).json({ error: { message: "actorIds must be a non-empty array" } })

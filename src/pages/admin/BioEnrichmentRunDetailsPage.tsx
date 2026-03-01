@@ -50,7 +50,7 @@ export default function BioEnrichmentRunDetailsPage() {
     isRunning
   )
   const { data: sourceStats } = useBioRunSourcePerformanceStats(runId, isRunning)
-  const { data: sourceErrors } = useBioRunSourceErrors(runId)
+  const { data: sourceErrors } = useBioRunSourceErrors(runId, isRunning)
   const { data: progress } = useBioEnrichmentRunProgress(runId, isRunning)
 
   const stopMutation = useStopBioEnrichmentRun()

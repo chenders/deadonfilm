@@ -240,11 +240,12 @@ export function useBioRunSourcePerformanceStats(runId: number | undefined, isRun
  * Source error aggregation for a bio enrichment run.
  * Shows top error reasons grouped by source.
  */
-export function useBioRunSourceErrors(runId: number | undefined) {
+export function useBioRunSourceErrors(runId: number | undefined, isRunning?: boolean) {
   return useQuery<SourceErrorSummary[]>({
     queryKey: ["bio-enrichment-run-source-errors", runId],
     queryFn: () => fetchJson(`${BASE_URL}/runs/${runId}/sources/errors`),
     enabled: !!runId,
+    refetchInterval: isRunning ? 10000 : false,
   })
 }
 

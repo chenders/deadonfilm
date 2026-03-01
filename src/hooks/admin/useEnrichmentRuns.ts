@@ -402,11 +402,14 @@ export function useRunSourceErrors(
   return useQuery({
     queryKey: ["admin", "enrichment", "run", runId, "sources", "errors"],
     queryFn: async () => {
-      const response = await fetch(`/admin/api/enrichment/runs/${runId}/sources/errors`)
+      const response = await fetch(`/admin/api/enrichment/runs/${runId}/sources/errors`, {
+        credentials: "include",
+      })
       if (!response.ok) throw new Error("Failed to fetch source errors")
       return response.json()
     },
     staleTime: isRunning ? 0 : 60000,
+    refetchInterval: isRunning ? 10000 : false,
     enabled: !!runId,
   })
 }
