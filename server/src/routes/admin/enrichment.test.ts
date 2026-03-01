@@ -812,7 +812,7 @@ describe("Admin Enrichment Endpoints", () => {
         })
         .expect(400)
 
-      expect(response.body.error.message).toBe("concurrency must be an integer between 1 and 50")
+      expect(response.body.error.message).toBe("concurrency must be an integer between 1 and 20")
       expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
     })
 
@@ -826,7 +826,7 @@ describe("Admin Enrichment Endpoints", () => {
         })
         .expect(400)
 
-      expect(response.body.error.message).toBe("concurrency must be an integer between 1 and 50")
+      expect(response.body.error.message).toBe("concurrency must be an integer between 1 and 20")
       expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
     })
 
@@ -840,7 +840,7 @@ describe("Admin Enrichment Endpoints", () => {
         })
         .expect(400)
 
-      expect(response.body.error.message).toBe("concurrency must be an integer between 1 and 50")
+      expect(response.body.error.message).toBe("concurrency must be an integer between 1 and 20")
       expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
     })
 

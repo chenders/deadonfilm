@@ -195,8 +195,9 @@ export class ParallelBatchRunner<T, R> {
         if (signal?.aborted || costLimitHit) return
 
         inFlight++
+        let result: R | undefined
         try {
-          const result = await processItem(item)
+          result = await processItem(item)
 
           // Track cost
           if (costTracker && getCost) {
@@ -205,21 +206,20 @@ export class ParallelBatchRunner<T, R> {
           }
 
           results[index] = result
-          completed++
-          inFlight--
-
-          // Progress callback
-          if (onItemComplete) {
-            await onItemComplete(item, result, {
-              completed,
-              total: items.length,
-              inFlight,
-            })
-          }
         } catch (error) {
-          inFlight--
-          completed++
           throw error
+        } finally {
+          completed++
+          inFlight--
+        }
+
+        // Progress callback (outside try so counter updates happen exactly once)
+        if (onItemComplete && result !== undefined) {
+          await onItemComplete(item, result, {
+            completed,
+            total: items.length,
+            inFlight,
+          })
         }
       })
     )

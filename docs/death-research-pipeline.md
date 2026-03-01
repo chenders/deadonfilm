@@ -100,7 +100,7 @@ Sources are organized into sequential **phases**. Sources within each phase run 
 
 **Between phases**: Early stopping checks whether enough high-quality source families have been collected. Per-actor cost limits are also checked between phases.
 
-A shared `SourceRateLimiter` enforces per-domain request spacing (e.g., 500ms for Wikipedia, 1000ms for most sources, 2000ms for scraped news sites). DuckDuckGo is limited to 2-3 concurrent requests to prevent CAPTCHA triggers.
+A shared `SourceRateLimiter` enforces per-domain request spacing (e.g., 500ms for Wikipedia, 1000ms for most sources, 2000ms for scraped news sites). Requests to a given domain are serialized, with at most one in-flight request per domain at a time spaced by the configured delay.
 
 ### Estimated Throughput
 

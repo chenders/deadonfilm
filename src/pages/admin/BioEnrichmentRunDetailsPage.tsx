@@ -489,8 +489,8 @@ function ActorRow({
                     <h4 className="text-xs font-semibold text-red-400">Failure Details</h4>
                     {actor.sources_attempted
                       .filter((s) => !s.success && s.error)
-                      .map((s, i) => (
-                        <div key={i} className="text-xs text-red-300/80">
+                      .map((s) => (
+                        <div key={s.source} className="text-xs text-red-300/80">
                           <span className="font-medium">{s.source}:</span> {s.error}
                         </div>
                       ))}
