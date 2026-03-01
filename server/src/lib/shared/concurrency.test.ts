@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest"
-import { SourceRateLimiter, BatchCostTracker } from "./concurrency.js"
+import {
+  SourceRateLimiter,
+  BatchCostTracker,
+  ParallelBatchRunner,
+  type BatchProgress,
+} from "./concurrency.js"
 
 describe("SourceRateLimiter", () => {
   let limiter: SourceRateLimiter
@@ -78,5 +83,91 @@ describe("BatchCostTracker", () => {
     const tracker = new BatchCostTracker(Infinity)
     tracker.addActorCost(1, 100)
     expect(tracker.isLimitExceeded()).toBe(false)
+  })
+})
+
+describe("ParallelBatchRunner", () => {
+  it("respects concurrency limit", async () => {
+    let maxConcurrent = 0
+    let currentConcurrent = 0
+
+    const runner = new ParallelBatchRunner<number, number>({ concurrency: 2 })
+    const results = await runner.run([1, 2, 3, 4], async (item) => {
+      currentConcurrent++
+      maxConcurrent = Math.max(maxConcurrent, currentConcurrent)
+      await new Promise((r) => setTimeout(r, 50))
+      currentConcurrent--
+      return item * 2
+    })
+
+    expect(results).toEqual([2, 4, 6, 8])
+    expect(maxConcurrent).toBe(2)
+  })
+
+  it("stops processing when cost limit exceeded", async () => {
+    const costTracker = new BatchCostTracker(0.1)
+    const processed: number[] = []
+
+    const runner = new ParallelBatchRunner<number, number>({
+      concurrency: 1,
+      costTracker,
+      getCost: () => 0.05,
+    })
+
+    await runner.run([1, 2, 3, 4, 5], async (item) => {
+      processed.push(item)
+      return item
+    })
+
+    // Cost: 0.05, 0.10 (limit hit after 2), should stop
+    expect(processed.length).toBe(2)
+  })
+
+  it("fires progress callbacks", async () => {
+    const progressUpdates: BatchProgress[] = []
+    const runner = new ParallelBatchRunner<number, number>({
+      concurrency: 1,
+      onItemComplete: async (_item, _result, progress) => {
+        progressUpdates.push({ ...progress })
+      },
+    })
+
+    await runner.run([1, 2, 3], async (item) => item)
+
+    expect(progressUpdates).toHaveLength(3)
+    expect(progressUpdates[0]?.completed).toBe(1)
+    expect(progressUpdates[2]?.completed).toBe(3)
+  })
+
+  it("respects abort signal", async () => {
+    const controller = new AbortController()
+    const processed: number[] = []
+
+    const runner = new ParallelBatchRunner<number, number>({
+      concurrency: 1,
+      signal: controller.signal,
+    })
+
+    // Abort after 50ms (should catch items 1-2 during processing)
+    setTimeout(() => controller.abort(), 50)
+
+    await runner.run([1, 2, 3, 4, 5], async (item) => {
+      processed.push(item)
+      await new Promise((r) => setTimeout(r, 30))
+      return item
+    })
+
+    expect(processed.length).toBeLessThan(5)
+  })
+
+  it("preserves result order matching input", async () => {
+    const runner = new ParallelBatchRunner<number, number>({ concurrency: 3 })
+    const results = await runner.run([3, 1, 2], async (item) => {
+      // Items with higher values finish faster, testing order preservation
+      await new Promise((r) => setTimeout(r, (4 - item) * 20))
+      return item * 10
+    })
+
+    expect(results).toEqual([30, 10, 20])
   })
 })

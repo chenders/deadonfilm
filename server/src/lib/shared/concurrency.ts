@@ -6,6 +6,8 @@
  * - ParallelBatchRunner: concurrency-limited batch processor
  */
 
+import pLimit from "p-limit"
+
 interface DomainState {
   lastRequestTime: number
   queue: Array<{
@@ -125,5 +127,86 @@ export class BatchCostTracker {
 
   getCostBySource(): Record<string, number> {
     return { ...this.costBySource }
+  }
+}
+
+/** Progress info emitted after each item completes */
+export interface BatchProgress {
+  completed: number
+  total: number
+  inFlight: number
+}
+
+export interface ParallelBatchRunnerOptions<T, R> {
+  /** Max concurrent items (default: 5) */
+  concurrency: number
+  /** Optional cost tracker — stops processing if limit exceeded */
+  costTracker?: BatchCostTracker
+  /** Extract cost from a result (required if costTracker provided) */
+  getCost?: (result: R) => number
+  /** Called after each item completes */
+  onItemComplete?: (item: T, result: R, progress: BatchProgress) => Promise<void>
+  /** Abort signal for cancellation */
+  signal?: AbortSignal
+}
+
+/**
+ * Generic concurrency-limited batch processor.
+ *
+ * Replaces sequential `for` loops with parallel processing. Handles cost limits,
+ * abort signals, and progress callbacks. Results are returned in input order.
+ */
+export class ParallelBatchRunner<T, R> {
+  private options: ParallelBatchRunnerOptions<T, R>
+
+  constructor(options: ParallelBatchRunnerOptions<T, R>) {
+    this.options = options
+  }
+
+  async run(items: T[], processItem: (item: T) => Promise<R>): Promise<R[]> {
+    const { concurrency, costTracker, getCost, onItemComplete, signal } = this.options
+    const limit = pLimit(concurrency)
+    const results: (R | undefined)[] = new Array(items.length).fill(undefined)
+    let completed = 0
+    let inFlight = 0
+    let costLimitHit = false
+
+    const promises = items.map((item, index) =>
+      limit(async () => {
+        // Check abort and cost limit before starting
+        if (signal?.aborted || costLimitHit) return
+
+        inFlight++
+        try {
+          const result = await processItem(item)
+
+          // Track cost
+          if (costTracker && getCost) {
+            const exceeded = costTracker.addActorCost(index, getCost(result))
+            if (exceeded) costLimitHit = true
+          }
+
+          results[index] = result
+          completed++
+          inFlight--
+
+          // Progress callback
+          if (onItemComplete) {
+            await onItemComplete(item, result, {
+              completed,
+              total: items.length,
+              inFlight,
+            })
+          }
+        } catch (error) {
+          inFlight--
+          completed++
+          throw error
+        }
+      })
+    )
+
+    await Promise.allSettled(promises)
+    return results.filter((r): r is R => r !== undefined)
   }
 }
