@@ -34,6 +34,8 @@ import { WikipediaBiographySource } from "./sources/wikipedia.js"
 // Source imports — Reference Sites
 import { BritannicaBiographySource } from "./sources/britannica.js"
 import { BiographyComSource } from "./sources/biography-com.js"
+import { TCMBiographySource } from "./sources/tcm.js"
+import { AllMusicBiographySource } from "./sources/allmusic.js"
 
 // Source imports — Web Search
 import { GoogleBiographySearch } from "./sources/google-search.js"
@@ -58,6 +60,8 @@ import { NewYorkerBiographySource } from "./sources/new-yorker.js"
 import { PBSBiographySource } from "./sources/pbs.js"
 import { RollingStoneBiographySource } from "./sources/rolling-stone.js"
 import { NationalGeographicBiographySource } from "./sources/national-geographic.js"
+import { SmithsonianBiographySource } from "./sources/smithsonian.js"
+import { HistoryComBiographySource } from "./sources/history-com.js"
 
 // Source imports — Obituary Sites
 import { LegacyBiographySource } from "./sources/legacy.js"
@@ -182,11 +186,13 @@ export class BiographyEnrichmentOrchestrator {
       }
     }
 
-    // Phase 2: Reference sites (Britannica, Biography.com)
+    // Phase 2: Reference sites (Britannica, Biography.com, TCM, AllMusic)
     if (this.config.sourceCategories.reference) {
       const referenceSources: BaseBiographySource[] = [
         new BritannicaBiographySource(),
         new BiographyComSource(),
+        new TCMBiographySource(),
+        new AllMusicBiographySource(),
       ]
       for (const source of referenceSources) {
         if (source.isAvailable()) {
@@ -243,6 +249,8 @@ export class BiographyEnrichmentOrchestrator {
         new NewYorkerBiographySource(),
         new RollingStoneBiographySource(),
         new NationalGeographicBiographySource(),
+        new SmithsonianBiographySource(),
+        new HistoryComBiographySource(),
       ]
       for (const source of newsSources) {
         if (source.isAvailable()) {

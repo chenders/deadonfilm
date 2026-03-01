@@ -3,7 +3,7 @@ globs: ["server/src/lib/biography-sources/**", "server/src/lib/biography/**", "s
 ---
 # Biography Enrichment System
 
-Enriches actor records with narrative personal life biographies from 30+ active data sources (29 content sources + 4 web search providers), synthesized by Claude into structured fields.
+Enriches actor records with narrative personal life biographies from 37 active data sources (33 content sources + 4 web search providers), synthesized by Claude into structured fields.
 
 ## Adding New Sources
 
@@ -90,6 +90,8 @@ See the death enrichment rules (`.claude/rules/death-enrichment.md`) for the ful
 |--------|--------|-------|
 | **Britannica** | DuckDuckGo `site:britannica.com` search | High-quality biographical content |
 | **Biography.com** | DuckDuckGo `site:biography.com` search | Dedicated biography resource |
+| **TCM** | DuckDuckGo `site:tcm.com` search | Classic film actor biographies |
+| **AllMusic** | DuckDuckGo `site:allmusic.com` search | Professional music artist biographies |
 
 ### Phase 2.5: Books/Publications
 | Source | Method | Notes |
@@ -107,7 +109,7 @@ See the death enrichment rules (`.claude/rules/death-enrichment.md`) for the ful
 | Brave Search | Brave Search API | Requires `BRAVE_SEARCH_API_KEY` |
 
 ### Phase 4: News Sources
-Guardian, NYTimes, AP News, Reuters, Washington Post, LA Times, BBC News, NPR, PBS, People, The Independent, The Telegraph, Time, The New Yorker, Rolling Stone, National Geographic
+Guardian, NYTimes, AP News, Reuters, Washington Post, LA Times, BBC News, NPR, PBS, People, The Independent, The Telegraph, Time, The New Yorker, Rolling Stone, National Geographic, Smithsonian Magazine, History.com
 
 ### Phase 5: Obituary Sites
 Legacy.com, Find a Grave
@@ -144,10 +146,10 @@ Internet Archive, Chronicling America, Trove, Europeana
   synthesisModel: "claude-sonnet-4-20250514",
   sourceCategories: {
     free: true,                  // Wikidata, Wikipedia
-    reference: true,             // Britannica, Biography.com
+    reference: true,             // Britannica, Biography.com, TCM, AllMusic
     books: true,                 // Google Books, Open Library, IA Books
     webSearch: true,             // Google, Bing, DuckDuckGo, Brave
-    news: true,                  // Guardian, NYT, AP, Reuters, WaPo, LA Times, BBC, NPR, PBS, People, Independent, Telegraph, Time, New Yorker, Rolling Stone, Nat Geo
+    news: true,                  // Guardian, NYT, AP, Reuters, WaPo, LA Times, BBC, NPR, PBS, People, Independent, Telegraph, Time, New Yorker, Rolling Stone, Nat Geo, Smithsonian Magazine, History.com
     obituary: true,              // Legacy, FindAGrave
     archives: true,              // Internet Archive, Chronicling America, Trove, Europeana
   },
