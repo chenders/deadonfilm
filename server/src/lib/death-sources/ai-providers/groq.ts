@@ -40,6 +40,7 @@ export class GroqLlamaSource extends BaseDataSource {
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.0002 // ~$0.0002/query - very cheap
   readonly reliabilityTier = ReliabilityTier.AI_MODEL
+  protected domain = "api.groq.com"
 
   private client: OpenAI | null = null
 

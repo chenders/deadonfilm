@@ -107,6 +107,7 @@ interface GeminiApiResponse {
 abstract class GeminiBaseSource extends BaseDataSource {
   abstract readonly modelId: string
   abstract readonly useSearchGrounding: boolean
+  protected domain = "generativelanguage.googleapis.com"
   protected maxOutputTokens: number = 2000
 
   private get apiKey(): string | undefined {

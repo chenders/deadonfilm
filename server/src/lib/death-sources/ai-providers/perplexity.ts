@@ -31,6 +31,7 @@ export class PerplexitySource extends BaseDataSource {
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.005
   readonly reliabilityTier = ReliabilityTier.AI_MODEL
+  protected domain = "api.perplexity.ai"
 
   private client: OpenAI | null = null
 

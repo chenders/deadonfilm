@@ -40,6 +40,7 @@ export class MistralSource extends BaseDataSource {
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.001 // ~$0.001/query for mistral-large
   readonly reliabilityTier = ReliabilityTier.AI_MODEL
+  protected domain = "api.mistral.ai"
 
   private client: OpenAI | null = null
 

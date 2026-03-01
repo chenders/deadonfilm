@@ -69,6 +69,7 @@ export class WikidataSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.STRUCTURED_DATA
+  protected domain = "query.wikidata.org"
 
   // Wikidata is generous but we should still be polite
   protected minDelayMs = 500

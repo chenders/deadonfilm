@@ -16,6 +16,7 @@ import type {
 import { RELIABILITY_SCORES, SourceAccessBlockedError, SourceTimeoutError } from "./types.js"
 import { getCachedQuery, setCachedQuery } from "./cache.js"
 import { getEnrichmentLogger } from "./logger.js"
+import type { SourceRateLimiter } from "../shared/concurrency.js"
 
 /**
  * Global configuration for cache behavior.
@@ -62,9 +63,15 @@ export abstract class BaseDataSource implements DataSource {
     return RELIABILITY_SCORES[this.reliabilityTier]
   }
 
+  /** External domain this source hits (for shared rate limiting) */
+  protected domain = "unknown"
+
   // Rate limiting
   protected lastRequestTime = 0
   protected minDelayMs = 1000 // Default 1 second between requests
+
+  /** Shared rate limiter (set by orchestrator for cross-actor coordination) */
+  private sharedRateLimiter: SourceRateLimiter | null = null
 
   // Request timeout (override in subclasses for different priorities)
   protected requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
@@ -110,6 +117,11 @@ export abstract class BaseDataSource implements DataSource {
    */
   isAvailable(): boolean {
     return true
+  }
+
+  /** Called by orchestrator to inject shared rate limiter for cross-actor coordination */
+  setRateLimiter(limiter: SourceRateLimiter): void {
+    this.sharedRateLimiter = limiter
   }
 
   /**
@@ -284,17 +296,24 @@ export abstract class BaseDataSource implements DataSource {
 
   /**
    * Wait if necessary to respect rate limits.
+   * Uses shared rate limiter if available (coordinates across concurrent actors),
+   * falls back to per-instance tracking for standalone use.
    */
   protected async waitForRateLimit(): Promise<void> {
-    const now = Date.now()
-    const timeSinceLastRequest = now - this.lastRequestTime
-    const waitTime = Math.max(0, this.minDelayMs - timeSinceLastRequest)
+    if (this.sharedRateLimiter) {
+      await this.sharedRateLimiter.acquire(this.domain, this.minDelayMs)
+    } else {
+      // Fallback to per-instance rate limiting (backward compat for standalone use)
+      const now = Date.now()
+      const timeSinceLastRequest = now - this.lastRequestTime
+      const waitTime = Math.max(0, this.minDelayMs - timeSinceLastRequest)
 
-    if (waitTime > 0) {
-      await new Promise((resolve) => setTimeout(resolve, waitTime))
+      if (waitTime > 0) {
+        await new Promise((resolve) => setTimeout(resolve, waitTime))
+      }
+
+      this.lastRequestTime = Date.now()
     }
-
-    this.lastRequestTime = Date.now()
   }
 
   /**

@@ -37,6 +37,7 @@ export class HollywoodReporterSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.TRADE_PRESS
+  protected domain = "html.duckduckgo.com"
 
   // Respectful rate limiting
   protected minDelayMs = 2000

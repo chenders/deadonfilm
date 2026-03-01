@@ -36,6 +36,7 @@ export class TMZSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.UNRELIABLE_FAST
+  protected domain = "html.duckduckgo.com"
 
   // Respectful rate limiting
   protected minDelayMs = 2000

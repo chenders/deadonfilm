@@ -62,6 +62,7 @@ export class TroveSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.ARCHIVAL
+  protected domain = "api.trove.nla.gov.au"
 
   // Be polite to NLA servers
   protected minDelayMs = 1000

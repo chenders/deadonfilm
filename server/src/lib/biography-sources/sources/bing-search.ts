@@ -60,6 +60,7 @@ export class BingBiographySearch extends BiographyWebSearchBase {
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.003
   readonly reliabilityTier = ReliabilityTier.SEARCH_AGGREGATOR
+  protected domain = "api.bing.microsoft.com"
 
   protected minDelayMs = 500
 

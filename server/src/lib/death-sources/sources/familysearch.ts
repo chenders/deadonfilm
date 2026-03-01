@@ -70,6 +70,7 @@ export class FamilySearchSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.MARGINAL_MIXED
+  protected domain = "api.familysearch.org"
 
   // Rate limit: be respectful
   protected minDelayMs = 2000

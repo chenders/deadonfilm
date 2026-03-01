@@ -50,6 +50,7 @@ export class GoogleBiographySearch extends BiographyWebSearchBase {
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.005
   readonly reliabilityTier = ReliabilityTier.SEARCH_AGGREGATOR
+  protected domain = "www.googleapis.com"
 
   protected minDelayMs = 500
 

@@ -27,6 +27,7 @@ export class DuckDuckGoBiographySearch extends BiographyWebSearchBase {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.SEARCH_AGGREGATOR
+  protected domain = "html.duckduckgo.com"
 
   // Be polite to DuckDuckGo
   protected minDelayMs = 1000

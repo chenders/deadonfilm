@@ -70,6 +70,7 @@ export class InternetArchiveSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.ARCHIVE_MIRROR
+  protected domain = "archive.org"
 
   // Be polite to Internet Archive servers
   protected minDelayMs = 1500

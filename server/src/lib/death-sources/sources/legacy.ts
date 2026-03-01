@@ -37,6 +37,7 @@ export class LegacySource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.MARGINAL_MIXED
+  protected domain = "html.duckduckgo.com"
 
   // Be respectful to their servers
   protected minDelayMs = 2000

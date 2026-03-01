@@ -23,6 +23,7 @@ export class OpenLibraryDeathSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.SECONDARY_COMPILATION
+  protected domain = "openlibrary.org"
 
   // Open Library rate limit: ~3 requests per second
   protected minDelayMs = 350

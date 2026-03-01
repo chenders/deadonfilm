@@ -36,6 +36,7 @@ export class DeepSeekSource extends BaseDataSource {
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.0005 // ~$0.0005/query - cheapest AI option
   readonly reliabilityTier = ReliabilityTier.AI_MODEL
+  protected domain = "api.deepseek.com"
 
   private client: OpenAI | null = null
 

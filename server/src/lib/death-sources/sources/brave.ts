@@ -60,6 +60,7 @@ export class BraveSearchSource extends WebSearchBase {
   readonly isFree = false // Free tier is limited
   readonly estimatedCostPerQuery = 0.005 // Approximately $5 per 1000 queries
   readonly reliabilityTier = ReliabilityTier.SEARCH_AGGREGATOR
+  protected domain = "api.search.brave.com"
 
   // Brave has reasonable rate limits
   protected minDelayMs = 500

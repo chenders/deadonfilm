@@ -56,6 +56,7 @@ export class GuardianSource extends BaseDataSource {
   readonly isFree = true // Free for non-commercial use
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.TIER_1_NEWS
+  protected domain = "content.guardianapis.com"
 
   // Guardian allows 12 requests/second
   protected minDelayMs = 200

@@ -33,6 +33,7 @@ export class WashingtonPostSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.TIER_1_NEWS
+  protected domain = "html.duckduckgo.com"
 
   // Respectful rate limit
   protected minDelayMs = 2000

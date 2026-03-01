@@ -34,6 +34,7 @@ export class NationalGeographicSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.TRADE_PRESS
+  protected domain = "html.duckduckgo.com"
 
   // Respectful rate limit
   protected minDelayMs = 2000
