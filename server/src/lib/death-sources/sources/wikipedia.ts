@@ -35,6 +35,7 @@ export class WikipediaSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.SECONDARY_COMPILATION
+  protected domain = "en.wikipedia.org"
   protected minDelayMs = 500 // Wikipedia is generous with rate limits
 
   private wikipediaOptions: WikipediaOptions = DEFAULT_WIKIPEDIA_OPTIONS

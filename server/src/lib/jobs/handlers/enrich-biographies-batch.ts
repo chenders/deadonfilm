@@ -70,6 +70,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       sortBy,
       useStaging,
       sourceCategories,
+      concurrency,
     } = job.data
     const db = getPool()
 
@@ -134,6 +135,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       const orchestrator = new BiographyEnrichmentOrchestrator({
         confidenceThreshold: confidenceThreshold ?? 0.6,
         ...(earlyStopSourceCount !== undefined && { earlyStopSourceCount }),
+        ...(concurrency !== undefined && { concurrency }),
         costLimits: {
           maxCostPerActor: maxCostPerActor ?? 0.5,
           maxTotalCost: maxTotalCost ?? 10.0,
@@ -460,6 +462,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       costUsd: s.costUsd || 0,
       confidence: s.confidence,
       reliabilityScore: s.reliabilityScore || null,
+      error: s.error || null,
     }))
 
     await db.query(

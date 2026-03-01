@@ -34,6 +34,7 @@ export class BFISightSoundSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.TRADE_PRESS
+  protected domain = "www2.bfi.org.uk"
 
   // Respectful rate limit
   protected minDelayMs = 1500

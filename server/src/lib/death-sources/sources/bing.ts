@@ -65,6 +65,7 @@ export class BingSearchSource extends WebSearchBase {
   readonly isFree = false // Free tier is limited
   readonly estimatedCostPerQuery = 0.003 // Approximately $3 per 1000 queries
   readonly reliabilityTier = ReliabilityTier.SEARCH_AGGREGATOR
+  protected domain = "api.bing.microsoft.com"
 
   // Bing has good rate limits
   protected minDelayMs = 500

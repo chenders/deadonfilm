@@ -168,6 +168,7 @@
     "newrelic": "^13.6.6",
     "node-pg-migrate": "^8.0.4",
     "openai": "^6.16.0",
+    "p-limit": "^7.3.0",
     "pg": "^8.16.3",
     "pino": "^10.1.0",
     "playwright-core": "^1.57.0",

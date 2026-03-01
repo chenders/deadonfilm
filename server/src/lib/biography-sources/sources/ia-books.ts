@@ -40,6 +40,7 @@ export class IABooksBiographySource extends BaseBiographySource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.ARCHIVAL
+  protected domain = "archive.org"
 
   protected minDelayMs = 1000
 

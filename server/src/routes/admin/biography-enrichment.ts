@@ -14,6 +14,7 @@ import {
   getBioEnrichmentRunDetails,
   getBioEnrichmentRunActors,
   getBioRunSourcePerformanceStats,
+  getBioRunSourceErrors,
 } from "../../lib/db/admin-bio-enrichment-queries.js"
 import {
   startBioEnrichmentRun,
@@ -108,13 +109,13 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       pagination: {
         page,
         pageSize,
-        total: parseInt(countResult.rows[0].total),
-        totalPages: Math.ceil(parseInt(countResult.rows[0].total) / pageSize),
+        total: parseInt(countResult.rows[0]?.total ?? "0", 10),
+        totalPages: Math.ceil(parseInt(countResult.rows[0]?.total ?? "0", 10) / pageSize),
       },
       stats: {
-        totalDeceased: parseInt(statsResult.rows[0].total_deceased),
-        enriched: parseInt(statsResult.rows[0].enriched),
-        needsEnrichment: parseInt(statsResult.rows[0].needs_enrichment),
+        totalDeceased: parseInt(statsResult.rows[0]?.total_deceased ?? "0", 10),
+        enriched: parseInt(statsResult.rows[0]?.enriched ?? "0", 10),
+        needsEnrichment: parseInt(statsResult.rows[0]?.needs_enrichment ?? "0", 10),
       },
     })
   } catch (error) {
@@ -135,22 +136,21 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
     return
   }
 
-  const pool = getPool()
-
-  // Fetch actor
-  const actorResult = await pool.query(
-    `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-            wikipedia_url, biography AS biography_raw_tmdb, biography
-     FROM actors WHERE id = $1`,
-    [actorId]
-  )
-
-  if (actorResult.rows.length === 0) {
-    res.status(404).json({ error: { message: "Actor not found" } })
-    return
-  }
-
   try {
+    const pool = getPool()
+
+    // Fetch actor
+    const actorResult = await pool.query(
+      `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
+              wikipedia_url, biography AS biography_raw_tmdb, biography
+       FROM actors WHERE id = $1`,
+      [actorId]
+    )
+
+    if (actorResult.rows.length === 0) {
+      res.status(404).json({ error: { message: "Actor not found" } })
+      return
+    }
     const { BiographyEnrichmentOrchestrator } =
       await import("../../lib/biography-sources/orchestrator.js")
     const { writeBiographyToProduction } =
@@ -187,12 +187,24 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
     limit,
     minPopularity,
     confidenceThreshold,
+    concurrency,
     earlyStopSourceCount,
     allowRegeneration,
     useStaging,
     sourceCategories,
     sortBy,
   } = req.body
+
+  // Validate concurrency before inserting run record
+  if (concurrency !== undefined) {
+    const n = Number(concurrency)
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1 || n > 20) {
+      res.status(400).json({
+        error: { message: "concurrency must be an integer between 1 and 20" },
+      })
+      return
+    }
+  }
 
   // Validate earlyStopSourceCount before inserting run record
   if (earlyStopSourceCount !== undefined) {
@@ -231,6 +243,7 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
       limit: limit || 10,
       minPopularity,
       confidenceThreshold,
+      concurrency,
       earlyStopSourceCount,
       allowRegeneration: effectiveAllowRegeneration,
       useStaging: useStaging || false,
@@ -242,7 +255,12 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
        VALUES ('pending', $1, NOW()) RETURNING id`,
       [JSON.stringify(config)]
     )
-    const runId = runResult.rows[0].id
+    const runRow = runResult.rows[0]
+    if (!runRow) {
+      res.status(500).json({ error: { message: "Failed to create enrichment run record" } })
+      return
+    }
+    const runId = runRow.id
 
     const jobId = await queueManager.addJob(
       JobType.ENRICH_BIOGRAPHIES_BATCH,
@@ -252,6 +270,7 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
         limit: limit || 10,
         minPopularity,
         confidenceThreshold,
+        concurrency,
         earlyStopSourceCount,
         allowRegeneration: effectiveAllowRegeneration,
         sortBy: sortBy === "interestingness" ? "interestingness" : "popularity",
@@ -441,6 +460,24 @@ router.get("/runs/:id/sources/stats", async (req: Request, res: Response): Promi
   }
 })
 
+// GET /admin/api/biography-enrichment/runs/:id/sources/errors - Source error aggregation
+router.get("/runs/:id/sources/errors", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const runId = parseInt(req.params.id, 10)
+    if (isNaN(runId)) {
+      res.status(400).json({ error: { message: "Invalid run ID" } })
+      return
+    }
+
+    const errors = await getBioRunSourceErrors(pool, runId)
+    res.json(errors)
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch bio enrichment source errors")
+    res.status(500).json({ error: { message: "Failed to fetch source errors" } })
+  }
+})
+
 // GET /admin/api/biography-enrichment/runs/:id/run-logs - All-level run logs
 router.get("/runs/:id/run-logs", createRunLogsHandler("biography"))
 
@@ -506,12 +543,24 @@ router.post("/runs/start", async (req: Request, res: Response): Promise<void> =>
       minPopularity,
       actorIds,
       confidenceThreshold,
+      concurrency,
       maxCostPerActor,
       maxTotalCost,
       allowRegeneration,
       sourceCategories,
       sortBy,
     } = req.body
+
+    // Validate concurrency
+    if (concurrency !== undefined) {
+      const n = Number(concurrency)
+      if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1 || n > 20) {
+        res.status(400).json({
+          error: { message: "concurrency must be an integer between 1 and 20" },
+        })
+        return
+      }
+    }
 
     // Validate: must have either actorIds or limit
     if (!actorIds && !limit) {
@@ -532,6 +581,7 @@ router.post("/runs/start", async (req: Request, res: Response): Promise<void> =>
       minPopularity,
       actorIds,
       confidenceThreshold,
+      concurrency,
       maxCostPerActor,
       maxTotalCost,
       allowRegeneration,

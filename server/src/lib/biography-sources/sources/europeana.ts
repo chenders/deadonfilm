@@ -53,6 +53,7 @@ export class EuropeanaBiographySource extends BaseBiographySource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.ARCHIVAL
+  protected domain = "api.europeana.eu"
 
   protected minDelayMs = 1000
 

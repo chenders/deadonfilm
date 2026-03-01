@@ -56,6 +56,7 @@ export class TroveBiographySource extends BaseBiographySource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.ARCHIVAL
+  protected domain = "api.trove.nla.gov.au"
 
   protected minDelayMs = 1000
 

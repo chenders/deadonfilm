@@ -8,7 +8,7 @@ Two systems work together:
 
 1. **Biography Generator** — Produces concise 6-line summaries from TMDB and Wikipedia via Claude Sonnet. This is the "teaser" biography shown on the actor page.
 
-2. **Biography Enrichment Pipeline** — Researches 30+ sources to build rich, multi-paragraph personal narratives with structured data: family background, education, personal struggles, lesser-known facts, and life circumstance tags. This is the "Life" section on actor pages, shown in an expandable card.
+2. **Biography Enrichment Pipeline** — Researches 37 sources to build rich, multi-paragraph personal narratives with structured data: family background, education, personal struggles, lesser-known facts, and life circumstance tags. This is the "Life" section on actor pages, shown in an expandable card.
 
 ## Biography Generator
 
@@ -63,7 +63,7 @@ REQUIREMENTS:
 
 ## Biography Enrichment Pipeline
 
-The enrichment pipeline goes beyond the basic 6-line biography. It researches 30+ sources to build multi-paragraph personal narratives with structured data fields.
+The enrichment pipeline goes beyond the basic 6-line biography. It researches 37 sources to build multi-paragraph personal narratives with structured data fields.
 
 ### Three-Stage Content Pipeline
 
@@ -99,6 +99,8 @@ The enrichment pipeline goes beyond the basic 6-line biography. It researches 30
 |--------|--------|-------|
 | **Britannica** | DuckDuckGo `site:britannica.com` search | High-quality biographical content |
 | **Biography.com** | DuckDuckGo `site:biography.com` search | Dedicated biography resource |
+| **TCM** | DuckDuckGo `site:tcm.com` search | Classic film actor biographies |
+| **AllMusic** | DuckDuckGo `site:allmusic.com` search | Professional music artist biographies |
 
 #### Phase 2.5: Books/Publications
 | Source | Method | Notes |
@@ -116,7 +118,7 @@ The enrichment pipeline goes beyond the basic 6-line biography. It researches 30
 | Brave Search | Brave Search API | Requires `BRAVE_SEARCH_API_KEY` |
 
 #### Phase 4: News Sources
-Guardian, NYTimes, AP News, Reuters, Washington Post, LA Times, BBC News, NPR, PBS, People, The Independent, The Telegraph, Time, The New Yorker, Rolling Stone, National Geographic
+Guardian, NYTimes, AP News, Reuters, Washington Post, LA Times, BBC News, NPR, PBS, People, The Independent, The Telegraph, Time, The New Yorker, Rolling Stone, National Geographic, Smithsonian Magazine, History.com
 
 #### Phase 5: Obituary Sites
 Legacy.com, Find a Grave
@@ -126,12 +128,24 @@ Internet Archive, Chronicling America, Trove, Europeana
 
 ### Orchestrator Flow
 
-1. Initialize sources by category (free → reference → books → web search → news → obituary → archives)
-2. For each actor, try sources sequentially, accumulating ALL successful results
-3. **Early stopping**: After 3+ high-quality sources meeting dual threshold (confidence ≥ 0.6 AND reliability ≥ 0.6)
-4. Send all accumulated raw data to Claude synthesis (Stage 3)
-5. Claude produces structured `BiographyData` JSON
-6. DB writer upserts to `actor_biography_details` with COALESCE (preserves existing non-null values)
+1. Initialize sources organized into sequential **phases** (structured → reference → books → web search → news → obituary → archives)
+2. Process multiple actors concurrently (configurable concurrency, default 5)
+3. For each actor, execute phases sequentially; within each phase, fire all sources concurrently via `Promise.allSettled()`
+4. Accumulate ALL successful results across phases
+5. **Early stopping between phases**: After 3+ high-quality source families meeting dual threshold (confidence ≥ 0.6 AND reliability ≥ 0.6)
+6. Send all accumulated raw data to Claude synthesis (Stage 3)
+7. Claude produces structured `BiographyData` JSON
+8. DB writer upserts to `actor_biography_details` with COALESCE (preserves existing non-null values)
+
+### Parallel Execution
+
+Sources within each phase run concurrently, respecting per-domain rate limits via a shared `SourceRateLimiter`. Multiple actors are processed in parallel with configurable concurrency (default 5, range 1-20, via `--concurrency` CLI flag or admin UI).
+
+| Batch Size | Sequential (legacy) | Parallel (concurrency=5) |
+|-----------|---------------------|-------------------------|
+| 10 actors | ~5-10 min | ~30-60s |
+| 100 actors | ~50-100 min | ~5-10 min |
+| 1000 actors | ~8-16 hrs | ~30-60 min |
 
 ### Output Fields
 

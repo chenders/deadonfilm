@@ -62,6 +62,7 @@ export class GoogleSearchSource extends WebSearchBase {
   readonly isFree = false // Free tier is limited
   readonly estimatedCostPerQuery = 0.005 // $5 per 1000 queries
   readonly reliabilityTier = ReliabilityTier.SEARCH_AGGREGATOR
+  protected domain = "www.googleapis.com"
 
   // Google has good rate limits
   protected minDelayMs = 500

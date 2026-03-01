@@ -67,6 +67,7 @@ export class NYTimesSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.TIER_1_NEWS
+  protected domain = "api.nytimes.com"
 
   // NYT allows 5 requests/minute = 12 seconds between requests
   protected minDelayMs = 12000

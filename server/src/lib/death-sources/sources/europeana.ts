@@ -60,6 +60,7 @@ export class EuropeanaSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.ARCHIVAL
+  protected domain = "api.europeana.eu"
 
   // Be polite to Europeana servers
   protected minDelayMs = 1000

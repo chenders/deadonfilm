@@ -24,6 +24,7 @@ export class NationalGeographicBiographySource extends BaseBiographySource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.TRADE_PRESS
+  protected domain = "html.duckduckgo.com"
 
   protected minDelayMs = 1500
   protected requestTimeoutMs = 15000

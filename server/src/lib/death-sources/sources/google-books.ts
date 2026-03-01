@@ -27,6 +27,7 @@ export class GoogleBooksDeathSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.SECONDARY_COMPILATION
+  protected domain = "www.googleapis.com"
 
   protected minDelayMs = 1000
 

@@ -18,6 +18,7 @@ vi.mock("../../lib/db/admin-enrichment-queries.js", () => ({
   getEnrichmentRunActors: vi.fn(),
   getSourcePerformanceStats: vi.fn(),
   getRunSourcePerformanceStats: vi.fn(),
+  getRunSourceErrors: vi.fn(),
   getPendingEnrichments: vi.fn(),
   getEnrichmentReviewDetail: vi.fn(),
   approveEnrichment: vi.fn(),
@@ -245,7 +246,7 @@ describe("Admin Enrichment Endpoints", () => {
           was_enriched: true,
           created_death_page: true,
           confidence: "0.95",
-          sources_attempted: ["wikidata"],
+          sources_attempted: [{ source: "wikidata", success: true, costUsd: 0, error: null }],
           winning_source: "wikidata",
           processing_time_ms: 1000,
           cost_usd: "0.05",
@@ -399,6 +400,55 @@ describe("Admin Enrichment Endpoints", () => {
         .expect(500)
 
       expect(response.body.error.message).toContain("Failed to fetch run source performance stats")
+    })
+  })
+
+  describe("GET /admin/api/enrichment/runs/:id/sources/errors", () => {
+    const mockSourceErrors = [
+      { source: "wikipedia", error_reason: "No death information found", count: 23 },
+      { source: "wikidata", error_reason: "SPARQL query timeout", count: 5 },
+    ]
+
+    it("returns source errors for specific run", async () => {
+      vi.mocked(queries.getRunSourceErrors).mockResolvedValue(mockSourceErrors)
+
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/1/sources/errors")
+        .expect(200)
+
+      expect(queries.getRunSourceErrors).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1
+      )
+      expect(response.body).toEqual(mockSourceErrors)
+    })
+
+    it("returns 400 for invalid run ID", async () => {
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/invalid/sources/errors")
+        .expect(400)
+
+      expect(response.body.error.message).toBe("Invalid run ID")
+    })
+
+    it("returns 500 on database error", async () => {
+      vi.mocked(queries.getRunSourceErrors).mockRejectedValue(new Error("Database error"))
+
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/1/sources/errors")
+        .expect(500)
+
+      expect(response.body.error.message).toContain("Failed to fetch run source errors")
+    })
+
+    it("returns empty array when no errors exist", async () => {
+      vi.mocked(queries.getRunSourceErrors).mockResolvedValue([])
+
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/1/sources/errors")
+        .expect(200)
+
+      expect(response.body).toEqual([])
     })
   })
 
@@ -749,6 +799,48 @@ describe("Admin Enrichment Endpoints", () => {
         .expect(400)
 
       expect(response.body.error.message).toBe("All actor IDs must be positive integers")
+      expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
+    })
+
+    it("should reject invalid concurrency (zero)", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 10,
+          maxTotalCost: 5,
+          concurrency: 0,
+        })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("concurrency must be an integer between 1 and 20")
+      expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
+    })
+
+    it("should reject concurrency exceeding upper bound", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 10,
+          maxTotalCost: 5,
+          concurrency: 100,
+        })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("concurrency must be an integer between 1 and 20")
+      expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
+    })
+
+    it("should reject non-integer concurrency", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 10,
+          maxTotalCost: 5,
+          concurrency: 3.5,
+        })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("concurrency must be an integer between 1 and 20")
       expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
     })
 

@@ -25,6 +25,8 @@ export enum BiographySourceType {
   // Reference Sites
   BRITANNICA = "britannica",
   BIOGRAPHY_COM = "biography-com",
+  TCM_BIO = "tcm-bio",
+  ALLMUSIC_BIO = "allmusic-bio",
 
   // Web Search (with link following)
   GOOGLE_SEARCH_BIO = "google-search-bio",
@@ -49,6 +51,8 @@ export enum BiographySourceType {
   PBS_BIO = "pbs-bio",
   ROLLING_STONE_BIO = "rolling-stone-bio",
   NATIONAL_GEOGRAPHIC_BIO = "national-geographic-bio",
+  SMITHSONIAN_BIO = "smithsonian-bio",
+  HISTORY_COM_BIO = "history-com-bio",
 
   // Obituary Sites
   LEGACY_BIO = "legacy-bio",
@@ -152,6 +156,7 @@ export interface BiographySourceEntry {
   rawData?: unknown // Original response for debugging
   costUsd?: number // Cost incurred for this lookup
   queryUsed?: string // The query/prompt used
+  error?: string | null // Error message when lookup fails
 }
 
 // ============================================================================
@@ -292,6 +297,8 @@ export interface BiographyEnrichmentConfig {
     mechanicalOnly: boolean // Skip Stage 2, use mechanical only
   }
   synthesisModel: string // default "claude-sonnet-4-20250514"
+  /** Number of actors to process concurrently (default: 5, range: 1-20) */
+  concurrency?: number
 }
 
 /**

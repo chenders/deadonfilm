@@ -175,7 +175,6 @@ export default function CombinedEnrichmentPage(): React.JSX.Element {
             free: deathFree,
             paid: deathPaid,
             ai: deathAi,
-            gatherAllSources: deathGatherAllSources,
             claudeCleanup: deathClaudeCleanup,
             followLinks: deathFollowLinks,
             aiLinkSelection: deathAiLinkSelection,

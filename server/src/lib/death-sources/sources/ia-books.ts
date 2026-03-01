@@ -26,6 +26,7 @@ export class IABooksDeathSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.ARCHIVAL
+  protected domain = "archive.org"
 
   protected minDelayMs = 1000
 

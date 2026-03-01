@@ -45,7 +45,12 @@ export interface EnrichmentRunActor {
   was_enriched: boolean
   created_death_page: boolean
   confidence: string | null
-  sources_attempted: string[]
+  sources_attempted: Array<{
+    source: string
+    success: boolean
+    costUsd: number
+    error?: string | null
+  }>
   winning_source: string | null
   processing_time_ms: number | null
   cost_usd: string
@@ -78,6 +83,12 @@ export interface SourcePerformanceStats {
   average_processing_time_ms: number
 }
 
+export interface SourceErrorSummary {
+  source: string
+  error_reason: string
+  count: number
+}
+
 export interface PaginatedResult<T> {
   items: T[]
   total: number
@@ -106,8 +117,8 @@ export interface StartEnrichmentRequest {
   confidence?: number
   maxCostPerActor?: number
   maxTotalCost?: number
+  concurrency?: number
   claudeCleanup?: boolean
-  gatherAllSources?: boolean
   followLinks?: boolean
   aiLinkSelection?: boolean
   aiContentExtraction?: boolean
@@ -373,6 +384,29 @@ export function useRunSourcePerformanceStats(
   return useQuery({
     queryKey: ["admin", "enrichment", "run", runId, "sources", "stats"],
     queryFn: () => fetchRunSourcePerformanceStats(runId),
+    staleTime: isRunning ? 0 : 60000,
+    refetchInterval: isRunning ? 10000 : false,
+    enabled: !!runId,
+  })
+}
+
+/**
+ * Hook to fetch source error aggregation for a specific run.
+ * Shows top error reasons grouped by source.
+ */
+export function useRunSourceErrors(
+  runId: number,
+  isRunning?: boolean
+): UseQueryResult<SourceErrorSummary[]> {
+  return useQuery({
+    queryKey: ["admin", "enrichment", "run", runId, "sources", "errors"],
+    queryFn: async () => {
+      const response = await fetch(`/admin/api/enrichment/runs/${runId}/sources/errors`, {
+        credentials: "include",
+      })
+      if (!response.ok) throw new Error("Failed to fetch source errors")
+      return response.json()
+    },
     staleTime: isRunning ? 0 : 60000,
     refetchInterval: isRunning ? 10000 : false,
     enabled: !!runId,

@@ -23,6 +23,7 @@ export class BiographyComSource extends BaseBiographySource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.SECONDARY_COMPILATION
+  protected domain = "html.duckduckgo.com"
 
   protected minDelayMs = 1500
   protected requestTimeoutMs = 15000

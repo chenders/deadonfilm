@@ -37,6 +37,7 @@ function makeMockSourceClass(sourceName: string, options?: { isWebSearch?: boole
         error: "No data",
       }),
       setConfig: vi.fn(),
+      setRateLimiter: vi.fn(),
     }
 
     // For instanceof checks in orchestrator
@@ -79,6 +80,7 @@ function resetConstructorMock(
         error: "No data",
       }),
       setConfig: vi.fn(),
+      setRateLimiter: vi.fn(),
     }
 
     if (options?.isWebSearch) {
@@ -105,6 +107,12 @@ vi.mock("./sources/britannica.js", () => ({
 }))
 vi.mock("./sources/biography-com.js", () => ({
   BiographyComSource: makeMockSourceClass("Biography.com"),
+}))
+vi.mock("./sources/tcm.js", () => ({
+  TCMBiographySource: makeMockSourceClass("TCM"),
+}))
+vi.mock("./sources/allmusic.js", () => ({
+  AllMusicBiographySource: makeMockSourceClass("AllMusic"),
 }))
 vi.mock("./sources/google-search.js", () => ({
   GoogleBiographySearch: makeMockSourceClass("Google Search", { isWebSearch: true }),
@@ -165,6 +173,12 @@ vi.mock("./sources/rolling-stone.js", () => ({
 }))
 vi.mock("./sources/national-geographic.js", () => ({
   NationalGeographicBiographySource: makeMockSourceClass("National Geographic"),
+}))
+vi.mock("./sources/smithsonian.js", () => ({
+  SmithsonianBiographySource: makeMockSourceClass("Smithsonian Magazine"),
+}))
+vi.mock("./sources/history-com.js", () => ({
+  HistoryComBiographySource: makeMockSourceClass("History.com"),
 }))
 vi.mock("./sources/legacy.js", () => ({
   LegacyBiographySource: makeMockSourceClass("Legacy"),
@@ -355,8 +369,8 @@ describe("BiographyEnrichmentOrchestrator", () => {
     it("initializes all source categories by default", () => {
       const orchestrator = new BiographyEnrichmentOrchestrator()
 
-      // All 33 sources should be initialized (all categories enabled except AI)
-      expect(orchestrator.getSourceCount()).toBe(33)
+      // All 37 sources should be initialized (all categories enabled except AI)
+      expect(orchestrator.getSourceCount()).toBe(37)
     })
 
     it("initializes sources in correct priority order", () => {
@@ -369,35 +383,39 @@ describe("BiographyEnrichmentOrchestrator", () => {
       expect(names[1]).toBe("Wikipedia")
       expect(names[2]).toBe("Britannica")
       expect(names[3]).toBe("Biography.com")
-      expect(names[4]).toBe("Google Books")
-      expect(names[5]).toBe("Open Library")
-      expect(names[6]).toBe("IA Books")
-      expect(names[7]).toBe("Google Search")
-      expect(names[8]).toBe("Bing Search")
-      expect(names[9]).toBe("DuckDuckGo")
-      expect(names[10]).toBe("Brave Search")
-      expect(names[11]).toBe("Guardian")
-      expect(names[12]).toBe("NYTimes")
-      expect(names[13]).toBe("AP News")
-      expect(names[14]).toBe("Reuters")
-      expect(names[15]).toBe("Washington Post")
-      expect(names[16]).toBe("Los Angeles Times")
-      expect(names[17]).toBe("BBC News")
-      expect(names[18]).toBe("NPR")
-      expect(names[19]).toBe("PBS")
-      expect(names[20]).toBe("People")
-      expect(names[21]).toBe("The Independent")
-      expect(names[22]).toBe("The Telegraph")
-      expect(names[23]).toBe("Time")
-      expect(names[24]).toBe("The New Yorker")
-      expect(names[25]).toBe("Rolling Stone")
-      expect(names[26]).toBe("National Geographic")
-      expect(names[27]).toBe("Legacy")
-      expect(names[28]).toBe("FindAGrave")
-      expect(names[29]).toBe("Internet Archive")
-      expect(names[30]).toBe("Chronicling America")
-      expect(names[31]).toBe("Trove")
-      expect(names[32]).toBe("Europeana")
+      expect(names[4]).toBe("TCM")
+      expect(names[5]).toBe("AllMusic")
+      expect(names[6]).toBe("Google Books")
+      expect(names[7]).toBe("Open Library")
+      expect(names[8]).toBe("IA Books")
+      expect(names[9]).toBe("Google Search")
+      expect(names[10]).toBe("Bing Search")
+      expect(names[11]).toBe("DuckDuckGo")
+      expect(names[12]).toBe("Brave Search")
+      expect(names[13]).toBe("Guardian")
+      expect(names[14]).toBe("NYTimes")
+      expect(names[15]).toBe("AP News")
+      expect(names[16]).toBe("Reuters")
+      expect(names[17]).toBe("Washington Post")
+      expect(names[18]).toBe("Los Angeles Times")
+      expect(names[19]).toBe("BBC News")
+      expect(names[20]).toBe("NPR")
+      expect(names[21]).toBe("PBS")
+      expect(names[22]).toBe("People")
+      expect(names[23]).toBe("The Independent")
+      expect(names[24]).toBe("The Telegraph")
+      expect(names[25]).toBe("Time")
+      expect(names[26]).toBe("The New Yorker")
+      expect(names[27]).toBe("Rolling Stone")
+      expect(names[28]).toBe("National Geographic")
+      expect(names[29]).toBe("Smithsonian Magazine")
+      expect(names[30]).toBe("History.com")
+      expect(names[31]).toBe("Legacy")
+      expect(names[32]).toBe("FindAGrave")
+      expect(names[33]).toBe("Internet Archive")
+      expect(names[34]).toBe("Chronicling America")
+      expect(names[35]).toBe("Trove")
+      expect(names[36]).toBe("Europeana")
     })
 
     it("filters out unavailable sources", () => {
@@ -413,6 +431,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           isAvailable: vi.fn().mockReturnValue(false),
           lookup: vi.fn(),
           setConfig: vi.fn(),
+          setRateLimiter: vi.fn(),
         }
         Object.setPrototypeOf(instance, BiographyWebSearchBase.prototype)
         mockInstances.set("Google Search", instance)
@@ -430,6 +449,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           isAvailable: vi.fn().mockReturnValue(false),
           lookup: vi.fn(),
           setConfig: vi.fn(),
+          setRateLimiter: vi.fn(),
         }
         Object.setPrototypeOf(instance, BiographyWebSearchBase.prototype)
         mockInstances.set("Bing Search", instance)
@@ -438,7 +458,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       const orchestrator = new BiographyEnrichmentOrchestrator()
 
-      expect(orchestrator.getSourceCount()).toBe(31)
+      expect(orchestrator.getSourceCount()).toBe(35)
       expect(orchestrator.getSourceNames()).not.toContain("Google Search")
       expect(orchestrator.getSourceNames()).not.toContain("Bing Search")
     })
@@ -457,10 +477,12 @@ describe("BiographyEnrichmentOrchestrator", () => {
         },
       })
 
-      // Only reference sources (2)
-      expect(orchestrator.getSourceCount()).toBe(2)
+      // Only reference sources (4)
+      expect(orchestrator.getSourceCount()).toBe(4)
       expect(orchestrator.getSourceNames()).toContain("Britannica")
       expect(orchestrator.getSourceNames()).toContain("Biography.com")
+      expect(orchestrator.getSourceNames()).toContain("TCM")
+      expect(orchestrator.getSourceNames()).toContain("AllMusic")
       expect(orchestrator.getSourceNames()).not.toContain("Wikidata")
       expect(orchestrator.getSourceNames()).not.toContain("Wikipedia")
     })
@@ -499,8 +521,8 @@ describe("BiographyEnrichmentOrchestrator", () => {
         },
       })
 
-      // Free (2) + News (16) = 18
-      expect(orchestrator.getSourceCount()).toBe(18)
+      // Free (2) + News (18) = 20
+      expect(orchestrator.getSourceCount()).toBe(20)
       expect(orchestrator.getSourceNames()).toContain("Wikidata")
       expect(orchestrator.getSourceNames()).toContain("Guardian")
       expect(orchestrator.getSourceNames()).not.toContain("Britannica")
@@ -632,7 +654,10 @@ describe("BiographyEnrichmentOrchestrator", () => {
       expect(wikidataMock.lookup).toHaveBeenCalledWith(testActor)
       expect(wikipediaMock.lookup).toHaveBeenCalledWith(testActor)
 
-      // Wikidata should be called first
+      // Both sources are in the same STRUCTURED_DATA phase and run concurrently.
+      // Promise.allSettled preserves input-array order, so Wikidata (first in array)
+      // is initiated before Wikipedia. This assertion verifies array ordering, not a
+      // sequential execution guarantee — intra-phase ordering is an implementation detail.
       const wikidataOrder = (wikidataMock.lookup as ReturnType<typeof vi.fn>).mock
         .invocationCallOrder[0]
       const wikipediaOrder = (wikipediaMock.lookup as ReturnType<typeof vi.fn>).mock
@@ -730,17 +755,19 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       const result = await orchestrator.enrichActor(testActor)
 
-      // After 3 distinct high-quality sources, remaining sources should NOT be called
-      // (mock types are unique per source, so each counts as its own family)
-      const biographyComMock = getMock("Biography.com")
+      // With phase-based execution, early stopping is checked BETWEEN phases.
+      // STRUCTURED_DATA (Wikidata, Wikipedia) and REFERENCE (Britannica, Biography.com)
+      // run all sources within each phase concurrently. After REFERENCE phase completes,
+      // the threshold is met, so later phases (WEB_SEARCH, NEWS) should NOT run.
       const googleMock = getMock("Google Search")
       const guardianMock = getMock("Guardian")
 
-      expect(biographyComMock.lookup).not.toHaveBeenCalled()
       expect(googleMock.lookup).not.toHaveBeenCalled()
       expect(guardianMock.lookup).not.toHaveBeenCalled()
 
-      expect(result.rawSources).toHaveLength(3)
+      // Wikidata, Wikipedia from STRUCTURED_DATA + all 4 REFERENCE sources ran concurrently
+      // but only those that succeed contribute to rawSources
+      expect(result.rawSources!.length).toBeGreaterThanOrEqual(3)
     })
 
     it("groups Wikidata and Wikipedia as one source family for early stopping", async () => {
@@ -759,7 +786,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
       ;(wikipediaMock.lookup as ReturnType<typeof vi.fn>).mockResolvedValue(
         createSuccessfulLookup({ confidence: 0.8, reliabilityScore: 0.95 })
       )
-      // Britannica = 2nd distinct family → triggers early stop
+      // Britannica = 2nd distinct family → triggers early stop after REFERENCE phase
       const britannicaMock = getMock("Britannica")
       ;(britannicaMock.lookup as ReturnType<typeof vi.fn>).mockResolvedValue(
         createSuccessfulLookup({ confidence: 0.8, reliabilityScore: 0.95 })
@@ -769,12 +796,15 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       const result = await orchestrator.enrichActor(testActor)
 
-      // Wikidata + Wikipedia = 1 family, Britannica = 2nd → stop
-      const biographyComMock = getMock("Biography.com")
-      expect(biographyComMock.lookup).not.toHaveBeenCalled()
+      // With phase-based execution, REFERENCE phase sources (Britannica, Biography.com, etc.)
+      // all run concurrently within the phase. Early stopping is checked AFTER the phase.
+      // So Biography.com runs (it's in the REFERENCE phase with Britannica), but later
+      // phases (WEB_SEARCH, NEWS) should NOT run.
+      const googleMock = getMock("Google Search")
+      expect(googleMock.lookup).not.toHaveBeenCalled()
 
-      // All 3 sources were collected (Wikidata, Wikipedia, Britannica)
-      expect(result.rawSources).toHaveLength(3)
+      // Wikidata, Wikipedia from STRUCTURED_DATA + REFERENCE sources ran
+      expect(result.rawSources!.length).toBeGreaterThanOrEqual(3)
     })
 
     it("always tries book sources even when early stop threshold is met", async () => {
@@ -838,6 +868,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
                 createSuccessfulLookup({ confidence: 0.8, reliabilityScore: 0.3 })
               ),
             setConfig: vi.fn(),
+            setRateLimiter: vi.fn(),
           }
           mockInstances.set(name, instance)
           return instance
@@ -883,9 +914,12 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       const result = await orchestrator.enrichActor(testActor)
 
-      // Wikipedia should NOT be called because cost limit hit after Wikidata
-      const wikipediaMock = getMock("Wikipedia")
-      expect(wikipediaMock.lookup).not.toHaveBeenCalled()
+      // With phase-based execution, Wikidata and Wikipedia run concurrently in the
+      // STRUCTURED_DATA phase. Cost limit is checked BETWEEN phases, so both run.
+      // But the REFERENCE phase should NOT run because cost limit is exceeded after
+      // the STRUCTURED_DATA phase completes.
+      const britannicaMock = getMock("Britannica")
+      expect(britannicaMock.lookup).not.toHaveBeenCalled()
 
       expect(result.stats.totalCostUsd).toBeGreaterThanOrEqual(0.5)
     })
@@ -1180,7 +1214,9 @@ describe("BiographyEnrichmentOrchestrator", () => {
     })
 
     it("respects batch total cost limit", async () => {
+      // Use concurrency=1 to ensure sequential processing for deterministic cost limiting
       const orchestrator = new BiographyEnrichmentOrchestrator({
+        concurrency: 1,
         costLimits: {
           maxCostPerActor: 10.0,
           maxTotalCost: 10.0,
@@ -1274,7 +1310,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
         },
       })
 
-      expect(orchestrator.getSourceCount()).toBe(4) // 2 free + 2 reference
+      expect(orchestrator.getSourceCount()).toBe(6) // 2 free + 4 reference
     })
 
     it("returns empty arrays when all categories disabled", () => {

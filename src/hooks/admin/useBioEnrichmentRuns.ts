@@ -53,6 +53,7 @@ export interface BioEnrichmentRunActor {
     costUsd: number
     confidence: number
     reliabilityScore: number | null
+    error?: string | null
   }>
   sources_succeeded: number
   synthesis_model: string | null
@@ -71,6 +72,12 @@ export interface BioSourcePerformanceStats {
   success_rate: number
   total_cost_usd: number
   average_cost_usd: number
+}
+
+export interface SourceErrorSummary {
+  source: string
+  error_reason: string
+  count: number
 }
 
 export interface PaginatedResult<T> {
@@ -111,9 +118,11 @@ export interface StartBioEnrichmentRequest {
   minPopularity?: number
   actorIds?: number[]
   confidenceThreshold?: number
+  concurrency?: number
   maxCostPerActor?: number
   maxTotalCost?: number
   allowRegeneration?: boolean
+  sortBy?: "popularity" | "interestingness"
   sourceCategories?: {
     free?: boolean
     reference?: boolean
@@ -228,6 +237,19 @@ export function useBioRunSourcePerformanceStats(runId: number | undefined, isRun
 }
 
 /**
+ * Source error aggregation for a bio enrichment run.
+ * Shows top error reasons grouped by source.
+ */
+export function useBioRunSourceErrors(runId: number | undefined, isRunning?: boolean) {
+  return useQuery<SourceErrorSummary[]>({
+    queryKey: ["bio-enrichment-run-source-errors", runId],
+    queryFn: () => fetchJson(`${BASE_URL}/runs/${runId}/sources/errors`),
+    enabled: !!runId,
+    refetchInterval: isRunning ? 10000 : false,
+  })
+}
+
+/**
  * Real-time progress for a running bio enrichment run.
  */
 export function useBioEnrichmentRunProgress(runId: number | undefined, enabled?: boolean) {
@@ -235,7 +257,10 @@ export function useBioEnrichmentRunProgress(runId: number | undefined, enabled?:
     queryKey: ["bio-enrichment-run-progress", runId],
     queryFn: () => fetchJson(`${BASE_URL}/runs/${runId}/progress`),
     enabled: !!runId && enabled !== false,
-    refetchInterval: 3000,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      return status === "running" || status === "pending" ? 3000 : false
+    },
   })
 }
 

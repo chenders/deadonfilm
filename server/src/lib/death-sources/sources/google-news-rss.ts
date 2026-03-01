@@ -43,6 +43,7 @@ export class GoogleNewsRSSSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.SEARCH_AGGREGATOR
+  protected domain = "news.google.com"
 
   // Respectful rate limiting for Google
   protected minDelayMs = 1500

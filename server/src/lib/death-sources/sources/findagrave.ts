@@ -32,6 +32,7 @@ export class FindAGraveSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.UNRELIABLE_UGC
+  protected domain = "api.findagrave.com"
 
   // Be respectful to their servers
   protected minDelayMs = 2000

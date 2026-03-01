@@ -22,6 +22,7 @@ import type { ReliabilityTier } from "../death-sources/types.js"
 import { RELIABILITY_SCORES } from "../death-sources/types.js"
 import type { DataSourceType } from "../death-sources/types.js"
 import { getCachedQuery, setCachedQuery } from "../death-sources/cache.js"
+import type { SourceRateLimiter } from "../shared/concurrency.js"
 
 // ============================================================================
 // Global Cache Configuration
@@ -122,9 +123,15 @@ export abstract class BaseBiographySource {
     return RELIABILITY_SCORES[this.reliabilityTier]
   }
 
+  /** External domain this source hits (for shared rate limiting) */
+  protected domain = "unknown"
+
   // Rate limiting
   protected lastRequestTime = 0
   protected minDelayMs = 1000 // Default 1 second between requests
+
+  /** Shared rate limiter (set by orchestrator for cross-actor coordination) */
+  private sharedRateLimiter: SourceRateLimiter | null = null
 
   // Request timeout
   protected requestTimeoutMs = 30000
@@ -140,6 +147,11 @@ export abstract class BaseBiographySource {
    */
   protected createTimeoutSignal(): AbortSignal {
     return AbortSignal.timeout(this.requestTimeoutMs)
+  }
+
+  /** Called by orchestrator to inject shared rate limiter for cross-actor coordination */
+  setRateLimiter(limiter: SourceRateLimiter): void {
+    this.sharedRateLimiter = limiter
   }
 
   /**
@@ -264,17 +276,24 @@ export abstract class BaseBiographySource {
 
   /**
    * Wait if necessary to respect rate limits.
+   * Uses shared rate limiter if available (coordinates across concurrent actors),
+   * falls back to per-instance tracking for standalone use.
    */
   protected async waitForRateLimit(): Promise<void> {
-    const now = Date.now()
-    const timeSinceLastRequest = now - this.lastRequestTime
-    const waitTime = Math.max(0, this.minDelayMs - timeSinceLastRequest)
+    if (this.sharedRateLimiter) {
+      await this.sharedRateLimiter.acquire(this.domain, this.minDelayMs)
+    } else {
+      // Fallback to per-instance rate limiting (backward compat for standalone use)
+      const now = Date.now()
+      const timeSinceLastRequest = now - this.lastRequestTime
+      const waitTime = Math.max(0, this.minDelayMs - timeSinceLastRequest)
 
-    if (waitTime > 0) {
-      await new Promise((resolve) => setTimeout(resolve, waitTime))
+      if (waitTime > 0) {
+        await new Promise((resolve) => setTimeout(resolve, waitTime))
+      }
+
+      this.lastRequestTime = Date.now()
     }
-
-    this.lastRequestTime = Date.now()
   }
 
   /**
@@ -291,6 +310,7 @@ export abstract class BaseBiographySource {
       articleTitle?: string
       domain?: string
       contentType?: string
+      error?: string
     }
   ): BiographySourceEntry {
     return {
@@ -307,6 +327,7 @@ export abstract class BaseBiographySource {
       articleTitle: options?.articleTitle ?? null,
       domain: options?.domain ?? null,
       contentType: options?.contentType ?? null,
+      error: options?.error ?? null,
     }
   }
 

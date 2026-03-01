@@ -53,6 +53,15 @@ vi.mock("../../lib/jobs/types.js", () => ({
   JobType: { ENRICH_BIOGRAPHIES_BATCH: "enrich-biographies-batch" },
 }))
 
+const mockGetBioRunSourceErrors = vi.fn()
+vi.mock("../../lib/db/admin-bio-enrichment-queries.js", () => ({
+  getBioEnrichmentRuns: vi.fn(),
+  getBioEnrichmentRunDetails: vi.fn(),
+  getBioEnrichmentRunActors: vi.fn(),
+  getBioRunSourcePerformanceStats: vi.fn(),
+  getBioRunSourceErrors: (...args: unknown[]) => mockGetBioRunSourceErrors(...args),
+}))
+
 describe("Admin Biography Enrichment Endpoints", () => {
   let app: express.Application
 
@@ -401,6 +410,28 @@ describe("Admin Biography Enrichment Endpoints", () => {
       expect(jobPayload.allowRegeneration).toBe(false)
     })
 
+    it("forwards concurrency to job payload and run config", async () => {
+      mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 47 }] })
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] })
+
+      const { queueManager } = await import("../../lib/jobs/queue-manager.js")
+
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/enrich-batch")
+        .send({ actorIds: [1], concurrency: 10 })
+
+      expect(res.status).toBe(200)
+
+      // Verify forwarded to addJob payload
+      const jobPayload = vi.mocked(queueManager.addJob).mock.calls[0][1] as Record<string, unknown>
+      expect(jobPayload.concurrency).toBe(10)
+
+      // Verify included in persisted run config
+      const insertCall = mockPoolQuery.mock.calls[0]
+      const configJson = JSON.parse(insertCall[1][0] as string)
+      expect(configJson.concurrency).toBe(10)
+    })
+
     it("forwards earlyStopSourceCount to job payload and run config", async () => {
       mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 46 }] })
       mockPoolQuery.mockResolvedValueOnce({ rows: [] })
@@ -625,6 +656,63 @@ describe("Admin Biography Enrichment Endpoints", () => {
 
       expect(res.status).toBe(500)
       expect(res.body.error.message).toBe("Failed to fetch bio actor enrichment logs")
+    })
+  })
+
+  // ==========================================================================
+  // GET /admin/api/biography-enrichment/runs/:id/sources/errors
+  // ==========================================================================
+
+  describe("GET /runs/:id/sources/errors", () => {
+    const mockSourceErrors = [
+      { source: "wikipedia-bio", error_reason: "No biographical keywords found", count: 15 },
+      {
+        source: "guardian-bio",
+        error_reason: "Content too short (42 chars, minimum 100)",
+        count: 8,
+      },
+    ]
+
+    it("returns source errors for specific run", async () => {
+      mockGetBioRunSourceErrors.mockResolvedValue(mockSourceErrors)
+
+      const response = await request(app)
+        .get("/admin/api/biography-enrichment/runs/1/sources/errors")
+        .expect(200)
+
+      expect(mockGetBioRunSourceErrors).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1
+      )
+      expect(response.body).toEqual(mockSourceErrors)
+    })
+
+    it("returns 400 for invalid run ID", async () => {
+      const response = await request(app)
+        .get("/admin/api/biography-enrichment/runs/abc/sources/errors")
+        .expect(400)
+
+      expect(response.body.error.message).toBe("Invalid run ID")
+    })
+
+    it("returns 500 on database error", async () => {
+      mockGetBioRunSourceErrors.mockRejectedValue(new Error("Database error"))
+
+      const response = await request(app)
+        .get("/admin/api/biography-enrichment/runs/1/sources/errors")
+        .expect(500)
+
+      expect(response.body.error.message).toContain("Failed to fetch source errors")
+    })
+
+    it("returns empty array when no errors exist", async () => {
+      mockGetBioRunSourceErrors.mockResolvedValue([])
+
+      const response = await request(app)
+        .get("/admin/api/biography-enrichment/runs/1/sources/errors")
+        .expect(200)
+
+      expect(response.body).toEqual([])
     })
   })
 })

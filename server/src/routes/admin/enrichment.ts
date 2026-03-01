@@ -15,6 +15,7 @@ import {
   getEnrichmentRunActors,
   getSourcePerformanceStats,
   getRunSourcePerformanceStats,
+  getRunSourceErrors,
   getPendingEnrichments,
   getEnrichmentReviewDetail,
   approveEnrichment,
@@ -210,6 +211,30 @@ router.get("/runs/:id/sources/stats", async (req: Request, res: Response): Promi
 })
 
 // ============================================================================
+// GET /admin/api/enrichment/runs/:id/sources/errors
+// Get top error reasons per source for a specific run
+// ============================================================================
+
+router.get("/runs/:id/sources/errors", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const runId = parseInt(req.params.id, 10)
+
+    if (isNaN(runId)) {
+      res.status(400).json({ error: { message: "Invalid run ID" } })
+      return
+    }
+
+    const errors = await getRunSourceErrors(pool, runId)
+
+    res.json(errors)
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch run source errors")
+    res.status(500).json({ error: { message: "Failed to fetch run source errors" } })
+  }
+})
+
+// ============================================================================
 // GET /admin/api/enrichment/runs/:id/logs
 // Get logs associated with a specific enrichment run
 // ============================================================================
@@ -263,7 +288,7 @@ router.get("/runs/:id/logs", async (req: Request, res: Response): Promise<void> 
     // Get total count
     const countQuery = `SELECT COUNT(*) FROM error_logs ${whereClause}`
     const countResult = await pool.query(countQuery, params)
-    const total = parseInt(countResult.rows[0].count)
+    const total = parseInt(countResult.rows[0]?.count ?? "0", 10)
 
     // Get paginated results
     const query = `
@@ -368,7 +393,7 @@ interface StartEnrichmentRequest {
   free?: boolean
   paid?: boolean
   ai?: boolean
-  gatherAllSources?: boolean
+  concurrency?: number
   // Advanced options
   claudeCleanup?: boolean
   followLinks?: boolean
@@ -413,6 +438,16 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
       return
     }
 
+    if (config.concurrency !== undefined) {
+      const n = Number(config.concurrency)
+      if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1 || n > 20) {
+        res
+          .status(400)
+          .json({ error: { message: "concurrency must be an integer between 1 and 20" } })
+        return
+      }
+    }
+
     if (config.actorIds !== undefined) {
       if (!Array.isArray(config.actorIds) || config.actorIds.length === 0) {
         res.status(400).json({ error: { message: "actorIds must be a non-empty array" } })
@@ -450,7 +485,8 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
       ai: config.ai ?? false,
       // Enrichment settings from UI
       claudeCleanup: config.claudeCleanup ?? true,
-      gatherAllSources: config.gatherAllSources ?? true,
+      gatherAllSources: true,
+      concurrency: config.concurrency,
       followLinks: config.followLinks ?? true,
       aiLinkSelection: config.aiLinkSelection ?? true,
       aiContentExtraction: config.aiContentExtraction ?? true,

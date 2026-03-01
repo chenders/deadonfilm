@@ -26,6 +26,7 @@ export class NewsAPISource extends BaseDataSource {
   readonly isFree = true // Free tier available
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.SEARCH_AGGREGATOR
+  protected domain = "newsapi.org"
 
   // Rate limit: be conservative with free tier
   protected minDelayMs = 1000

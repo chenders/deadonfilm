@@ -30,6 +30,7 @@ export class FindAGraveBiographySource extends BaseBiographySource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.UNRELIABLE_UGC
+  protected domain = "www.findagrave.com"
 
   protected minDelayMs = 2000
   protected requestTimeoutMs = 15000

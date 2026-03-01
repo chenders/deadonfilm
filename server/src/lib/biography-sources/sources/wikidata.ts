@@ -110,6 +110,7 @@ export class WikidataBiographySource extends BaseBiographySource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.STRUCTURED_DATA
+  protected domain = "query.wikidata.org"
 
   protected minDelayMs = 500 // Wikidata rate limit
 

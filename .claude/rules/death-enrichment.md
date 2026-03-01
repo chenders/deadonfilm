@@ -55,11 +55,15 @@ When adding a new source, consult [Wikipedia's RSP list](https://en.wikipedia.or
 
 ## Orchestrator Flow
 
-1. Initialize sources by category (free first, then AI by cost)
-2. For each actor, try sources sequentially
-3. **Stop when:** confidence >= threshold (default 0.5), cost limit hit, or all sources exhausted
-4. Optional "gather-all" mode: collect from ALL sources, then Claude cleanup synthesizes
-5. Merge strategy: first-wins for each field (only merge non-null values not already set)
+1. Initialize sources organized into sequential **phases** (structured → web search → news → obituary → books → archives → genealogy → AI models)
+2. Process multiple actors concurrently (configurable concurrency, default 5, range 1-20)
+3. For each actor, execute phases sequentially; within each phase, fire all sources concurrently via `Promise.allSettled()`
+4. Accumulate ALL raw source data into `rawSources[]`
+5. **Early stopping between phases**: based on source family count threshold (similar to biography's "3+ high-quality families"), per-actor cost limit also checked
+6. Always send accumulated raw data to Claude synthesis (`claude-cleanup.ts`)
+7. Claude produces unified structured output
+
+**Note**: The legacy "first-wins" merge strategy has been replaced. All actors now use the gather-all + synthesis approach (same as biography enrichment). This produces higher-quality results by cross-referencing multiple sources.
 
 ## Source Priority Order
 
@@ -137,7 +141,8 @@ DDG's deprecated HTML endpoint (`html.duckduckgo.com/html/`) increasingly return
 ```typescript
 {
   limit: 100,                    // Max actors per batch
-  confidenceThreshold: 0.5,      // Stop trying sources when this confidence is reached
+  concurrency: 5,               // Actors processed in parallel (1-20)
+  confidenceThreshold: 0.5,      // Source quality threshold for early stopping
   sourceCategories: {
     free: true,                  // Free web sources
     paid: false,                 // Paid API sources
@@ -153,16 +158,23 @@ DDG's deprecated HTML endpoint (`html.duckduckgo.com/html/`) increasingly return
     aiLinkSelection: false,      // Use AI to pick which links to follow
     aiContentExtraction: false,  // Use AI to extract death info from pages
   },
-  claudeCleanup: {
-    enabled: false,
-    gatherAllSources: false,     // Collect all sources then synthesize vs first-wins
-  },
 }
 ```
 
+## Parallel Execution Model
+
+Sources are organized into sequential **phases**. Sources within each phase run concurrently via `Promise.allSettled()`. Multiple actors are processed in parallel with configurable concurrency.
+
+A shared `SourceRateLimiter` (`server/src/lib/shared/concurrency.ts`) enforces per-domain request spacing across all concurrent actors. Each source declares a `domain` property (e.g., `"en.wikipedia.org"`, `"html.duckduckgo.com"`). Sources sharing a domain share rate limits.
+
+A `BatchCostTracker` handles atomic cost accumulation across concurrent actors. A `ParallelBatchRunner` replaces the sequential `for` loop with concurrency-limited processing via `p-limit`.
+
+DuckDuckGo requests are serialized per domain via `SourceRateLimiter` (one at a time with configurable delays) to prevent CAPTCHA triggers.
+
 ## Rate Limiting & Caching
 
-- Default rate limit: 1000ms between requests per source
+- Shared `SourceRateLimiter` enforces per-domain spacing across concurrent actors
+- Default rate limit: 1000ms between requests per domain
 - Wikidata/Wikipedia: 500ms
 - Results are cached per source+actor (prevents redundant lookups across runs)
 - `SourceAccessBlockedError` (403/429) is cached to avoid re-hitting blocked sources
@@ -176,11 +188,14 @@ DDG's deprecated HTML endpoint (`html.duckduckgo.com/html/`) increasingly return
 
 ## Key Patterns
 
-- All sources extend `BaseDataSource` which provides caching, rate limiting, timeouts
+- All sources extend `BaseDataSource` which provides caching, rate limiting (via shared `SourceRateLimiter`), timeouts
+- Each source declares a `domain` property for rate limit coordination
 - Sources requiring API keys override `isAvailable()` to check env vars
 - Web search sources extend `WebSearchBase` which handles link following
 - DuckDuckGo-dependent sources use `searchWeb()` from `web-search-base.ts`
 - `htmlToText()` from `html-utils.ts` is the standard HTML sanitization pipeline
+- Sources within the same phase run concurrently via `Promise.allSettled()`
+- `ParallelBatchRunner` from `server/src/lib/shared/concurrency.ts` handles actor-level concurrency
 
 ## Database Tables
 

@@ -40,6 +40,7 @@ export class GrokSource extends BaseDataSource {
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.005 // ~$0.005/query for grok-2
   readonly reliabilityTier = ReliabilityTier.AI_MODEL
+  protected domain = "api.x.ai"
 
   private client: OpenAI | null = null
 

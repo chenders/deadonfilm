@@ -59,6 +59,7 @@ export class ChroniclingAmericaSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.ARCHIVAL
+  protected domain = "chroniclingamerica.loc.gov"
 
   // Library of Congress recommends 1 request per second
   protected minDelayMs = 1000

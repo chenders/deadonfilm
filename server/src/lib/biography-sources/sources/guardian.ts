@@ -67,6 +67,7 @@ export class GuardianBiographySource extends BaseBiographySource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.TIER_1_NEWS
+  protected domain = "content.guardianapis.com"
 
   // Guardian allows 12 requests/second
   protected minDelayMs = 200

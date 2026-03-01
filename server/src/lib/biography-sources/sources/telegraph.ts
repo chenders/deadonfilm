@@ -24,6 +24,7 @@ export class TelegraphBiographySource extends BaseBiographySource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.TIER_1_NEWS
+  protected domain = "html.duckduckgo.com"
 
   protected minDelayMs = 2000
   protected requestTimeoutMs = 15000

@@ -54,6 +54,7 @@ export interface BioEnrichmentRunActor {
     costUsd: number
     confidence: number
     reliabilityScore: number | null
+    error?: string | null
   }>
   sources_succeeded: number
   synthesis_model: string | null
@@ -72,6 +73,12 @@ export interface BioSourcePerformanceStats {
   success_rate: number
   total_cost_usd: number
   average_cost_usd: number
+}
+
+export interface SourceErrorSummary {
+  source: string
+  error_reason: string
+  count: number
 }
 
 export interface PaginatedResult<T> {
@@ -152,7 +159,7 @@ export async function getBioEnrichmentRuns(
     `SELECT COUNT(*) as count FROM bio_enrichment_runs ${whereClause}`,
     params
   )
-  const total = parseInt(countResult.rows[0].count, 10)
+  const total = parseInt(countResult.rows[0]?.count ?? "0", 10)
 
   // Fetch page
   const queryParams = [...params, pageSize, offset]
@@ -219,7 +226,7 @@ export async function getBioEnrichmentRunActors(
     `SELECT COUNT(*) as count FROM bio_enrichment_run_actors WHERE run_id = $1`,
     [runId]
   )
-  const total = parseInt(countResult.rows[0].count, 10)
+  const total = parseInt(countResult.rows[0]?.count ?? "0", 10)
 
   const result = await pool.query<BioEnrichmentRunActor>(
     `SELECT
@@ -284,6 +291,32 @@ export async function getBioRunSourcePerformanceStats(
     WHERE bra.run_id = $1
     GROUP BY s->>'source'
     ORDER BY total_attempts DESC`,
+    [runId]
+  )
+
+  return result.rows
+}
+
+/**
+ * Get top error reasons per source for a bio enrichment run.
+ * Aggregates error messages from failed source attempts in the JSONB.
+ */
+export async function getBioRunSourceErrors(
+  pool: Pool,
+  runId: number
+): Promise<SourceErrorSummary[]> {
+  const result = await pool.query<SourceErrorSummary>(
+    `SELECT
+      s->>'source' as source,
+      s->>'error' as error_reason,
+      COUNT(*)::int as count
+    FROM bio_enrichment_run_actors bra,
+    LATERAL jsonb_array_elements(bra.sources_attempted) AS s
+    WHERE bra.run_id = $1
+      AND (s->>'success')::boolean = false
+      AND s->>'error' IS NOT NULL
+    GROUP BY s->>'source', s->>'error'
+    ORDER BY count DESC`,
     [runId]
   )
 

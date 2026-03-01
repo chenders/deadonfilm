@@ -12,11 +12,14 @@ import {
   useEnrichmentRunDetails,
   useEnrichmentRunActors,
   useRunSourcePerformanceStats,
+  useRunSourceErrors,
   useEnrichmentRunProgress,
   useStopEnrichmentRun,
   useEnrichmentRunLogs,
   useActorEnrichmentLogs,
+  type EnrichmentRunActor,
   type EnrichmentRunLog,
+  type SourceErrorSummary,
 } from "../../hooks/admin/useEnrichmentRuns"
 import { ActorLogsModal } from "../../components/admin/ActorLogsModal"
 import { RunLogsSection } from "../../components/admin/RunLogsSection"
@@ -52,6 +55,8 @@ export default function EnrichmentRunDetailsPage() {
     isLoading: sourceStatsLoading,
     error: sourceStatsError,
   } = useRunSourcePerformanceStats(runId, isRunning)
+  const { data: sourceErrors } = useRunSourceErrors(runId, isRunning)
+  const [expandedActor, setExpandedActor] = useState<number | null>(null)
   const {
     data: logsData,
     isLoading: logsLoading,
@@ -144,7 +149,11 @@ export default function EnrichmentRunDetailsPage() {
               <div>
                 <h2 className="text-lg font-semibold text-blue-100">Running</h2>
                 <p className="text-sm text-blue-200">
-                  {progress.currentActorName || "Processing..."}
+                  {formatProgressStatus(
+                    progress.currentActorName,
+                    progress.actorsProcessed,
+                    progress.actorsQueried
+                  )}
                 </p>
               </div>
               <div className="text-right">
@@ -257,8 +266,11 @@ export default function EnrichmentRunDetailsPage() {
           <div className="rounded-lg border border-red-800 bg-red-950 p-4 shadow-admin-sm md:p-6">
             <h2 className="mb-3 text-lg font-semibold text-red-200">Errors ({run.error_count})</h2>
             <ul className="space-y-2 text-sm">
-              {run.errors.map((error, i) => (
-                <li key={i} className="flex items-start justify-between gap-4">
+              {run.errors.map((error) => (
+                <li
+                  key={`${error.message}-${error.count}`}
+                  className="flex items-start justify-between gap-4"
+                >
                   <span className="text-red-300">{error.message}</span>
                   <span className="shrink-0 rounded bg-red-900 px-2 py-0.5 text-xs text-red-200">
                     ×{error.count}
@@ -329,6 +341,9 @@ export default function EnrichmentRunDetailsPage() {
             </div>
           </div>
         )}
+
+        {/* Source Error Summary */}
+        {sourceErrors && sourceErrors.length > 0 && <SourceErrorsSection errors={sourceErrors} />}
 
         {/* Per-Actor Results */}
         <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
@@ -420,55 +435,20 @@ export default function EnrichmentRunDetailsPage() {
                   </thead>
                   <tbody className="divide-y divide-admin-border">
                     {actors.items.map((actor) => (
-                      <tr key={actor.actor_id} className="hover:bg-admin-interactive-secondary">
-                        <td className="px-3 py-2 text-admin-text-primary">
-                          <Link
-                            to={`/actor/${createActorSlug(actor.actor_name, actor.actor_id)}`}
-                            className="text-admin-interactive hover:text-admin-interactive-hover hover:underline"
-                          >
-                            {actor.actor_name}
-                          </Link>
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          {actor.was_enriched ? (
-                            <span className="text-admin-success">✓</span>
-                          ) : (
-                            <span className="text-admin-text-muted">—</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-admin-text-secondary">
-                          {actor.winning_source || "—"}
-                        </td>
-                        <td className="px-3 py-2 text-right text-admin-text-secondary">
-                          ${parseFloat(actor.cost_usd).toFixed(3)}
-                        </td>
-                        <td className="px-3 py-2 text-right text-admin-text-secondary">
-                          {actor.processing_time_ms != null ? `${actor.processing_time_ms}ms` : "—"}
-                        </td>
-                        <td
-                          className="max-w-xs truncate px-3 py-2 text-xs text-red-400"
-                          title={actor.error || ""}
-                        >
-                          {actor.error || "—"}
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          {actor.has_logs ? (
-                            <button
-                              onClick={() =>
-                                setSelectedActorForLogs({
-                                  actorId: actor.actor_id,
-                                  actorName: actor.actor_name,
-                                })
-                              }
-                              className="hover:bg-admin-interactive-secondary/80 rounded bg-admin-interactive-secondary px-2 py-1 text-xs text-admin-interactive hover:text-admin-interactive-hover"
-                            >
-                              View
-                            </button>
-                          ) : (
-                            <span className="text-admin-text-muted">—</span>
-                          )}
-                        </td>
-                      </tr>
+                      <DeathActorRow
+                        key={actor.actor_id}
+                        actor={actor}
+                        isExpanded={expandedActor === actor.actor_id}
+                        onToggle={() =>
+                          setExpandedActor(expandedActor === actor.actor_id ? null : actor.actor_id)
+                        }
+                        onViewLogs={() =>
+                          setSelectedActorForLogs({
+                            actorId: actor.actor_id,
+                            actorName: actor.actor_name,
+                          })
+                        }
+                      />
                     ))}
                   </tbody>
                 </table>
@@ -681,6 +661,28 @@ function ActorLogsModalWrapper({
 }
 
 /**
+ * Formats progress status for the running enrichment banner.
+ * Supports both parallel mode ("N in flight") and legacy single-actor mode.
+ */
+function formatProgressStatus(
+  currentActorName: string | null,
+  actorsProcessed: number,
+  actorsQueried: number
+): string {
+  if (!currentActorName) return "Processing..."
+
+  // Parallel mode: currentActorName contains "N in flight"
+  const inFlightMatch = currentActorName.match(/^(\d+)\s+in\s+flight$/i)
+  if (inFlightMatch) {
+    const inFlight = parseInt(inFlightMatch[1], 10)
+    return `Processing ${inFlight} actor${inFlight !== 1 ? "s" : ""} (${actorsProcessed}/${actorsQueried} completed)`
+  }
+
+  // Legacy single-actor mode: show actor name
+  return currentActorName
+}
+
+/**
  * Stat card component.
  */
 function StatCard({ label, value, subtext }: { label: string; value: string; subtext: string }) {
@@ -689,6 +691,146 @@ function StatCard({ label, value, subtext }: { label: string; value: string; sub
       <p className="mb-1 text-sm text-admin-text-muted">{label}</p>
       <p className="text-2xl font-bold text-admin-text-primary">{value}</p>
       <p className="mt-1 text-xs text-admin-text-muted">{subtext}</p>
+    </div>
+  )
+}
+
+function DeathActorRow({
+  actor,
+  isExpanded,
+  onToggle,
+  onViewLogs,
+}: {
+  actor: EnrichmentRunActor
+  isExpanded: boolean
+  onToggle: () => void
+  onViewLogs: () => void
+}) {
+  const failedSources = actor.sources_attempted.filter((s) => !s.success && s.error)
+
+  return (
+    <>
+      <tr
+        className="cursor-pointer transition-colors hover:bg-admin-interactive-secondary"
+        onClick={onToggle}
+      >
+        <td className="px-3 py-2 text-admin-text-primary">
+          <Link
+            to={`/actor/${createActorSlug(actor.actor_name, actor.actor_id)}`}
+            className="text-admin-interactive hover:text-admin-interactive-hover hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {actor.actor_name}
+          </Link>
+        </td>
+        <td className="px-3 py-2 text-center">
+          {actor.was_enriched ? (
+            <span className="text-admin-success">✓</span>
+          ) : (
+            <span className="text-admin-text-muted">—</span>
+          )}
+        </td>
+        <td className="px-3 py-2 text-admin-text-secondary">{actor.winning_source || "—"}</td>
+        <td className="px-3 py-2 text-right text-admin-text-secondary">
+          ${parseFloat(actor.cost_usd).toFixed(3)}
+        </td>
+        <td className="px-3 py-2 text-right text-admin-text-secondary">
+          {actor.processing_time_ms != null ? `${actor.processing_time_ms}ms` : "—"}
+        </td>
+        <td className="max-w-xs truncate px-3 py-2 text-xs text-red-400" title={actor.error || ""}>
+          {actor.error || "—"}
+        </td>
+        <td className="px-3 py-2 text-center">
+          {actor.has_logs ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onViewLogs()
+              }}
+              className="hover:bg-admin-interactive-secondary/80 rounded bg-admin-interactive-secondary px-2 py-1 text-xs text-admin-interactive hover:text-admin-interactive-hover"
+            >
+              View
+            </button>
+          ) : (
+            <span className="text-admin-text-muted">—</span>
+          )}
+        </td>
+      </tr>
+      {isExpanded && (
+        <tr>
+          <td colSpan={7} className="bg-admin-surface-base px-4 py-3">
+            {actor.sources_attempted.length > 0 && (
+              <div>
+                <h4 className="mb-1 text-xs font-semibold text-admin-text-muted">
+                  Sources Attempted ({actor.sources_attempted.length})
+                </h4>
+                <div className="flex flex-wrap gap-1">
+                  {actor.sources_attempted.map((s) => (
+                    <span
+                      key={s.source}
+                      className={`inline-flex rounded px-2 py-0.5 text-xs ${
+                        s.success
+                          ? "bg-green-900/50 text-green-300"
+                          : "bg-admin-interactive-secondary text-admin-text-muted"
+                      }`}
+                      title={s.success ? "Success" : s.error || "Failed"}
+                    >
+                      {s.source}
+                    </span>
+                  ))}
+                </div>
+                {failedSources.length > 0 && (
+                  <div className="mt-2 space-y-0.5">
+                    <h4 className="text-xs font-semibold text-red-400">Failure Details</h4>
+                    {failedSources.map((s) => (
+                      <div key={s.source} className="text-xs text-red-300/80">
+                        <span className="font-medium">{s.source}:</span> {s.error}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+function SourceErrorsSection({ errors }: { errors: SourceErrorSummary[] }) {
+  const bySource = errors.reduce<Record<string, Array<{ error_reason: string; count: number }>>>(
+    (acc, e) => {
+      if (!acc[e.source]) acc[e.source] = []
+      acc[e.source].push({ error_reason: e.error_reason, count: e.count })
+      return acc
+    },
+    {}
+  )
+
+  return (
+    <div className="rounded-lg border border-admin-border bg-admin-surface-elevated shadow-admin-sm">
+      <div className="border-b border-admin-border px-4 py-3 md:px-6">
+        <h2 className="text-lg font-semibold text-admin-text-primary">Source Error Summary</h2>
+        <p className="text-xs text-admin-text-muted">Top failure reasons by source</p>
+      </div>
+      <div className="divide-y divide-admin-border">
+        {Object.entries(bySource).map(([source, errs]) => (
+          <div key={source} className="px-4 py-3 md:px-6">
+            <h3 className="text-sm font-medium text-admin-text-primary">{source}</h3>
+            <div className="mt-1 space-y-0.5">
+              {errs.map((e) => (
+                <div key={e.error_reason} className="flex items-baseline justify-between text-xs">
+                  <span className="mr-4 text-admin-text-muted">{e.error_reason}</span>
+                  <span className="shrink-0 text-admin-text-secondary">
+                    {e.count} {e.count === 1 ? "actor" : "actors"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

@@ -56,6 +56,7 @@ export class BraveBiographySearch extends BiographyWebSearchBase {
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.005
   readonly reliabilityTier = ReliabilityTier.SEARCH_AGGREGATOR
+  protected domain = "api.search.brave.com"
 
   protected minDelayMs = 500
 

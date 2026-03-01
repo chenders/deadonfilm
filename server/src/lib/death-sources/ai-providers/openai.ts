@@ -59,6 +59,7 @@ interface ParsedAIResponse {
  */
 abstract class OpenAIBaseSource extends BaseDataSource {
   protected client: OpenAI | null = null
+  protected domain = "api.openai.com"
   abstract readonly modelId: string
 
   isAvailable(): boolean {
