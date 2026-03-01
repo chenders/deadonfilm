@@ -24,7 +24,7 @@ export class TCMBiographySource extends BaseBiographySource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   readonly reliabilityTier = ReliabilityTier.TRADE_PRESS
-  protected domain = "html.duckduckgo.com"
+  protected domain = "tcm.com"
 
   protected minDelayMs = 2000
   protected requestTimeoutMs = 15000

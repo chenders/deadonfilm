@@ -298,8 +298,8 @@ export default function BioEnrichmentRunDetailsPage() {
           <div className="rounded-lg border border-red-800 bg-red-900/20 p-4">
             <h2 className="mb-2 text-lg font-semibold text-red-200">Errors ({run.error_count})</h2>
             <div className="space-y-2">
-              {run.errors.map((err, i) => (
-                <div key={i} className="text-sm text-red-300">
+              {run.errors.map((err) => (
+                <div key={`${err.actorName}-${err.error}`} className="text-sm text-red-300">
                   <span className="font-medium">{err.actorName}</span>: {err.error}
                 </div>
               ))}
@@ -465,9 +465,9 @@ function ActorRow({
                   Sources Attempted
                 </h4>
                 <div className="flex flex-wrap gap-1">
-                  {actor.sources_attempted.map((s, i) => (
+                  {actor.sources_attempted.map((s) => (
                     <span
-                      key={i}
+                      key={s.source}
                       className={`inline-flex rounded px-2 py-0.5 text-xs ${
                         s.success
                           ? "bg-green-900/50 text-green-300"
@@ -528,8 +528,8 @@ function SourceErrorsSection({ errors }: { errors: SourceErrorSummary[] }) {
           <div key={source} className="px-4 py-3">
             <h3 className="text-sm font-medium text-admin-text-primary">{source}</h3>
             <div className="mt-1 space-y-0.5">
-              {errs.map((e, i) => (
-                <div key={i} className="flex items-baseline justify-between text-xs">
+              {errs.map((e) => (
+                <div key={e.error_reason} className="flex items-baseline justify-between text-xs">
                   <span className="mr-4 text-admin-text-muted">{e.error_reason}</span>
                   <span className="shrink-0 text-admin-text-secondary">
                     {e.count} {e.count === 1 ? "actor" : "actors"}

@@ -184,7 +184,13 @@ export class DeathEnrichmentOrchestrator {
     enableStatusBar = true,
     logger?: EnrichmentLogger
   ) {
-    this.config = { ...DEFAULT_CONFIG, ...config }
+    this.config = {
+      ...DEFAULT_CONFIG,
+      ...config,
+      sourceCategories: { ...DEFAULT_CONFIG.sourceCategories, ...(config.sourceCategories ?? {}) },
+      linkFollow: { ...DEFAULT_LINK_FOLLOW_CONFIG, ...(config.linkFollow ?? {}) },
+      claudeCleanup: { ...DEFAULT_CONFIG.claudeCleanup, ...(config.claudeCleanup ?? {}) },
+    }
     this.logger = logger || getEnrichmentLogger()
     this.rateLimiter = new SourceRateLimiter()
     this.initializeSources()
@@ -802,8 +808,7 @@ export class DeathEnrichmentOrchestrator {
    *
    * Iterates phases sequentially, running sources concurrently within each phase.
    * Accumulates all raw source data, then synthesizes via Claude.
-   *
-   * @throws {CostLimitExceededError} If cost limits are exceeded
+   * Per-actor cost limits cause early phase termination (not exceptions).
    */
   async enrichActor(actor: ActorForEnrichment): Promise<ExtendedEnrichmentResult> {
     // Add New Relic attributes for this actor

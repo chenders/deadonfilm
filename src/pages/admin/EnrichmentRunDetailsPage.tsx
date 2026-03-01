@@ -266,8 +266,11 @@ export default function EnrichmentRunDetailsPage() {
           <div className="rounded-lg border border-red-800 bg-red-950 p-4 shadow-admin-sm md:p-6">
             <h2 className="mb-3 text-lg font-semibold text-red-200">Errors ({run.error_count})</h2>
             <ul className="space-y-2 text-sm">
-              {run.errors.map((error, i) => (
-                <li key={i} className="flex items-start justify-between gap-4">
+              {run.errors.map((error) => (
+                <li
+                  key={`${error.message}-${error.count}`}
+                  className="flex items-start justify-between gap-4"
+                >
                   <span className="text-red-300">{error.message}</span>
                   <span className="shrink-0 rounded bg-red-900 px-2 py-0.5 text-xs text-red-200">
                     ×{error.count}
@@ -816,8 +819,8 @@ function SourceErrorsSection({ errors }: { errors: SourceErrorSummary[] }) {
           <div key={source} className="px-4 py-3 md:px-6">
             <h3 className="text-sm font-medium text-admin-text-primary">{source}</h3>
             <div className="mt-1 space-y-0.5">
-              {errs.map((e, i) => (
-                <div key={i} className="flex items-baseline justify-between text-xs">
+              {errs.map((e) => (
+                <div key={e.error_reason} className="flex items-baseline justify-between text-xs">
                   <span className="mr-4 text-admin-text-muted">{e.error_reason}</span>
                   <span className="shrink-0 text-admin-text-secondary">
                     {e.count} {e.count === 1 ? "actor" : "actors"}

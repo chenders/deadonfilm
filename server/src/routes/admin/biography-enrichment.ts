@@ -109,13 +109,13 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       pagination: {
         page,
         pageSize,
-        total: parseInt(countResult.rows[0].total),
-        totalPages: Math.ceil(parseInt(countResult.rows[0].total) / pageSize),
+        total: parseInt(countResult.rows[0]?.total ?? "0"),
+        totalPages: Math.ceil(parseInt(countResult.rows[0]?.total ?? "0") / pageSize),
       },
       stats: {
-        totalDeceased: parseInt(statsResult.rows[0].total_deceased),
-        enriched: parseInt(statsResult.rows[0].enriched),
-        needsEnrichment: parseInt(statsResult.rows[0].needs_enrichment),
+        totalDeceased: parseInt(statsResult.rows[0]?.total_deceased ?? "0"),
+        enriched: parseInt(statsResult.rows[0]?.enriched ?? "0"),
+        needsEnrichment: parseInt(statsResult.rows[0]?.needs_enrichment ?? "0"),
       },
     })
   } catch (error) {
@@ -136,22 +136,21 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
     return
   }
 
-  const pool = getPool()
-
-  // Fetch actor
-  const actorResult = await pool.query(
-    `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-            wikipedia_url, biography AS biography_raw_tmdb, biography
-     FROM actors WHERE id = $1`,
-    [actorId]
-  )
-
-  if (actorResult.rows.length === 0) {
-    res.status(404).json({ error: { message: "Actor not found" } })
-    return
-  }
-
   try {
+    const pool = getPool()
+
+    // Fetch actor
+    const actorResult = await pool.query(
+      `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
+              wikipedia_url, biography AS biography_raw_tmdb, biography
+       FROM actors WHERE id = $1`,
+      [actorId]
+    )
+
+    if (actorResult.rows.length === 0) {
+      res.status(404).json({ error: { message: "Actor not found" } })
+      return
+    }
     const { BiographyEnrichmentOrchestrator } =
       await import("../../lib/biography-sources/orchestrator.js")
     const { writeBiographyToProduction } =
@@ -256,7 +255,12 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
        VALUES ('pending', $1, NOW()) RETURNING id`,
       [JSON.stringify(config)]
     )
-    const runId = runResult.rows[0].id
+    const runRow = runResult.rows[0]
+    if (!runRow) {
+      res.status(500).json({ error: { message: "Failed to create enrichment run record" } })
+      return
+    }
+    const runId = runRow.id
 
     const jobId = await queueManager.addJob(
       JobType.ENRICH_BIOGRAPHIES_BATCH,
@@ -546,6 +550,17 @@ router.post("/runs/start", async (req: Request, res: Response): Promise<void> =>
       sourceCategories,
       sortBy,
     } = req.body
+
+    // Validate concurrency
+    if (concurrency !== undefined) {
+      const n = Number(concurrency)
+      if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1 || n > 20) {
+        res.status(400).json({
+          error: { message: "concurrency must be an integer between 1 and 20" },
+        })
+        return
+      }
+    }
 
     // Validate: must have either actorIds or limit
     if (!actorIds && !limit) {

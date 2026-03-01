@@ -375,7 +375,10 @@ export class EnrichmentRunner {
               "Cost limit reached during actor enrichment"
             )
             costLimitReached = true
-            return { costUsd: error.currentCost }
+            // Return 0: actual costs were already tracked by the orchestrator's per-source
+            // accounting. error.currentCost is the orchestrator's running batch total,
+            // not the per-actor cost, so returning it would inflate the BatchCostTracker.
+            return { costUsd: 0 }
           }
           // Log the error and record a failed actor row rather than re-throwing,
           // because Promise.allSettled would silently swallow the rejection.
