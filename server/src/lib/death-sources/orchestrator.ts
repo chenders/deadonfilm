@@ -59,6 +59,15 @@ import { BBCNewsSource } from "./sources/bbc-news.js"
 import { ReutersSource } from "./sources/reuters.js"
 import { WashingtonPostSource } from "./sources/washington-post.js"
 import { GoogleNewsRSSSource } from "./sources/google-news-rss.js"
+import { LATimesSource } from "./sources/la-times.js"
+import { RollingStoneSource } from "./sources/rolling-stone.js"
+import { TelegraphSource } from "./sources/telegraph.js"
+import { IndependentSource } from "./sources/independent.js"
+import { NPRSource } from "./sources/npr.js"
+import { TimeSource } from "./sources/time.js"
+import { PBSSource } from "./sources/pbs.js"
+import { NewYorkerSource } from "./sources/new-yorker.js"
+import { NationalGeographicSource } from "./sources/national-geographic.js"
 import { BraveSearchSource } from "./sources/brave.js"
 import { FamilySearchSource } from "./sources/familysearch.js"
 import { GoogleBooksDeathSource } from "./sources/google-books.js"
@@ -263,6 +272,15 @@ export class DeathEnrichmentOrchestrator {
       new TMZSource(), // TMZ - celebrity news (scraped)
       new PeopleSource(), // People Magazine - celebrity obituaries (scraped)
       new BBCNewsSource(), // BBC News - international news (scraped)
+      new LATimesSource(), // LA Times - entertainment industry obituaries (scraped + archive.org fallback)
+      new RollingStoneSource(), // Rolling Stone - musician/cultural figure obituaries (scraped + archive.org fallback)
+      new TelegraphSource(), // The Telegraph - UK obituaries (scraped + archive.org fallback)
+      new IndependentSource(), // The Independent - UK news obituaries (scraped + archive.org fallback)
+      new NPRSource(), // NPR - in-depth obituaries (scraped + archive.org fallback)
+      new TimeSource(), // Time - notable deaths coverage (scraped + archive.org fallback)
+      new PBSSource(), // PBS - documentary subject obituaries (scraped + archive.org fallback)
+      new NewYorkerSource(), // The New Yorker - literary obituaries (scraped + archive.org fallback)
+      new NationalGeographicSource(), // National Geographic - explorer/scientist obituaries (scraped + archive.org fallback)
       new GoogleNewsRSSSource(), // Google News RSS - aggregated news feed
 
       // Phase 4: Obituary sites

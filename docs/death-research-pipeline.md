@@ -1,6 +1,6 @@
 # Death Research Pipeline
 
-When an actor's death lacks cause-of-death information, the system dispatches a multi-stage research pipeline across 80+ sources. The pipeline is designed around a simple principle: try the cheapest, most reliable sources first, and stop when confidence is high enough.
+When an actor's death lacks cause-of-death information, the system dispatches a multi-stage research pipeline across 90+ sources. The pipeline is designed around a simple principle: try the cheapest, most reliable sources first, and stop when confidence is high enough.
 
 ## Pipeline Stages
 
@@ -34,6 +34,15 @@ Search engines find obituaries, news articles, and reference pages. The system t
 | **AP News** | Web search | Free |
 | **Reuters** | Web search + archive.org fallback | International wire service |
 | **Washington Post** | Web search + archive.org fallback | Major US newspaper |
+| **LA Times** | Web search + archive.org fallback | Major US newspaper, entertainment focus |
+| **Rolling Stone** | Web search + archive.org fallback | Music/culture obituaries |
+| **The Telegraph** | Web search + archive.org fallback | UK newspaper of record |
+| **The Independent** | Web search + archive.org fallback | UK news |
+| **NPR** | Web search + archive.org fallback | In-depth obituaries |
+| **Time** | Web search + archive.org fallback | Notable deaths coverage |
+| **PBS** | Web search + archive.org fallback | Documentary subject obituaries |
+| **The New Yorker** | Web search + archive.org fallback | Literary obituaries |
+| **National Geographic** | Web search + archive.org fallback | Explorer/scientist obituaries |
 | **NewsAPI** | Aggregator API (80K+ sources) | Free: 100/day |
 | **Variety** | Web search | Entertainment industry |
 | **Deadline Hollywood** | Web search | Entertainment industry |
@@ -182,7 +191,7 @@ The full data pipeline from raw TMDB data to enriched death records:
 
 **Search Engines (4):** DuckDuckGo, Google Custom Search, Bing Web Search, Brave Search
 
-**News Sources (13+):** The Guardian (API), New York Times (API), AP News, Reuters, Washington Post, NewsAPI (80K+ sources), Variety, Deadline Hollywood, Hollywood Reporter, TMZ, People, BBC News, Google News RSS — plus dozens more via search engine link-following
+**News Sources (22+):** The Guardian (API), New York Times (API), AP News, Reuters, Washington Post, LA Times, Rolling Stone, The Telegraph, The Independent, NPR, Time, PBS, The New Yorker, National Geographic, NewsAPI (80K+ sources), Variety, Deadline Hollywood, Hollywood Reporter, TMZ, People, BBC News, Google News RSS — plus dozens more via search engine link-following
 
 **Cemetery & Obituary Sites (2):** Find a Grave, Legacy.com
 

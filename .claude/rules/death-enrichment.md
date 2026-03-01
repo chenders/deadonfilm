@@ -3,7 +3,7 @@ globs: ["server/src/lib/death-sources/**", "server/scripts/*death*", "server/scr
 ---
 # Death Enrichment System
 
-Enriches actor death records with cause, manner, location, and circumstances from ~30 active data sources.
+Enriches actor death records with cause, manner, location, and circumstances from ~40 active data sources.
 
 ## Adding New Sources
 
@@ -14,7 +14,7 @@ Enriches actor death records with cause, manner, location, and circumstances fro
 3. Register in **both** orchestrators
 4. Add enum entries to **both** type files (`DataSourceType` and `BiographySourceType`)
 
-Sources shared between both systems: Guardian, NYTimes, AP News, BBC News, Reuters, People, Washington Post, Legacy, Find a Grave, Google Books, Open Library, IA Books, Internet Archive, Chronicling America, Trove, Europeana, and all web search sources (Google, Bing, DuckDuckGo, Brave).
+Sources shared between both systems: Guardian, NYTimes, AP News, BBC News, Reuters, People, Washington Post, LA Times, Rolling Stone, The Telegraph, The Independent, NPR, Time, PBS, The New Yorker, National Geographic, Legacy, Find a Grave, Google Books, Open Library, IA Books, Internet Archive, Chronicling America, Trove, Europeana, and all web search sources (Google, Bing, DuckDuckGo, Brave).
 
 ## Reliability Tiers
 
@@ -81,7 +81,7 @@ Sources are tried in this order:
 | Brave Search | Brave Search API | Requires `BRAVE_SEARCH_API_KEY`, $0.005/query |
 
 ### Phase 3: News Sources
-Guardian, NYTimes, AP News, Reuters, Washington Post, NewsAPI, Deadline, Variety, Hollywood Reporter, TMZ, People, BBC News, Google News RSS
+Guardian, NYTimes, AP News, Reuters, Washington Post, LA Times, Rolling Stone, The Telegraph, The Independent, NPR, Time, PBS, The New Yorker, National Geographic, NewsAPI, Deadline, Variety, Hollywood Reporter, TMZ, People, BBC News, Google News RSS
 
 ### Phase 4: Obituary Sites
 Find a Grave (direct API), Legacy.com (DuckDuckGo search)

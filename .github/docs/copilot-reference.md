@@ -16,7 +16,7 @@ Copilot's review context — see `.github/copilot-instructions.md` for the focus
 | Database | PostgreSQL 16 (raw SQL via `pg`, no ORM) |
 | Caching | Redis 7 via `ioredis` |
 | Job Queue | BullMQ on separate Redis instance |
-| Data Sources | TMDB API, Claude API, Wikidata SPARQL, 50+ enrichment sources |
+| Data Sources | TMDB API, Claude API, Wikidata SPARQL, 60+ enrichment sources |
 | Monitoring | New Relic APM, Pino logging |
 
 ### URL Patterns
@@ -129,7 +129,7 @@ A movie is "obscure" if: no poster, OR (English + popularity <5 + cast <5), OR (
 Sources tried in priority order, stopping at confidence threshold (0.5):
 1. Structured Data (free) — Wikidata, Wikipedia, BFI
 2. Web Search — Google, Bing, DuckDuckGo, Brave
-3. News Sources — Guardian, NYTimes, AP, Reuters, Washington Post, etc.
+3. News Sources — Guardian, NYTimes, AP, Reuters, Washington Post, LA Times, NPR, BBC, etc.
 4. Obituary Sites — Find a Grave, Legacy.com
 5. Historical Archives — Trove, Europeana, Internet Archive
 6. Genealogy — FamilySearch
