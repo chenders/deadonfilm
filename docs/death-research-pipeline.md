@@ -149,7 +149,7 @@ Two strategies for accessing content behind paywalls:
 - Shared `SourceRateLimiter` enforces per-domain request spacing across all concurrent actors
 - Default rate limit: 1000ms between requests per domain
 - Wikidata/Wikipedia: 500ms
-- DuckDuckGo: limited to 2-3 concurrent requests (CAPTCHA prevention)
+- DuckDuckGo: serialized per-domain (one in-flight request at a time, spaced by `minDelayMs`) to prevent CAPTCHAs
 - Results are cached per source+actor to prevent redundant lookups across runs
 - Blocked responses (403/429) are cached to avoid re-hitting blocked sources
 
