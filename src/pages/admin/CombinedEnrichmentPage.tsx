@@ -22,12 +22,16 @@ interface ActorWithVersions {
   biography_version: string | null
 }
 
-// Skip actors that already have enrichment at the current version
+// Death: skip actors already enriched at the current version
 const CURRENT_DEATH_ENRICHMENT_VERSION = "5.0.0"
 
 function shouldSkipDeath(actor: ActorWithVersions): boolean {
   return actor.enrichment_version === CURRENT_DEATH_ENRICHMENT_VERSION
 }
+
+// Bio: skip actors that have any biography enrichment (version-independent).
+// Biography enrichment is designed to run once per actor; re-enrichment
+// requires explicit allowRegeneration=true.
 function shouldSkipBio(actor: ActorWithVersions, allowRegeneration: boolean): boolean {
   if (allowRegeneration) return false
   return actor.biography_version != null

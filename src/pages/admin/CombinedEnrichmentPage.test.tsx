@@ -298,6 +298,60 @@ describe("CombinedEnrichmentPage", () => {
     expect(screen.getByText(/bio service unavailable/i)).toBeInTheDocument()
   })
 
+  it("skips bio for actors with any biography_version when regeneration is off", async () => {
+    // Include an actor with a legacy integer version (older enrichment)
+    const actorsWithOldVersion = [
+      {
+        id: 1,
+        name: "No Bio",
+        popularity: 50,
+        tmdb_id: 100,
+        enrichment_version: null,
+        biography_version: null,
+      },
+      {
+        id: 2,
+        name: "Legacy Bio",
+        popularity: 30,
+        tmdb_id: 200,
+        enrichment_version: null,
+        biography_version: "2",
+      },
+      {
+        id: 3,
+        name: "Current Bio",
+        popularity: 10,
+        tmdb_id: 300,
+        enrichment_version: null,
+        biography_version: "5.0.0",
+      },
+    ]
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(actorsWithOldVersion) })
+
+    renderPage([1, 2, 3])
+
+    await waitFor(() => {
+      expect(screen.getByText("No Bio")).toBeInTheDocument()
+    })
+
+    // Switch to bio tab and uncheck "Allow Regeneration"
+    fireEvent.click(screen.getByTestId("tab-bio"))
+    const regenCheckbox = screen.getByRole("checkbox", { name: /allow regeneration/i })
+    fireEvent.click(regenCheckbox) // uncheck (default is checked)
+
+    // Both actors with any biography_version should show skip pills
+    expect(screen.getByTestId("skip-bio-2")).toBeInTheDocument()
+    expect(screen.getByTestId("skip-bio-3")).toBeInTheDocument()
+    expect(screen.queryByTestId("skip-bio-1")).not.toBeInTheDocument()
+
+    // Submit — only actor 1 should be sent for bio enrichment
+    fireEvent.click(screen.getByTestId("submit-both"))
+
+    await waitFor(() => {
+      expect(mockBioMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ actorIds: [1] }))
+    })
+  })
+
   it("handles case where all actors skip one type", async () => {
     // All actors already have death enrichment
     const allDeathDone = [
