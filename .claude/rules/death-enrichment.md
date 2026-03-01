@@ -169,7 +169,7 @@ A shared `SourceRateLimiter` (`server/src/lib/shared/concurrency.ts`) enforces p
 
 A `BatchCostTracker` handles atomic cost accumulation across concurrent actors. A `ParallelBatchRunner` replaces the sequential `for` loop with concurrency-limited processing via `p-limit`.
 
-DuckDuckGo is limited to 2-3 concurrent requests across all sources to prevent CAPTCHA triggers.
+DuckDuckGo requests are serialized per domain via `SourceRateLimiter` (one at a time with configurable delays) to prevent CAPTCHA triggers.
 
 ## Rate Limiting & Caching
 
