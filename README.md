@@ -10,7 +10,7 @@
 
 </div>
 
-**[deadonfilm.com](https://deadonfilm.com)** tracks **572,000+ people** who have appeared on film — actors, documentary subjects, anyone who's been on screen — across **152,000+ movies and TV shows**. It tells their stories as people, not performers. The private, human stories that career-focused biographies never cover: childhoods, family tragedies, private struggles, unlikely origins. And for the 25,000+ who have died, it documents how — with detailed death records researched across 80+ sources and actuarial mortality analysis for every production.
+**[deadonfilm.com](https://deadonfilm.com)** tracks **572,000+ people** who have appeared on film — actors, documentary subjects, anyone who's been on screen — across **152,000+ movies and TV shows**. It tells their stories as people, not performers. The private, human stories that career-focused biographies never cover: childhoods, family tragedies, private struggles, unlikely origins. And for the 25,000+ who have died, it documents how — with detailed death records researched across 90+ sources and actuarial mortality analysis for every production.
 
 - **Audrey Hepburn** — Both parents were active fascists. She survived the Nazi occupation of Holland on tulip-bulb flour, performed silent ballet recitals to fund the Dutch resistance, and hid a British paratrooper in her family's home. Her famous slender figure was childhood starvation, not Hollywood dieting. When terminal cancer was diagnosed in 1992, Hubert de Givenchy arranged a private jet filled with flowers to fly her home to Switzerland. Gregory Peck recorded a tearful tribute reciting Tagore's "Unending Love." → [Read her story](https://deadonfilm.com/actor/audrey-hepburn-6834)
 
@@ -35,7 +35,7 @@
 ### The Deaths
 
 - Detailed death circumstances with source citations and confidence levels
-- Cause of death research across 80+ sources — Wikidata, Wikipedia, Library of Congress, Find a Grave, news archives, 11 AI models
+- Cause of death research across 90+ sources — Wikidata, Wikipedia, Library of Congress, Find a Grave, news archives, 11 AI models
 - Actuarial mortality analysis using SSA life tables for every production
 ## Explore
 
@@ -60,7 +60,7 @@ See [Biography System](docs/biography-system.md) for generation details and edit
 
 ### Death Research
 
-When a death lacks cause-of-death information, the system dispatches a multi-stage research pipeline: free structured sources first (Wikidata, Wikipedia), then search engines with link following, then news archives (Guardian, NYT, AP, Reuters, Washington Post, BBC, and more) and historical databases (Library of Congress, Trove, Europeana), then 11 AI models ordered cheapest-first — from Gemini Flash at $0.0001/query to GPT-4o at $0.01. Claude consolidates raw data from all sources into structured, confidence-scored output. This pipeline has achieved 42% cause-of-death coverage across 25,000+ deceased actors.
+When a death lacks cause-of-death information, the system dispatches a multi-stage research pipeline: free structured sources first (Wikidata, Wikipedia), then search engines with link following, then news archives (Guardian, NYT, AP, Reuters, Washington Post, LA Times, BBC, NPR, and more) and historical databases (Library of Congress, Trove, Europeana), then 11 AI models ordered cheapest-first — from Gemini Flash at $0.0001/query to GPT-4o at $0.01. Claude consolidates raw data from all sources into structured, confidence-scored output. This pipeline has achieved 42% cause-of-death coverage across 25,000+ deceased actors.
 
 See [Death Research Pipeline](docs/death-research-pipeline.md) for the full source inventory and pipeline details.
 

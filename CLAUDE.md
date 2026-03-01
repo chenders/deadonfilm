@@ -76,7 +76,7 @@ src/                          # Frontend
 server/src/                   # Backend
 ├── routes/                   # Express routes (public + admin/)
 ├── lib/                      # Core library modules
-│   ├── death-sources/        # Death enrichment system (orchestrator, 50+ sources, AI providers)
+│   ├── death-sources/        # Death enrichment system (orchestrator, 60+ sources, AI providers)
 │   ├── biography-sources/    # Biography enrichment system (orchestrator, 30+ sources, Claude synthesis)
 │   ├── biography/            # Biography utilities (golden test cases, Wikipedia fetcher)
 │   ├── jobs/                 # BullMQ queue manager, workers, handlers
