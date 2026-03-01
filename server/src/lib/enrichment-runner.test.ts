@@ -534,23 +534,21 @@ describe("EnrichmentRunner", () => {
 
       await runner.run()
 
-      // Should have both "processing" and "completed" phase updates
-      // Initial progress (completed, actorsProcessed=0), then per-actor: processing + completed
-      const processingCalls = onProgress.mock.calls.filter((c) => c[0].phase === "processing")
+      // With parallel processing, all progress updates use "completed" phase
+      // (no pre-enrichment "processing" phase — progress is reported via onItemComplete)
       const completedCalls = onProgress.mock.calls.filter((c) => c[0].phase === "completed")
-      expect(processingCalls.length).toBe(1)
       expect(completedCalls.length).toBe(2) // initial + post-enrichment
-
-      // Pre-enrichment: counter should be 0 (actor hasn't been processed yet)
-      expect(processingCalls[0][0].actorsWithDeathPage).toBe(0)
 
       // Initial progress: counter should be 0
       expect(completedCalls[0][0].actorsWithDeathPage).toBe(0)
       expect(completedCalls[0][0].actorsProcessed).toBe(0)
+      expect(completedCalls[0][0].actorsInFlight).toBe(0)
+      expect(completedCalls[0][0].actorsCompleted).toBe(0)
 
       // Post-enrichment: counter should be 1 (actor had substantive circumstances)
       expect(completedCalls[1][0].actorsWithDeathPage).toBe(1)
       expect(completedCalls[1][0].actorsProcessed).toBe(1)
+      expect(completedCalls[1][0].actorsCompleted).toBe(1)
     })
   })
 })
