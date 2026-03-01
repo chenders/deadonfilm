@@ -52,7 +52,7 @@ export default function CastToggle({
             livingDisabled
               ? "cursor-not-allowed bg-disabled text-disabled-text"
               : showLiving
-                ? "bg-living text-white dark:text-cream"
+                ? "bg-living text-brown-dark dark:text-cream"
                 : "bg-surface-elevated text-brown-dark hover:bg-beige"
           }`}
         >
