@@ -145,6 +145,7 @@ export class ReutersBiographySource extends BaseBiographySource {
       (u) =>
         u.includes("/world/") ||
         u.includes("/lifestyle/") ||
+        u.includes("/entertainment/") ||
         u.includes("/business/") ||
         u.includes("/markets/")
     )

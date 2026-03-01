@@ -8,6 +8,15 @@ vi.mock("./cache.js", () => ({
   invalidateActorCache: vi.fn(),
 }))
 
+// Mock newrelic — startSegment always executes the callback even without
+// a real agent, but mocking isolates tests from the newrelic module.
+vi.mock("newrelic", () => ({
+  default: {
+    startSegment: (_name: string, _record: boolean, handler: () => unknown) => handler(),
+    recordCustomEvent: vi.fn(),
+  },
+}))
+
 import {
   writeBiographyToProduction,
   writeBiographyToStaging,

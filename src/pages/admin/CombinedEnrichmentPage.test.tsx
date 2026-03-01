@@ -376,7 +376,7 @@ describe("CombinedEnrichmentPage", () => {
     })
 
     // Death tab should show "0" actors and yellow warning
-    expect(screen.getByText(/all 1 actors already have death enrichment/i)).toBeInTheDocument()
+    expect(screen.getByText(/all 1 actor already have death enrichment/i)).toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId("submit-both"))
 

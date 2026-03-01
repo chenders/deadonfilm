@@ -3,7 +3,7 @@ globs: ["server/src/lib/death-sources/**", "server/scripts/*death*", "server/scr
 ---
 # Death Enrichment System
 
-Enriches actor death records with cause, manner, location, and circumstances from ~25 active data sources.
+Enriches actor death records with cause, manner, location, and circumstances from ~30 active data sources.
 
 ## Adding New Sources
 

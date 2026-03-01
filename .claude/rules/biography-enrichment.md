@@ -26,7 +26,7 @@ See the death enrichment rules (`.claude/rules/death-enrichment.md`) for the ful
 | Stopping | Confidence threshold (0.5) | 3+ high-quality sources (dual threshold) |
 | Content focus | Cause, manner, circumstances | Childhood, family, education, personal life |
 | AI cleanup | Optional Claude cleanup | Always Claude synthesis (Stage 3) |
-| Monitoring | New Relic + StatusBar | Console logging only |
+| Monitoring | New Relic + StatusBar | New Relic custom events |
 
 ## Architecture
 
@@ -147,7 +147,7 @@ Internet Archive, Chronicling America, Trove, Europeana
     reference: true,             // Britannica, Biography.com
     books: true,                 // Google Books, Open Library, IA Books
     webSearch: true,             // Google, Bing, DuckDuckGo, Brave
-    news: true,                  // Guardian, NYT, AP, BBC, People
+    news: true,                  // Guardian, NYT, AP, Reuters, WaPo, LA Times, BBC, NPR, PBS, People, Independent, Telegraph, Time, New Yorker, Rolling Stone, Nat Geo
     obituary: true,              // Legacy, FindAGrave
     archives: true,              // Internet Archive, Chronicling America, Trove, Europeana
   },

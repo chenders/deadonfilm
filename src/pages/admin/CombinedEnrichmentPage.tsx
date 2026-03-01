@@ -22,7 +22,8 @@ interface ActorWithVersions {
   biography_version: string | null
 }
 
-// Death: skip actors already enriched at the current version
+// Death: skip actors already enriched at the current version.
+// Keep in sync with DEATH_ENRICHMENT_VERSION in server/src/lib/enrichment-version.ts
 const CURRENT_DEATH_ENRICHMENT_VERSION = "5.0.0"
 
 function shouldSkipDeath(actor: ActorWithVersions): boolean {
@@ -550,8 +551,8 @@ function DeathOptionsForm(props: DeathOptionsProps): React.JSX.Element {
     <div className="space-y-6">
       {props.actorCount === 0 ? (
         <p className="text-sm text-yellow-400">
-          All {props.skipCount} actors already have death enrichment (v4.0.0). This step will be
-          skipped.
+          All {props.skipCount} actor{props.skipCount !== 1 ? "s" : ""} already have death
+          enrichment. This step will be skipped.
         </p>
       ) : (
         <p className="text-sm text-admin-text-muted">
