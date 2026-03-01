@@ -396,7 +396,10 @@ export class BiographyEnrichmentOrchestrator {
         totalCost += sourceCost
         totalSourceCost += sourceCost
 
-        // Record source attempt
+        // Record source attempt — attach error to source entry for DB tracking
+        if (!lookupResult.success && lookupResult.error) {
+          lookupResult.source.error = lookupResult.error
+        }
         allSources.push(lookupResult.source)
 
         if (!lookupResult.success || !lookupResult.data) {

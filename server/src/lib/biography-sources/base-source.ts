@@ -291,6 +291,7 @@ export abstract class BaseBiographySource {
       articleTitle?: string
       domain?: string
       contentType?: string
+      error?: string
     }
   ): BiographySourceEntry {
     return {
@@ -307,6 +308,7 @@ export abstract class BaseBiographySource {
       articleTitle: options?.articleTitle ?? null,
       domain: options?.domain ?? null,
       contentType: options?.contentType ?? null,
+      error: options?.error ?? null,
     }
   }
 

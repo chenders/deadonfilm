@@ -166,6 +166,12 @@ describe("BioEnrichmentRunDetailsPage", () => {
       error: null,
     } as ReturnType<typeof bioHooks.useBioRunSourcePerformanceStats>)
 
+    vi.mocked(bioHooks.useBioRunSourceErrors).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof bioHooks.useBioRunSourceErrors>)
+
     vi.mocked(bioHooks.useBioEnrichmentRunProgress).mockReturnValue({
       data: undefined,
       isLoading: false,

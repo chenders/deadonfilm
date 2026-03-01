@@ -460,6 +460,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       costUsd: s.costUsd || 0,
       confidence: s.confidence,
       reliabilityScore: s.reliabilityScore || null,
+      error: s.error || null,
     }))
 
     await db.query(

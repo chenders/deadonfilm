@@ -14,6 +14,7 @@ import {
   getBioEnrichmentRunDetails,
   getBioEnrichmentRunActors,
   getBioRunSourcePerformanceStats,
+  getBioRunSourceErrors,
 } from "../../lib/db/admin-bio-enrichment-queries.js"
 import {
   startBioEnrichmentRun,
@@ -438,6 +439,24 @@ router.get("/runs/:id/sources/stats", async (req: Request, res: Response): Promi
   } catch (error) {
     logger.error({ error }, "Failed to fetch bio enrichment source stats")
     res.status(500).json({ error: { message: "Failed to fetch source stats" } })
+  }
+})
+
+// GET /admin/api/biography-enrichment/runs/:id/sources/errors - Source error aggregation
+router.get("/runs/:id/sources/errors", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const runId = parseInt(req.params.id, 10)
+    if (isNaN(runId)) {
+      res.status(400).json({ error: { message: "Invalid run ID" } })
+      return
+    }
+
+    const errors = await getBioRunSourceErrors(pool, runId)
+    res.json(errors)
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch bio enrichment source errors")
+    res.status(500).json({ error: { message: "Failed to fetch source errors" } })
   }
 })
 

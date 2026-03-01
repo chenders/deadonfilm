@@ -53,6 +53,7 @@ export interface BioEnrichmentRunActor {
     costUsd: number
     confidence: number
     reliabilityScore: number | null
+    error?: string | null
   }>
   sources_succeeded: number
   synthesis_model: string | null
@@ -71,6 +72,12 @@ export interface BioSourcePerformanceStats {
   success_rate: number
   total_cost_usd: number
   average_cost_usd: number
+}
+
+export interface SourceErrorSummary {
+  source: string
+  error_reason: string
+  count: number
 }
 
 export interface PaginatedResult<T> {
@@ -224,6 +231,18 @@ export function useBioRunSourcePerformanceStats(runId: number | undefined, isRun
     queryFn: () => fetchJson(`${BASE_URL}/runs/${runId}/sources/stats`),
     enabled: !!runId,
     refetchInterval: isRunning ? 5000 : false,
+  })
+}
+
+/**
+ * Source error aggregation for a bio enrichment run.
+ * Shows top error reasons grouped by source.
+ */
+export function useBioRunSourceErrors(runId: number | undefined) {
+  return useQuery<SourceErrorSummary[]>({
+    queryKey: ["bio-enrichment-run-source-errors", runId],
+    queryFn: () => fetchJson(`${BASE_URL}/runs/${runId}/sources/errors`),
+    enabled: !!runId,
   })
 }
 

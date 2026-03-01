@@ -15,6 +15,7 @@ import {
   getEnrichmentRunActors,
   getSourcePerformanceStats,
   getRunSourcePerformanceStats,
+  getRunSourceErrors,
   getPendingEnrichments,
   getEnrichmentReviewDetail,
   approveEnrichment,
@@ -206,6 +207,30 @@ router.get("/runs/:id/sources/stats", async (req: Request, res: Response): Promi
   } catch (error) {
     logger.error({ error }, "Failed to fetch run source performance stats")
     res.status(500).json({ error: { message: "Failed to fetch run source performance stats" } })
+  }
+})
+
+// ============================================================================
+// GET /admin/api/enrichment/runs/:id/sources/errors
+// Get top error reasons per source for a specific run
+// ============================================================================
+
+router.get("/runs/:id/sources/errors", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const runId = parseInt(req.params.id, 10)
+
+    if (isNaN(runId)) {
+      res.status(400).json({ error: { message: "Invalid run ID" } })
+      return
+    }
+
+    const errors = await getRunSourceErrors(pool, runId)
+
+    res.json(errors)
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch run source errors")
+    res.status(500).json({ error: { message: "Failed to fetch run source errors" } })
   }
 })
 

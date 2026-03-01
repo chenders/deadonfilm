@@ -16,10 +16,12 @@ import {
   useBioEnrichmentRunDetails,
   useBioEnrichmentRunActors,
   useBioRunSourcePerformanceStats,
+  useBioRunSourceErrors,
   useBioEnrichmentRunProgress,
   useStopBioEnrichmentRun,
   useBioActorEnrichmentLogs,
   type BioEnrichmentRunActor,
+  type SourceErrorSummary,
 } from "../../hooks/admin/useBioEnrichmentRuns"
 import { ActorLogsModal } from "../../components/admin/ActorLogsModal"
 import { RunLogsSection } from "../../components/admin/RunLogsSection"
@@ -48,6 +50,7 @@ export default function BioEnrichmentRunDetailsPage() {
     isRunning
   )
   const { data: sourceStats } = useBioRunSourcePerformanceStats(runId, isRunning)
+  const { data: sourceErrors } = useBioRunSourceErrors(runId)
   const { data: progress } = useBioEnrichmentRunProgress(runId, isRunning)
 
   const stopMutation = useStopBioEnrichmentRun()
@@ -203,6 +206,9 @@ export default function BioEnrichmentRunDetailsPage() {
             </div>
           </div>
         )}
+
+        {/* Source Error Summary */}
+        {sourceErrors && sourceErrors.length > 0 && <SourceErrorsSection errors={sourceErrors} />}
 
         {/* Per-Actor Results */}
         {actorsData && (
@@ -441,12 +447,29 @@ function ActorRow({
                           ? "bg-green-900/50 text-green-300"
                           : "bg-admin-interactive-secondary text-admin-text-muted"
                       }`}
-                      title={`Confidence: ${s.confidence.toFixed(2)}, Cost: $${s.costUsd.toFixed(4)}`}
+                      title={
+                        s.success
+                          ? `Confidence: ${s.confidence.toFixed(2)}, Cost: $${s.costUsd.toFixed(4)}`
+                          : s.error || "Failed"
+                      }
                     >
                       {s.source}
                     </span>
                   ))}
                 </div>
+                {/* Show error details for failed sources */}
+                {actor.sources_attempted.some((s) => !s.success && s.error) && (
+                  <div className="mt-2 space-y-1">
+                    <h4 className="text-xs font-semibold text-red-400">Failure Details</h4>
+                    {actor.sources_attempted
+                      .filter((s) => !s.success && s.error)
+                      .map((s, i) => (
+                        <div key={i} className="text-xs text-red-300/80">
+                          <span className="font-medium">{s.source}:</span> {s.error}
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
             )}
             {actor.error && <div className="mt-2 text-xs text-red-400">Error: {actor.error}</div>}
@@ -454,5 +477,43 @@ function ActorRow({
         </tr>
       )}
     </>
+  )
+}
+
+function SourceErrorsSection({ errors }: { errors: SourceErrorSummary[] }) {
+  // Group errors by source
+  const bySource = errors.reduce<Record<string, Array<{ error_reason: string; count: number }>>>(
+    (acc, e) => {
+      if (!acc[e.source]) acc[e.source] = []
+      acc[e.source].push({ error_reason: e.error_reason, count: e.count })
+      return acc
+    },
+    {}
+  )
+
+  return (
+    <div className="rounded-lg border border-admin-border bg-admin-surface-elevated shadow-admin-sm">
+      <div className="border-b border-admin-border px-4 py-3">
+        <h2 className="text-lg font-semibold text-admin-text-primary">Source Error Summary</h2>
+        <p className="text-xs text-admin-text-muted">Top failure reasons by source</p>
+      </div>
+      <div className="divide-y divide-admin-border">
+        {Object.entries(bySource).map(([source, errs]) => (
+          <div key={source} className="px-4 py-3">
+            <h3 className="text-sm font-medium text-admin-text-primary">{source}</h3>
+            <div className="mt-1 space-y-0.5">
+              {errs.map((e, i) => (
+                <div key={i} className="flex items-baseline justify-between text-xs">
+                  <span className="mr-4 text-admin-text-muted">{e.error_reason}</span>
+                  <span className="shrink-0 text-admin-text-secondary">
+                    {e.count} {e.count === 1 ? "actor" : "actors"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }

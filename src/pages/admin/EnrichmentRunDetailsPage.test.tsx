@@ -52,13 +52,17 @@ describe("EnrichmentRunDetailsPage", () => {
         was_enriched: true,
         created_death_page: true,
         confidence: "0.95",
-        sources_attempted: ["wikidata", "wikipedia"],
+        sources_attempted: [
+          { source: "wikidata", success: true, costUsd: 0, error: null },
+          { source: "wikipedia", success: true, costUsd: 0, error: null },
+        ],
         winning_source: "wikidata",
         processing_time_ms: 1500,
         cost_usd: "0.025",
         links_followed: 3,
         pages_fetched: 5,
         error: null,
+        has_logs: false,
       },
       {
         actor_id: 2,
@@ -67,13 +71,16 @@ describe("EnrichmentRunDetailsPage", () => {
         was_enriched: false,
         created_death_page: false,
         confidence: null,
-        sources_attempted: ["wikidata"],
+        sources_attempted: [
+          { source: "wikidata", success: false, costUsd: 0, error: "No death information found" },
+        ],
         winning_source: null,
         processing_time_ms: 800,
         cost_usd: "0.010",
         links_followed: 1,
         pages_fetched: 2,
         error: "No death information found",
+        has_logs: false,
       },
     ],
     total: 2,
@@ -120,6 +127,12 @@ describe("EnrichmentRunDetailsPage", () => {
 
     vi.mocked(enrichmentHooks.useRunSourcePerformanceStats).mockReturnValue({
       data: mockSourceStats,
+      isLoading: false,
+      error: null,
+    } as any)
+
+    vi.mocked(enrichmentHooks.useRunSourceErrors).mockReturnValue({
+      data: [],
       isLoading: false,
       error: null,
     } as any)

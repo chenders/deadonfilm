@@ -53,6 +53,15 @@ vi.mock("../../lib/jobs/types.js", () => ({
   JobType: { ENRICH_BIOGRAPHIES_BATCH: "enrich-biographies-batch" },
 }))
 
+const mockGetBioRunSourceErrors = vi.fn()
+vi.mock("../../lib/db/admin-bio-enrichment-queries.js", () => ({
+  getBioEnrichmentRuns: vi.fn(),
+  getBioEnrichmentRunDetails: vi.fn(),
+  getBioEnrichmentRunActors: vi.fn(),
+  getBioRunSourcePerformanceStats: vi.fn(),
+  getBioRunSourceErrors: (...args: unknown[]) => mockGetBioRunSourceErrors(...args),
+}))
+
 describe("Admin Biography Enrichment Endpoints", () => {
   let app: express.Application
 
@@ -625,6 +634,63 @@ describe("Admin Biography Enrichment Endpoints", () => {
 
       expect(res.status).toBe(500)
       expect(res.body.error.message).toBe("Failed to fetch bio actor enrichment logs")
+    })
+  })
+
+  // ==========================================================================
+  // GET /admin/api/biography-enrichment/runs/:id/sources/errors
+  // ==========================================================================
+
+  describe("GET /runs/:id/sources/errors", () => {
+    const mockSourceErrors = [
+      { source: "wikipedia-bio", error_reason: "No biographical keywords found", count: 15 },
+      {
+        source: "guardian-bio",
+        error_reason: "Content too short (42 chars, minimum 100)",
+        count: 8,
+      },
+    ]
+
+    it("returns source errors for specific run", async () => {
+      mockGetBioRunSourceErrors.mockResolvedValue(mockSourceErrors)
+
+      const response = await request(app)
+        .get("/admin/api/biography-enrichment/runs/1/sources/errors")
+        .expect(200)
+
+      expect(mockGetBioRunSourceErrors).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1
+      )
+      expect(response.body).toEqual(mockSourceErrors)
+    })
+
+    it("returns 400 for invalid run ID", async () => {
+      const response = await request(app)
+        .get("/admin/api/biography-enrichment/runs/abc/sources/errors")
+        .expect(400)
+
+      expect(response.body.error.message).toBe("Invalid run ID")
+    })
+
+    it("returns 500 on database error", async () => {
+      mockGetBioRunSourceErrors.mockRejectedValue(new Error("Database error"))
+
+      const response = await request(app)
+        .get("/admin/api/biography-enrichment/runs/1/sources/errors")
+        .expect(500)
+
+      expect(response.body.error.message).toContain("Failed to fetch source errors")
+    })
+
+    it("returns empty array when no errors exist", async () => {
+      mockGetBioRunSourceErrors.mockResolvedValue([])
+
+      const response = await request(app)
+        .get("/admin/api/biography-enrichment/runs/1/sources/errors")
+        .expect(200)
+
+      expect(response.body).toEqual([])
     })
   })
 })

@@ -49,7 +49,12 @@ export interface EnrichmentRunActor {
   was_enriched: boolean
   created_death_page: boolean
   confidence: string | null
-  sources_attempted: string[]
+  sources_attempted: Array<{
+    source: string
+    success: boolean
+    costUsd: number
+    error?: string | null
+  }>
   winning_source: string | null
   processing_time_ms: number | null
   cost_usd: string
@@ -68,6 +73,12 @@ export interface SourcePerformanceStats {
   average_cost_usd: number
   total_processing_time_ms: number
   average_processing_time_ms: number
+}
+
+export interface SourceErrorSummary {
+  source: string
+  error_reason: string
+  count: number
 }
 
 export interface PaginatedResult<T> {
@@ -151,7 +162,7 @@ export async function getEnrichmentRuns(
     `SELECT COUNT(*)::text AS count FROM enrichment_runs ${whereClause}`,
     params
   )
-  const total = parseInt(countResult.rows[0].count, 10)
+  const total = parseInt(countResult.rows[0]?.count ?? "0", 10)
 
   // Get paginated results
   const dataParams = [...params, pageSize, offset]
@@ -246,7 +257,7 @@ export async function getEnrichmentRunActors(
     `SELECT COUNT(*)::text AS count FROM enrichment_run_actors WHERE run_id = $1`,
     [runId]
   )
-  const total = parseInt(countResult.rows[0].count, 10)
+  const total = parseInt(countResult.rows[0]?.count ?? "0", 10)
 
   // Get paginated results
   const dataResult = await pool.query<EnrichmentRunActor>(
@@ -388,6 +399,29 @@ export async function getRunSourcePerformanceStats(
     GROUP BY source
     ORDER BY total_attempts DESC, success_rate DESC
     `,
+    [runId]
+  )
+
+  return result.rows
+}
+
+/**
+ * Get top error reasons per source for a death enrichment run.
+ * Aggregates error messages from failed source attempts in the JSONB.
+ */
+export async function getRunSourceErrors(pool: Pool, runId: number): Promise<SourceErrorSummary[]> {
+  const result = await pool.query<SourceErrorSummary>(
+    `SELECT
+      element->>'source' as source,
+      element->>'error' as error_reason,
+      COUNT(*)::int as count
+    FROM enrichment_run_actors era
+    CROSS JOIN LATERAL jsonb_array_elements(era.sources_attempted) AS element
+    WHERE era.run_id = $1
+      AND (element->>'success')::boolean = false
+      AND element->>'error' IS NOT NULL
+    GROUP BY element->>'source', element->>'error'
+    ORDER BY count DESC`,
     [runId]
   )
 
@@ -536,7 +570,7 @@ export async function getPendingEnrichments(
     `,
     params
   )
-  const total = parseInt(countResult.rows[0].count, 10)
+  const total = parseInt(countResult.rows[0]?.count ?? "0", 10)
 
   // Get paginated results
   params.push(pageSize)

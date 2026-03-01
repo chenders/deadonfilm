@@ -412,6 +412,7 @@ export class EnrichmentRunner {
                       source: s.source,
                       success: s.success,
                       costUsd: s.costUsd || 0,
+                      error: s.error || null,
                     }))
                   : []
 
@@ -610,6 +611,7 @@ export class EnrichmentRunner {
                     source: s.source,
                     success: s.success,
                     costUsd: s.costUsd || 0,
+                    error: s.error || null,
                   }))
                 : enrichment.circumstancesSource?.type
                   ? [
@@ -617,6 +619,7 @@ export class EnrichmentRunner {
                         source: enrichment.circumstancesSource.type,
                         success: true,
                         costUsd: enrichment.circumstancesSource.costUsd || 0,
+                        error: null,
                       },
                     ]
                   : []

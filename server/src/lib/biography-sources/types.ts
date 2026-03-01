@@ -156,6 +156,7 @@ export interface BiographySourceEntry {
   rawData?: unknown // Original response for debugging
   costUsd?: number // Cost incurred for this lookup
   queryUsed?: string // The query/prompt used
+  error?: string | null // Error message when lookup fails
 }
 
 // ============================================================================
