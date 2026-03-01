@@ -2,7 +2,9 @@
  * Death Enrichment Orchestrator
  *
  * Coordinates multiple data sources to enrich actor death information.
- * Implements cost-optimized processing order: free sources first, then cheapest paid sources.
+ * Sources are organized into sequential phases; within each phase, sources
+ * run concurrently via Promise.allSettled (except AI models which are sequential).
+ * All raw source data is accumulated and synthesized by Claude.
  */
 
 import type {
@@ -80,69 +82,8 @@ import { GrokSource } from "./ai-providers/grok.js"
 import { GeminiFlashSource, GeminiProSource } from "./ai-providers/gemini.js"
 import { MistralSource } from "./ai-providers/mistral.js"
 import { GroqLlamaSource } from "./ai-providers/groq.js"
-
-/**
- * Merge enrichment data into result using first-wins strategy.
- * Only merges non-null values that aren't already set in the result.
- * Exported for testing.
- */
-export function mergeEnrichmentData(
-  result: EnrichmentResult,
-  data: Partial<EnrichmentData>,
-  source: EnrichmentSourceEntry
-): void {
-  // Core fields
-  if (data.circumstances && !result.circumstances) {
-    result.circumstances = data.circumstances
-    result.circumstancesSource = source
-  }
-
-  if (data.rumoredCircumstances && !result.rumoredCircumstances) {
-    result.rumoredCircumstances = data.rumoredCircumstances
-    result.rumoredCircumstancesSource = source
-  }
-
-  if (data.notableFactors && data.notableFactors.length > 0 && !result.notableFactors) {
-    result.notableFactors = data.notableFactors
-    result.notableFactorsSource = source
-  }
-
-  if (data.relatedCelebrities && data.relatedCelebrities.length > 0 && !result.relatedCelebrities) {
-    result.relatedCelebrities = data.relatedCelebrities
-    result.relatedCelebritiesSource = source
-  }
-
-  if (data.locationOfDeath && !result.locationOfDeath) {
-    result.locationOfDeath = data.locationOfDeath
-    result.locationOfDeathSource = source
-  }
-
-  if (data.additionalContext && !result.additionalContext) {
-    result.additionalContext = data.additionalContext
-    result.additionalContextSource = source
-  }
-
-  // Career context fields
-  if (data.lastProject && !result.lastProject) {
-    result.lastProject = data.lastProject
-    result.lastProjectSource = source
-  }
-
-  if (data.careerStatusAtDeath && !result.careerStatusAtDeath) {
-    result.careerStatusAtDeath = data.careerStatusAtDeath
-    result.careerStatusAtDeathSource = source
-  }
-
-  if (data.posthumousReleases && data.posthumousReleases.length > 0 && !result.posthumousReleases) {
-    result.posthumousReleases = data.posthumousReleases
-    result.posthumousReleasesSource = source
-  }
-
-  if (data.relatedDeaths && !result.relatedDeaths) {
-    result.relatedDeaths = data.relatedDeaths
-    result.relatedDeathsSource = source
-  }
-}
+import { SourceRateLimiter, SourcePhase } from "../shared/concurrency.js"
+import { BaseDataSource } from "./base-source.js"
 
 /**
  * Structured log entry for per-actor enrichment tracking.
@@ -170,6 +111,18 @@ export interface ExtendedEnrichmentResult extends EnrichmentResult {
   actorStats?: EnrichmentStats
   /** Per-actor structured log entries for debugging/audit */
   logEntries?: ActorLogEntry[]
+}
+
+/**
+ * A group of sources that belong to the same execution phase.
+ * Sources within a phase run concurrently (via Promise.allSettled) unless
+ * `sequential` is true (used for AI models which are cost-ordered).
+ */
+interface SourcePhaseGroup {
+  phase: SourcePhase
+  sources: DataSource[]
+  /** If true, sources run sequentially within this phase (AI models: cost-ordered) */
+  sequential?: boolean
 }
 
 /**
@@ -203,14 +156,24 @@ export const DEFAULT_CONFIG: EnrichmentConfig = {
   linkFollow: DEFAULT_LINK_FOLLOW_CONFIG,
   reliabilityThreshold: 0.6,
   useReliabilityThreshold: true,
+  claudeCleanup: {
+    enabled: true,
+    model: "claude-opus-4-5-20251101",
+    gatherAllSources: true,
+  },
 }
 
 /**
  * Main orchestrator for death information enrichment.
+ *
+ * Sources are organized into sequential phases. Within each phase, sources run
+ * concurrently via Promise.allSettled. After all phases (or early stopping),
+ * accumulated raw data is synthesized by Claude into structured death info.
  */
 export class DeathEnrichmentOrchestrator {
   private config: EnrichmentConfig
-  private sources: DataSource[] = []
+  private phases: SourcePhaseGroup[] = []
+  private rateLimiter: SourceRateLimiter
   private stats: BatchEnrichmentStats
   private statusBar: StatusBar
   private logger: EnrichmentLogger
@@ -223,6 +186,7 @@ export class DeathEnrichmentOrchestrator {
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config }
     this.logger = logger || getEnrichmentLogger()
+    this.rateLimiter = new SourceRateLimiter()
     this.initializeSources()
     this.stats = this.createEmptyStats()
     this.statusBar = new StatusBar(enableStatusBar)
@@ -239,102 +203,136 @@ export class DeathEnrichmentOrchestrator {
   }
 
   /**
-   * Initialize data sources based on configuration.
+   * Initialize data sources organized into phase groups.
+   * Sources within each phase run concurrently; phases run sequentially.
    */
   private initializeSources(): void {
-    this.sources = []
+    this.phases = []
 
-    // Free sources - always available, ordered by expected quality
-    // High-accuracy film industry archives first, then structured data, then search
-    const freeSources: DataSource[] = [
+    // Helper: filter to available sources and inject shared rate limiter
+    const prepare = (sources: DataSource[]): DataSource[] => {
+      const available = sources.filter((s) => s.isAvailable())
+      for (const s of available) {
+        if (s instanceof BaseDataSource) {
+          s.setRateLimiter(this.rateLimiter)
+        }
+      }
+      return available
+    }
+
+    if (this.config.sourceCategories.free) {
       // Phase 1: Structured data
-      new WikidataSource(),
-      new WikipediaSource(), // Wikipedia Death section extraction
-      new BFISightSoundSource(), // International film obituaries (2015+ only)
+      const structuredSources = prepare([
+        new WikidataSource(),
+        new WikipediaSource(),
+        new BFISightSoundSource(),
+      ])
+      if (structuredSources.length > 0) {
+        this.phases.push({ phase: SourcePhase.STRUCTURED_DATA, sources: structuredSources })
+      }
 
       // Phase 2: Web Search (with link following)
-      // Google first (best results), DuckDuckGo as free fallback
-      new GoogleSearchSource(), // Requires GOOGLE_SEARCH_API_KEY + GOOGLE_SEARCH_CX
-      new BingSearchSource(), // Requires BING_SEARCH_API_KEY
-      new DuckDuckGoSource(), // Free fallback, no API key needed
-      new BraveSearchSource(), // Requires BRAVE_SEARCH_API_KEY, $0.005/query
+      const webSearchSources = prepare([
+        new GoogleSearchSource(),
+        new BingSearchSource(),
+        new DuckDuckGoSource(),
+        new BraveSearchSource(),
+      ])
+      if (webSearchSources.length > 0) {
+        this.phases.push({ phase: SourcePhase.WEB_SEARCH, sources: webSearchSources })
+      }
 
-      // Phase 3: News sources (APIs and scraping)
-      new GuardianSource(), // Guardian API - UK news (requires API key)
-      new NYTimesSource(), // NYT Article Search API (requires API key)
-      new APNewsSource(), // AP News (scraped)
-      new ReutersSource(), // Reuters - international wire service (scraped + archive.org fallback)
-      new WashingtonPostSource(), // Washington Post - major US newspaper (scraped + archive.org fallback)
-      new NewsAPISource(), // NewsAPI - aggregates 80,000+ sources (requires API key)
-      new DeadlineSource(), // Deadline Hollywood - entertainment news (scraped)
-      new VarietySource(), // Variety - entertainment trade publication (scraped)
-      new HollywoodReporterSource(), // Hollywood Reporter - entertainment news (scraped)
-      new TMZSource(), // TMZ - celebrity news (scraped)
-      new PeopleSource(), // People Magazine - celebrity obituaries (scraped)
-      new BBCNewsSource(), // BBC News - international news (scraped)
-      new LATimesSource(), // LA Times - entertainment industry obituaries (scraped + archive.org fallback)
-      new RollingStoneSource(), // Rolling Stone - musician/cultural figure obituaries (scraped + archive.org fallback)
-      new TelegraphSource(), // The Telegraph - UK obituaries (scraped + archive.org fallback)
-      new IndependentSource(), // The Independent - UK news obituaries (scraped + archive.org fallback)
-      new NPRSource(), // NPR - in-depth obituaries (scraped + archive.org fallback)
-      new TimeSource(), // Time - notable deaths coverage (scraped + archive.org fallback)
-      new PBSSource(), // PBS - documentary subject obituaries (scraped + archive.org fallback)
-      new NewYorkerSource(), // The New Yorker - literary obituaries (scraped + archive.org fallback)
-      new NationalGeographicSource(), // National Geographic - explorer/scientist obituaries (scraped + archive.org fallback)
-      new GoogleNewsRSSSource(), // Google News RSS - aggregated news feed
+      // Phase 3: News sources
+      const newsSources = prepare([
+        new GuardianSource(),
+        new NYTimesSource(),
+        new APNewsSource(),
+        new ReutersSource(),
+        new WashingtonPostSource(),
+        new NewsAPISource(),
+        new DeadlineSource(),
+        new VarietySource(),
+        new HollywoodReporterSource(),
+        new TMZSource(),
+        new PeopleSource(),
+        new BBCNewsSource(),
+        new LATimesSource(),
+        new RollingStoneSource(),
+        new TelegraphSource(),
+        new IndependentSource(),
+        new NPRSource(),
+        new TimeSource(),
+        new PBSSource(),
+        new NewYorkerSource(),
+        new NationalGeographicSource(),
+        new GoogleNewsRSSSource(),
+      ])
+      if (newsSources.length > 0) {
+        this.phases.push({ phase: SourcePhase.NEWS, sources: newsSources })
+      }
 
       // Phase 4: Obituary sites
-      new FindAGraveSource(),
-      new LegacySource(), // Legacy.com obituaries (via DuckDuckGo + archive.org)
+      const obituarySources = prepare([new FindAGraveSource(), new LegacySource()])
+      if (obituarySources.length > 0) {
+        this.phases.push({ phase: SourcePhase.OBITUARY, sources: obituarySources })
+      }
 
-      // Phase 5: Books/Publications
-      ...(this.config.sourceCategories.books !== false
-        ? [new GoogleBooksDeathSource(), new OpenLibraryDeathSource(), new IABooksDeathSource()]
-        : []),
-
-      // Phase 6: Historical archives (for pre-internet deaths)
-      new TroveSource(), // Australian newspapers (requires API key)
-      new EuropeanaSource(), // European archives (requires API key)
-      new InternetArchiveSource(), // Books, documents, historical media
-      new ChroniclingAmericaSource(), // Library of Congress newspapers (1756-1963)
-
-      // Phase 7: Genealogical records (good for historical death dates/places)
-      new FamilySearchSource(), // FamilySearch API (requires API key)
-    ]
-
-    // Filter based on configuration
-    if (this.config.sourceCategories.free) {
-      for (const source of freeSources) {
-        if (source.isAvailable()) {
-          this.sources.push(source)
+      // Phase 5: Books/Publications (conditional)
+      if (this.config.sourceCategories.books !== false) {
+        const bookSources = prepare([
+          new GoogleBooksDeathSource(),
+          new OpenLibraryDeathSource(),
+          new IABooksDeathSource(),
+        ])
+        if (bookSources.length > 0) {
+          this.phases.push({ phase: SourcePhase.BOOKS, sources: bookSources })
         }
+      }
+
+      // Phase 6: Historical archives
+      const archiveSources = prepare([
+        new TroveSource(),
+        new EuropeanaSource(),
+        new InternetArchiveSource(),
+        new ChroniclingAmericaSource(),
+      ])
+      if (archiveSources.length > 0) {
+        this.phases.push({ phase: SourcePhase.ARCHIVES, sources: archiveSources })
+      }
+
+      // Phase 7: Genealogy
+      const genealogySources = prepare([new FamilySearchSource()])
+      if (genealogySources.length > 0) {
+        this.phases.push({ phase: SourcePhase.GENEALOGY, sources: genealogySources })
       }
     }
 
-    // AI sources - ordered by cost (cheapest first)
+    // AI sources - sequential within phase, ordered by cost (cheapest first)
     if (this.config.sourceCategories.ai) {
-      const aiSources: DataSource[] = [
-        // Cheapest first
-        new GeminiFlashSource(), // ~$0.0001/query - cheapest
-        new GroqLlamaSource(), // ~$0.0002/query - fast Llama inference
-        new GPT4oMiniSource(), // ~$0.0003/query
-        new DeepSeekSource(), // ~$0.0005/query
-        new MistralSource(), // ~$0.001/query - European training data
-        new GeminiProSource(), // ~$0.002/query (has search grounding!)
-        new GrokSource(), // ~$0.005/query (has X/Twitter data!)
-        new PerplexitySource(), // ~$0.005/query (has web search!)
-        new GPT4oSource(), // ~$0.01/query - most capable
-      ]
-      for (const source of aiSources) {
-        if (source.isAvailable()) {
-          this.sources.push(source)
-        }
+      const aiSources = prepare([
+        new GeminiFlashSource(),
+        new GroqLlamaSource(),
+        new GPT4oMiniSource(),
+        new DeepSeekSource(),
+        new MistralSource(),
+        new GeminiProSource(),
+        new GrokSource(),
+        new PerplexitySource(),
+        new GPT4oSource(),
+      ])
+      if (aiSources.length > 0) {
+        this.phases.push({
+          phase: SourcePhase.AI_MODELS,
+          sources: aiSources,
+          sequential: true,
+        })
       }
     }
 
     // Configure link following for web search sources
+    const allSources = this.getAllSources()
     if (this.config.linkFollow) {
-      for (const source of this.sources) {
+      for (const source of allSources) {
         if (source instanceof WebSearchBase) {
           source.setLinkFollowConfig(this.config.linkFollow)
         }
@@ -343,22 +341,22 @@ export class DeathEnrichmentOrchestrator {
 
     // Configure Wikipedia options (including AI section selection)
     if (this.config.wikipediaOptions) {
-      for (const source of this.sources) {
+      for (const source of allSources) {
         if (source instanceof WikipediaSource) {
           source.setWikipediaOptions(this.config.wikipediaOptions)
         }
       }
     }
 
-    console.log(`Initialized ${this.sources.length} data sources:`)
-    for (const source of this.sources) {
+    console.log(`Initialized ${allSources.length} data sources:`)
+    for (const source of allSources) {
       console.log(
         `  - ${source.name} (${source.isFree ? "free" : `$${source.estimatedCostPerQuery}/query`}, reliability: ${source.reliabilityScore.toFixed(2)})`
       )
     }
     this.runLogger?.info("Sources initialized", {
-      sourceCount: this.sources.length,
-      sourceNames: this.sources.map((s) => s.name),
+      sourceCount: allSources.length,
+      sourceNames: allSources.map((s) => s.name),
     })
 
     // Log link following configuration
@@ -393,6 +391,14 @@ export class DeathEnrichmentOrchestrator {
   }
 
   /**
+   * Flatten all phase groups into a single array of sources.
+   * Used for logging, status bar, and configuration injection.
+   */
+  private getAllSources(): DataSource[] {
+    return this.phases.flatMap((p) => p.sources)
+  }
+
+  /**
    * Create an empty cost breakdown object.
    */
   private createEmptyCostBreakdown(): CostBreakdown {
@@ -414,7 +420,388 @@ export class DeathEnrichmentOrchestrator {
   }
 
   /**
+   * Check whether we have accumulated enough high-quality sources to stop early.
+   * Requires 3+ sources meeting both the confidence and reliability thresholds.
+   */
+  private hasEnoughSources(rawSources: RawSourceData[]): boolean {
+    const minSourceCount = 3
+    const qualifySources = rawSources.filter(
+      (s) =>
+        s.confidence >= this.config.confidenceThreshold &&
+        (!this.config.useReliabilityThreshold ||
+          (s.reliabilityScore ?? 0) >= (this.config.reliabilityThreshold ?? 0.6))
+    )
+    return qualifySources.length >= minSourceCount
+  }
+
+  /**
+   * Try a single source for an actor. Handles all error types, stats, logging,
+   * raw data collection (including URL resolution for AI sources), and additional results.
+   *
+   * @returns Array of RawSourceData collected (possibly multiple), or empty array on failure
+   */
+  private async trySource(
+    source: DataSource,
+    actor: ActorForEnrichment,
+    actorStats: EnrichmentStats,
+    costBreakdown: CostBreakdown,
+    logEntries: ActorLogEntry[]
+  ): Promise<RawSourceData[]> {
+    // Skip sources that have hit rate limits
+    if (this.statusBar.getExhaustedSources().includes(source.name)) {
+      return []
+    }
+
+    const sourceStartTime = Date.now()
+    this.statusBar.setCurrentSource(source.name)
+    this.statusBar.log(`  Trying ${source.name}...`)
+
+    let lookupResult
+    try {
+      this.logger.sourceAttempt(actor.name, source.type, source.name)
+      // Wrap source lookup in New Relic segment
+      lookupResult = await newrelic.startSegment(`Source/${source.name}`, true, async () => {
+        return source.lookup(actor)
+      })
+    } catch (error) {
+      // Handle SourceAccessBlockedError specially
+      if (error instanceof SourceAccessBlockedError) {
+        this.logger.sourceBlocked(actor.name, source.type, error.statusCode, error.url)
+        this.statusBar.log(`    BLOCKED (${error.statusCode}) - flagged for review`)
+        this.runLogger?.warn(
+          "Source blocked",
+          {
+            actorId: actor.id,
+            statusCode: error.statusCode,
+            url: error.url,
+          },
+          source.name
+        )
+        logEntries.push({
+          timestamp: new Date().toISOString(),
+          level: "warn",
+          message: "[BLOCKED]",
+          data: { source: source.name, statusCode: error.statusCode, url: error.url },
+        })
+        const attemptStats: SourceAttemptStats = {
+          source: source.type,
+          success: false,
+          timeMs: Date.now() - sourceStartTime,
+          costUsd: 0,
+          error: `Blocked: ${error.statusCode}`,
+        }
+        actorStats.sourcesAttempted.push(attemptStats)
+        return []
+      }
+
+      // Handle SourceTimeoutError specially
+      if (error instanceof SourceTimeoutError) {
+        if (error.isHighPriority) {
+          this.logger.sourceBlocked(actor.name, source.type, 408, "timeout")
+          this.statusBar.log(
+            `    TIMEOUT (${error.timeoutMs}ms) - high-priority source, flagged for review`
+          )
+        } else {
+          this.statusBar.log(`    TIMEOUT (${error.timeoutMs}ms) - low-priority source, skipping`)
+        }
+        this.runLogger?.warn(
+          "Source timeout",
+          {
+            actorId: actor.id,
+            timeoutMs: error.timeoutMs,
+            highPriority: error.isHighPriority,
+          },
+          source.name
+        )
+        logEntries.push({
+          timestamp: new Date().toISOString(),
+          level: "warn",
+          message: "[TIMEOUT]",
+          data: {
+            source: source.name,
+            timeoutMs: error.timeoutMs,
+            highPriority: error.isHighPriority,
+          },
+        })
+        const attemptStats: SourceAttemptStats = {
+          source: source.type,
+          success: false,
+          timeMs: Date.now() - sourceStartTime,
+          costUsd: 0,
+          error: `Timeout: ${error.timeoutMs}ms`,
+        }
+        actorStats.sourcesAttempted.push(attemptStats)
+        return []
+      }
+
+      // Unknown errors: log and continue
+      const errorMsg = error instanceof Error ? error.message : "Unknown error"
+      this.statusBar.log(`    Error: ${errorMsg}`)
+      logEntries.push({
+        timestamp: new Date().toISOString(),
+        level: "error",
+        message: "[ERROR]",
+        data: { source: source.name, error: errorMsg },
+      })
+      const attemptStats: SourceAttemptStats = {
+        source: source.type,
+        success: false,
+        timeMs: Date.now() - sourceStartTime,
+        costUsd: 0,
+        error: errorMsg,
+      }
+      actorStats.sourcesAttempted.push(attemptStats)
+      return []
+    }
+
+    // Record stats
+    const sourceCost = lookupResult.source.costUsd || 0
+    const attemptStats: SourceAttemptStats = {
+      source: source.type,
+      success: lookupResult.success,
+      timeMs: Date.now() - sourceStartTime,
+      costUsd: sourceCost,
+      error: lookupResult.error,
+    }
+    actorStats.sourcesAttempted.push(attemptStats)
+    actorStats.totalCostUsd += sourceCost
+
+    // Track source attempt in status bar
+    this.statusBar.recordSourceAttempt(source.name, lookupResult.success)
+
+    // Track cost breakdown by source
+    this.addCostToBreakdown(costBreakdown, source.type, sourceCost)
+
+    // Update status bar with new cost
+    if (sourceCost > 0) {
+      this.statusBar.addCost(sourceCost)
+    }
+
+    // Handle failure
+    if (!lookupResult.success || !lookupResult.data) {
+      this.logger.sourceFailed(actor.name, source.type, lookupResult.error || "No data")
+      this.statusBar.log(`    Failed: ${lookupResult.error || "No data"}`)
+      this.runLogger?.debug(
+        "Source failed",
+        {
+          actorId: actor.id,
+          error: lookupResult.error || "No data",
+        },
+        source.name
+      )
+      logEntries.push({
+        timestamp: new Date().toISOString(),
+        level: "warn",
+        message: "[FAILED]",
+        data: { source: source.name, error: lookupResult.error || "No data" },
+      })
+
+      // Record source failure in New Relic
+      newrelic.recordCustomEvent("EnrichmentSourceFailed", {
+        actorId: actor.id,
+        actorName: actor.name,
+        source: source.name,
+        sourceType: source.type,
+        error: lookupResult.error || "No data",
+      })
+
+      // Check for rate limit errors and mark source as exhausted
+      const errorLower = (lookupResult.error || "").toLowerCase()
+      if (errorLower.includes("rate limit") || errorLower.includes("quota exceeded")) {
+        this.statusBar.markSourceExhausted(source.name)
+      }
+
+      return []
+    }
+
+    // --- Success path ---
+    const fieldsFound = this.getFieldsFromData(lookupResult.data)
+    this.logger.sourceSuccess(actor.name, source.type, fieldsFound)
+    const srcReliability = source.reliabilityScore
+    this.statusBar.log(
+      `    Success! Content: ${lookupResult.source.confidence.toFixed(2)} | Reliability: ${srcReliability.toFixed(2)}`
+    )
+    this.runLogger?.info(
+      "Source success",
+      {
+        actorId: actor.id,
+        confidence: lookupResult.source.confidence,
+        reliability: srcReliability,
+        fieldsFound,
+        costUsd: sourceCost,
+      },
+      source.name
+    )
+    logEntries.push({
+      timestamp: new Date().toISOString(),
+      level: "info",
+      message: "[SUCCESS]",
+      data: {
+        source: source.name,
+        confidence: lookupResult.source.confidence,
+        reliabilityTier: source.reliabilityTier,
+        reliabilityScore: srcReliability,
+        fieldsFound,
+        costUsd: sourceCost,
+      },
+    })
+
+    // Record source success in New Relic
+    newrelic.recordCustomEvent("EnrichmentSourceSuccess", {
+      actorId: actor.id,
+      actorName: actor.name,
+      source: source.name,
+      sourceType: source.type,
+      confidence: lookupResult.source.confidence,
+      fieldsFound: fieldsFound.join(","),
+      costUsd: sourceCost,
+    })
+    this.statusBar.setLastWinningSource(source.name)
+
+    // Collect raw data from primary result
+    const collected: RawSourceData[] = []
+
+    if (lookupResult.data.circumstances) {
+      const rawData = lookupResult.source.rawData as
+        | {
+            resolvedSources?: ResolvedUrl[]
+            parsed?: { sources?: string[] }
+          }
+        | undefined
+
+      // Check if source already resolved URLs (e.g., Gemini does this)
+      let resolvedSources = rawData?.resolvedSources
+      let sourceName = source.name
+
+      if (resolvedSources && resolvedSources.length > 0 && !resolvedSources[0].error) {
+        sourceName = resolvedSources[0].sourceName
+        this.statusBar.log(
+          `    Using pre-resolved source: ${sourceName} (${resolvedSources.length} URLs)`
+        )
+      } else {
+        // Try to resolve URLs from parsed sources
+        const sourceUrls: string[] = []
+        if (rawData?.parsed?.sources && Array.isArray(rawData.parsed.sources)) {
+          sourceUrls.push(
+            ...rawData.parsed.sources.filter((url): url is string => typeof url === "string")
+          )
+        }
+
+        if (sourceUrls.length > 0) {
+          try {
+            resolvedSources = await resolveRedirectUrls(sourceUrls)
+            const firstSuccess = resolvedSources.find((r) => !r.error)
+            if (firstSuccess) {
+              sourceName = firstSuccess.sourceName
+              this.statusBar.log(`    Resolved ${resolvedSources.length} URLs (${sourceName})`)
+            }
+
+            if (resolvedSources && resolvedSources.length > 0) {
+              lookupResult.source.rawData = {
+                ...(lookupResult.source.rawData || {}),
+                resolvedSources,
+              }
+            }
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : "Unknown error"
+            this.statusBar.log(`    URL resolution failed: ${errorMsg} - using ${source.name}`)
+          }
+        }
+      }
+
+      collected.push({
+        sourceName,
+        sourceType: source.type,
+        text: lookupResult.data.circumstances,
+        url: lookupResult.source.url || undefined,
+        confidence: lookupResult.source.confidence,
+        reliabilityTier: source.reliabilityTier,
+        reliabilityScore: source.reliabilityScore,
+        resolvedSources,
+      })
+      this.statusBar.log(
+        `    Collected ${lookupResult.data.circumstances.length} chars for cleanup`
+      )
+    }
+
+    // Process additional results (for multi-story sources like Guardian, NYT)
+    if (lookupResult.additionalResults && lookupResult.additionalResults.length > 0) {
+      this.statusBar.log(`    + ${lookupResult.additionalResults.length} additional stories`)
+
+      for (const additional of lookupResult.additionalResults) {
+        if (additional.data?.circumstances) {
+          const additionalRawData = additional.source.rawData as
+            | {
+                resolvedSources?: ResolvedUrl[]
+                parsed?: { sources?: string[] }
+              }
+            | undefined
+
+          let additionalResolvedSources = additionalRawData?.resolvedSources
+          let additionalSourceName = `${source.name} (additional)`
+
+          if (
+            additionalResolvedSources &&
+            additionalResolvedSources.length > 0 &&
+            !additionalResolvedSources[0].error
+          ) {
+            additionalSourceName = `${additionalResolvedSources[0].sourceName} (additional)`
+          } else {
+            const additionalUrls: string[] = []
+            if (
+              additionalRawData?.parsed?.sources &&
+              Array.isArray(additionalRawData.parsed.sources)
+            ) {
+              additionalUrls.push(
+                ...additionalRawData.parsed.sources.filter(
+                  (url): url is string => typeof url === "string"
+                )
+              )
+            }
+
+            if (additionalUrls.length > 0) {
+              try {
+                additionalResolvedSources = await resolveRedirectUrls(additionalUrls)
+                const firstSuccess = additionalResolvedSources.find((r) => !r.error)
+                if (firstSuccess) {
+                  additionalSourceName = `${firstSuccess.sourceName} (additional)`
+                }
+
+                if (additionalResolvedSources && additionalResolvedSources.length > 0) {
+                  additional.source.rawData = {
+                    ...(additional.source.rawData || {}),
+                    resolvedSources: additionalResolvedSources,
+                  }
+                }
+              } catch {
+                // Silently continue with source name on error
+              }
+            }
+          }
+
+          collected.push({
+            sourceName: additionalSourceName,
+            sourceType: source.type,
+            text: additional.data.circumstances,
+            url: additional.source.url || undefined,
+            confidence: additional.source.confidence,
+            reliabilityTier: source.reliabilityTier,
+            reliabilityScore: source.reliabilityScore,
+            resolvedSources: additionalResolvedSources,
+          })
+        }
+      }
+    }
+
+    return collected
+  }
+
+  /**
    * Enrich death information for a single actor.
+   *
+   * Iterates phases sequentially, running sources concurrently within each phase.
+   * Accumulates all raw source data, then synthesizes via Claude.
+   *
    * @throws {CostLimitExceededError} If cost limits are exceeded
    */
   async enrichActor(actor: ActorForEnrichment): Promise<ExtendedEnrichmentResult> {
@@ -448,137 +835,11 @@ export class DeathEnrichmentOrchestrator {
     this.runLogger?.info("Processing actor", { actorId: actor.id, actorName: actor.name })
 
     const result: ExtendedEnrichmentResult = {}
-
-    // Collect raw data when Claude cleanup is enabled
     const rawSources: RawSourceData[] = []
-    const isCleanupMode = this.config.claudeCleanup?.enabled === true
-    const gatherAll = isCleanupMode && this.config.claudeCleanup?.gatherAllSources === true
 
-    if (isCleanupMode) {
-      this.statusBar.log(
-        `  Claude cleanup mode: ${gatherAll ? "gathering all sources" : "standard"}`
-      )
-    }
-
-    // Try each source in order until we have enough data
-    for (const source of this.sources) {
-      // Skip sources that have hit rate limits
-      if (this.statusBar.getExhaustedSources().includes(source.name)) {
-        continue
-      }
-
-      const sourceStartTime = Date.now()
-
-      this.statusBar.setCurrentSource(source.name)
-      this.statusBar.log(`  Trying ${source.name}...`)
-
-      let lookupResult
-      try {
-        this.logger.sourceAttempt(actor.name, source.type, source.name)
-        // Wrap source lookup in New Relic segment
-        lookupResult = await newrelic.startSegment(`Source/${source.name}`, true, async () => {
-          return source.lookup(actor)
-        })
-      } catch (error) {
-        // Handle SourceAccessBlockedError specially
-        if (error instanceof SourceAccessBlockedError) {
-          this.logger.sourceBlocked(actor.name, source.type, error.statusCode, error.url)
-          this.statusBar.log(`    BLOCKED (${error.statusCode}) - flagged for review`)
-          this.runLogger?.warn(
-            "Source blocked",
-            {
-              actorId: actor.id,
-              statusCode: error.statusCode,
-              url: error.url,
-            },
-            source.name
-          )
-          logEntries.push({
-            timestamp: new Date().toISOString(),
-            level: "warn",
-            message: "[BLOCKED]",
-            data: { source: source.name, statusCode: error.statusCode, url: error.url },
-          })
-          // Continue to next source, don't fail the whole enrichment
-          const attemptStats: SourceAttemptStats = {
-            source: source.type,
-            success: false,
-            timeMs: Date.now() - sourceStartTime,
-            costUsd: 0,
-            error: `Blocked: ${error.statusCode}`,
-          }
-          actorStats.sourcesAttempted.push(attemptStats)
-          continue
-        }
-
-        // Handle SourceTimeoutError specially
-        if (error instanceof SourceTimeoutError) {
-          if (error.isHighPriority) {
-            this.logger.sourceBlocked(actor.name, source.type, 408, "timeout")
-            this.statusBar.log(
-              `    TIMEOUT (${error.timeoutMs}ms) - high-priority source, flagged for review`
-            )
-          } else {
-            this.statusBar.log(`    TIMEOUT (${error.timeoutMs}ms) - low-priority source, skipping`)
-          }
-          this.runLogger?.warn(
-            "Source timeout",
-            {
-              actorId: actor.id,
-              timeoutMs: error.timeoutMs,
-              highPriority: error.isHighPriority,
-            },
-            source.name
-          )
-          logEntries.push({
-            timestamp: new Date().toISOString(),
-            level: "warn",
-            message: "[TIMEOUT]",
-            data: {
-              source: source.name,
-              timeoutMs: error.timeoutMs,
-              highPriority: error.isHighPriority,
-            },
-          })
-
-          const attemptStats: SourceAttemptStats = {
-            source: source.type,
-            success: false,
-            timeMs: Date.now() - sourceStartTime,
-            costUsd: 0,
-            error: `Timeout: ${error.timeoutMs}ms`,
-          }
-          actorStats.sourcesAttempted.push(attemptStats)
-          continue
-        }
-
-        throw error
-      }
-
-      // Record stats
-      const sourceCost = lookupResult.source.costUsd || 0
-      const attemptStats: SourceAttemptStats = {
-        source: source.type,
-        success: lookupResult.success,
-        timeMs: Date.now() - sourceStartTime,
-        costUsd: sourceCost,
-        error: lookupResult.error,
-      }
-      actorStats.sourcesAttempted.push(attemptStats)
-      actorStats.totalCostUsd += sourceCost
-
-      // Track source attempt in status bar
-      this.statusBar.recordSourceAttempt(source.name, lookupResult.success)
-
-      // Track cost breakdown by source
-      this.addCostToBreakdown(costBreakdown, source.type, sourceCost)
-
-      // Update status bar with new cost
-      if (sourceCost > 0) {
-        this.statusBar.addCost(sourceCost)
-      }
-
-      // Check per-actor cost limit
+    // Iterate phases sequentially
+    for (const phaseGroup of this.phases) {
+      // Check per-actor cost limit before starting a new phase
       if (this.config.costLimits?.maxCostPerActor !== undefined) {
         if (actorStats.totalCostUsd >= this.config.costLimits.maxCostPerActor) {
           this.statusBar.log(
@@ -590,307 +851,78 @@ export class DeathEnrichmentOrchestrator {
             costUsd: actorStats.totalCostUsd,
             limit: this.config.costLimits.maxCostPerActor,
           })
-          // Update stats before stopping
-          actorStats.totalTimeMs = Date.now() - startTime
-          actorStats.fieldsFilledAfter = this.getFilledFieldsFromResult(result)
-          this.updateBatchStats(actorStats)
-          // Return what we have so far
-          return result
+          break
         }
       }
 
-      if (!lookupResult.success || !lookupResult.data) {
-        this.logger.sourceFailed(actor.name, source.type, lookupResult.error || "No data")
-        this.statusBar.log(`    Failed: ${lookupResult.error || "No data"}`)
-        this.runLogger?.debug(
-          "Source failed",
-          {
-            actorId: actor.id,
-            error: lookupResult.error || "No data",
-          },
-          source.name
-        )
-        logEntries.push({
-          timestamp: new Date().toISOString(),
-          level: "warn",
-          message: "[FAILED]",
-          data: { source: source.name, error: lookupResult.error || "No data" },
-        })
-
-        // Record source failure in New Relic
-        newrelic.recordCustomEvent("EnrichmentSourceFailed", {
-          actorId: actor.id,
-          actorName: actor.name,
-          source: source.name,
-          sourceType: source.type,
-          error: lookupResult.error || "No data",
-        })
-
-        // Check for rate limit errors and mark source as exhausted
-        const errorLower = (lookupResult.error || "").toLowerCase()
-        if (errorLower.includes("rate limit") || errorLower.includes("quota exceeded")) {
-          this.statusBar.markSourceExhausted(source.name)
-        }
-
-        continue
-      }
-
-      // Log successful fields found
-      const fieldsFound = this.getFieldsFromData(lookupResult.data)
-      this.logger.sourceSuccess(actor.name, source.type, fieldsFound)
-      const srcReliability = source.reliabilityScore
-      this.statusBar.log(
-        `    Success! Content: ${lookupResult.source.confidence.toFixed(2)} | Reliability: ${srcReliability.toFixed(2)}`
-      )
-      this.runLogger?.info(
-        "Source success",
-        {
-          actorId: actor.id,
-          confidence: lookupResult.source.confidence,
-          reliability: srcReliability,
-          fieldsFound,
-          costUsd: sourceCost,
-        },
-        source.name
-      )
-      logEntries.push({
-        timestamp: new Date().toISOString(),
-        level: "info",
-        message: "[SUCCESS]",
-        data: {
-          source: source.name,
-          confidence: lookupResult.source.confidence,
-          reliabilityTier: source.reliabilityTier,
-          reliabilityScore: srcReliability,
-          fieldsFound,
-          costUsd: sourceCost,
-        },
-      })
-
-      // Record source success in New Relic
-      newrelic.recordCustomEvent("EnrichmentSourceSuccess", {
-        actorId: actor.id,
-        actorName: actor.name,
-        source: source.name,
-        sourceType: source.type,
-        confidence: lookupResult.source.confidence,
-        fieldsFound: fieldsFound.join(","),
-        costUsd: sourceCost,
-      })
-      this.statusBar.setLastWinningSource(source.name)
-
-      // In cleanup mode, collect raw data for later processing
-      if (isCleanupMode && lookupResult.data.circumstances) {
-        const rawData = lookupResult.source.rawData as
-          | {
-              resolvedSources?: ResolvedUrl[]
-              parsed?: { sources?: string[] }
-            }
-          | undefined
-
-        // Check if source already resolved URLs (e.g., Gemini does this)
-        let resolvedSources = rawData?.resolvedSources
-        let sourceName = source.name // Default to AI provider name
-
-        // If already resolved, use those
-        if (resolvedSources && resolvedSources.length > 0 && !resolvedSources[0].error) {
-          sourceName = resolvedSources[0].sourceName
-          this.statusBar.log(
-            `    Using pre-resolved source: ${sourceName} (${resolvedSources.length} URLs)`
-          )
-        } else {
-          // Otherwise, try to resolve URLs from parsed sources
-          const sourceUrls: string[] = []
-          if (rawData?.parsed?.sources && Array.isArray(rawData.parsed.sources)) {
-            sourceUrls.push(
-              ...rawData.parsed.sources.filter((url): url is string => typeof url === "string")
-            )
-          }
-
-          if (sourceUrls.length > 0) {
-            try {
-              resolvedSources = await resolveRedirectUrls(sourceUrls)
-              // Use the first successful resolved source name
-              const firstSuccess = resolvedSources.find((r) => !r.error)
-              if (firstSuccess) {
-                sourceName = firstSuccess.sourceName
-                this.statusBar.log(`    Resolved ${resolvedSources.length} URLs (${sourceName})`)
-              }
-
-              // Write resolved sources back to rawData so they persist
-              if (resolvedSources && resolvedSources.length > 0) {
-                lookupResult.source.rawData = {
-                  ...(lookupResult.source.rawData || {}),
-                  resolvedSources,
-                }
-              }
-            } catch (error) {
-              // On error, log warning and continue with AI provider name
-              const errorMsg = error instanceof Error ? error.message : "Unknown error"
-              this.statusBar.log(`    URL resolution failed: ${errorMsg} - using ${source.name}`)
-            }
-          }
-        }
-
-        rawSources.push({
-          sourceName,
-          sourceType: source.type,
-          text: lookupResult.data.circumstances,
-          url: lookupResult.source.url || undefined,
-          confidence: lookupResult.source.confidence,
-          reliabilityTier: source.reliabilityTier,
-          reliabilityScore: source.reliabilityScore,
-          resolvedSources,
-        })
+      // Check early stopping between phases
+      if (this.hasEnoughSources(rawSources)) {
         this.statusBar.log(
-          `    Collected ${lookupResult.data.circumstances.length} chars for cleanup`
-        )
-      }
-
-      // Merge data into result (for non-cleanup mode or as fallback)
-      this.mergeData(result, lookupResult.data, lookupResult.source)
-
-      // Process additional results (for multi-story sources like Guardian, NYT)
-      if (lookupResult.additionalResults && lookupResult.additionalResults.length > 0) {
-        this.statusBar.log(`    + ${lookupResult.additionalResults.length} additional stories`)
-
-        for (const additional of lookupResult.additionalResults) {
-          if (additional.data) {
-            // In cleanup mode, collect raw data for later processing
-            if (isCleanupMode && additional.data.circumstances) {
-              const additionalRawData = additional.source.rawData as
-                | {
-                    resolvedSources?: ResolvedUrl[]
-                    parsed?: { sources?: string[] }
-                  }
-                | undefined
-
-              // Check if source already resolved URLs (e.g., Gemini does this)
-              let additionalResolvedSources = additionalRawData?.resolvedSources
-              let additionalSourceName = `${source.name} (additional)`
-
-              // If already resolved, use those
-              if (
-                additionalResolvedSources &&
-                additionalResolvedSources.length > 0 &&
-                !additionalResolvedSources[0].error
-              ) {
-                additionalSourceName = `${additionalResolvedSources[0].sourceName} (additional)`
-              } else {
-                // Otherwise, try to resolve URLs from parsed sources
-                const additionalUrls: string[] = []
-                if (
-                  additionalRawData?.parsed?.sources &&
-                  Array.isArray(additionalRawData.parsed.sources)
-                ) {
-                  additionalUrls.push(
-                    ...additionalRawData.parsed.sources.filter(
-                      (url): url is string => typeof url === "string"
-                    )
-                  )
-                }
-
-                if (additionalUrls.length > 0) {
-                  try {
-                    additionalResolvedSources = await resolveRedirectUrls(additionalUrls)
-                    // Use the first successful resolved source name
-                    const firstSuccess = additionalResolvedSources.find((r) => !r.error)
-                    if (firstSuccess) {
-                      additionalSourceName = `${firstSuccess.sourceName} (additional)`
-                    }
-
-                    // Write resolved sources back to rawData so they persist
-                    if (additionalResolvedSources && additionalResolvedSources.length > 0) {
-                      additional.source.rawData = {
-                        ...(additional.source.rawData || {}),
-                        resolvedSources: additionalResolvedSources,
-                      }
-                    }
-                  } catch {
-                    // Silently continue with AI provider name on error
-                  }
-                }
-              }
-
-              rawSources.push({
-                sourceName: additionalSourceName,
-                sourceType: source.type,
-                text: additional.data.circumstances,
-                url: additional.source.url || undefined,
-                confidence: additional.source.confidence,
-                reliabilityTier: source.reliabilityTier,
-                reliabilityScore: source.reliabilityScore,
-                resolvedSources: additionalResolvedSources,
-              })
-            }
-
-            // Merge additional context into result
-            if (additional.data.additionalContext && !result.additionalContext) {
-              result.additionalContext = additional.data.additionalContext
-              result.additionalContextSource = additional.source
-            }
-
-            // Merge notable factors
-            if (additional.data.notableFactors && additional.data.notableFactors.length > 0) {
-              const existing = result.notableFactors || []
-              const merged = [...new Set([...existing, ...additional.data.notableFactors])]
-              result.notableFactors = merged.slice(0, 10)
-              if (!result.notableFactorsSource) {
-                result.notableFactorsSource = additional.source
-              }
-            }
-          }
-        }
-      }
-
-      // In gather-all mode, keep going through all sources
-      if (gatherAll) {
-        actorStats.finalSource = source.type
-        actorStats.confidence = Math.max(actorStats.confidence, lookupResult.source.confidence)
-        // Don't break - continue to gather from all sources
-        continue
-      }
-
-      // Dual-threshold stopping logic:
-      // Stop if content confidence meets threshold AND (reliability is disabled OR reliability meets threshold)
-      const contentMet = lookupResult.source.confidence >= this.config.confidenceThreshold
-      const reliabilityThreshold = this.config.reliabilityThreshold ?? 0.6
-      const useReliability = this.config.useReliabilityThreshold !== false
-      const reliabilityMet = !useReliability || srcReliability >= reliabilityThreshold
-
-      if (contentMet && reliabilityMet) {
-        actorStats.finalSource = source.type
-        actorStats.confidence = lookupResult.source.confidence
-        this.statusBar.log(`    Both thresholds met, accepting result`)
-        break
-      } else if (contentMet && !reliabilityMet) {
-        this.statusBar.log(
-          `    Below reliability threshold (${srcReliability.toFixed(2)} < ${reliabilityThreshold.toFixed(2)}), continuing...`
+          `    Early stop: ${rawSources.length} sources collected (enough high-quality data)`
         )
         logEntries.push({
           timestamp: new Date().toISOString(),
           level: "info",
-          message: "[RELIABILITY_BELOW_THRESHOLD]",
+          message: "[EARLY_STOP]",
           data: {
-            source: source.name,
-            contentConfidence: lookupResult.source.confidence,
-            reliabilityScore: srcReliability,
-            reliabilityThreshold,
+            rawSourceCount: rawSources.length,
+            phase: phaseGroup.phase,
           },
         })
-        // Track this as best-so-far in case no better source is found
-        if (!actorStats.finalSource || lookupResult.source.confidence > actorStats.confidence) {
-          actorStats.finalSource = source.type
-          actorStats.confidence = lookupResult.source.confidence
+        break
+      }
+
+      this.statusBar.log(`  Phase: ${phaseGroup.phase} (${phaseGroup.sources.length} sources)`)
+
+      if (phaseGroup.sequential) {
+        // Sequential execution (AI models): try one by one, stop at first success
+        for (const source of phaseGroup.sources) {
+          const collected = await this.trySource(
+            source,
+            actor,
+            actorStats,
+            costBreakdown,
+            logEntries
+          )
+          if (collected.length > 0) {
+            rawSources.push(...collected)
+            // Track best source
+            const bestConfidence = Math.max(...collected.map((c) => c.confidence))
+            if (bestConfidence > actorStats.confidence) {
+              actorStats.finalSource = source.type
+              actorStats.confidence = bestConfidence
+            }
+            // For AI models, stop after first successful result
+            break
+          }
+        }
+      } else {
+        // Concurrent execution: run all sources in the phase simultaneously
+        const promises = phaseGroup.sources.map((source) =>
+          this.trySource(source, actor, actorStats, costBreakdown, logEntries)
+        )
+        const results = await Promise.allSettled(promises)
+
+        for (let i = 0; i < results.length; i++) {
+          const settled = results[i]
+          if (settled.status === "fulfilled" && settled.value.length > 0) {
+            rawSources.push(...settled.value)
+            // Track best source
+            const bestConfidence = Math.max(...settled.value.map((c) => c.confidence))
+            if (bestConfidence > actorStats.confidence) {
+              actorStats.finalSource = phaseGroup.sources[i].type
+              actorStats.confidence = bestConfidence
+            }
+          }
         }
       }
     }
 
-    // After gathering, run Claude cleanup if enabled and we have raw data
-    if (isCleanupMode && rawSources.length > 0) {
+    // After all phases (or early stop), run Claude synthesis if we have raw data
+    const isCleanupEnabled = this.config.claudeCleanup?.enabled !== false
+    if (isCleanupEnabled && rawSources.length > 0) {
       this.statusBar.log(`  Running Claude Opus 4.5 cleanup on ${rawSources.length} sources...`)
       try {
-        // Wrap Claude cleanup in New Relic segment
         const cleanupResult = await newrelic.startSegment("ClaudeCleanup", true, async () => {
           return cleanupWithClaude(actor, rawSources)
         })
@@ -981,6 +1013,9 @@ export class DeathEnrichmentOrchestrator {
         // Continue with raw data as fallback
         result.rawSources = rawSources
       }
+    } else if (!isCleanupEnabled && rawSources.length > 0) {
+      // Claude cleanup disabled — attach raw sources only (edge case for testing)
+      result.rawSources = rawSources
     }
 
     actorStats.totalTimeMs = Date.now() - startTime
@@ -1071,6 +1106,7 @@ export class DeathEnrichmentOrchestrator {
    */
   async enrichBatch(actors: ActorForEnrichment[]): Promise<Map<number, ExtendedEnrichmentResult>> {
     const results = new Map<number, ExtendedEnrichmentResult>()
+    const allSources = this.getAllSources()
 
     // Record batch start in New Relic
     for (const [key, value] of Object.entries({
@@ -1092,7 +1128,7 @@ export class DeathEnrichmentOrchestrator {
 
     this.statusBar.log(`\n${"=".repeat(60)}`)
     this.statusBar.log(`Starting batch enrichment for ${actors.length} actors`)
-    this.statusBar.log(`Sources: ${this.sources.map((s) => s.name).join(", ")}`)
+    this.statusBar.log(`Sources: ${allSources.map((s) => s.name).join(", ")}`)
     if (this.config.costLimits?.maxTotalCost !== undefined) {
       this.statusBar.log(`Total cost limit: $${this.config.costLimits.maxTotalCost}`)
     }
@@ -1102,7 +1138,7 @@ export class DeathEnrichmentOrchestrator {
     this.statusBar.log(`${"=".repeat(60)}`)
     this.runLogger?.info("Batch started", {
       actorCount: actors.length,
-      sourceCount: this.sources.length,
+      sourceCount: allSources.length,
       maxTotalCost: this.config.costLimits?.maxTotalCost,
       maxCostPerActor: this.config.costLimits?.maxCostPerActor,
     })
@@ -1217,25 +1253,6 @@ export class DeathEnrichmentOrchestrator {
    */
   async cleanup(): Promise<void> {
     // No-op - browser cleanup not currently needed
-  }
-
-  /**
-   * Merge enrichment data into result.
-   */
-  private mergeData(
-    result: EnrichmentResult,
-    data: Partial<EnrichmentData>,
-    source: EnrichmentSourceEntry
-  ): void {
-    mergeEnrichmentData(result, data, source)
-  }
-
-  /**
-   * Check if we have enough data to stop searching.
-   */
-  private hasEnoughData(result: EnrichmentResult): boolean {
-    // We need at least circumstances or notable factors
-    return !!(result.circumstances || (result.notableFactors && result.notableFactors.length > 0))
   }
 
   /**
