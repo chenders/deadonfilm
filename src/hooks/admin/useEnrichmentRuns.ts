@@ -117,6 +117,7 @@ export interface StartEnrichmentRequest {
   confidence?: number
   maxCostPerActor?: number
   maxTotalCost?: number
+  concurrency?: number
   claudeCleanup?: boolean
   gatherAllSources?: boolean
   followLinks?: boolean

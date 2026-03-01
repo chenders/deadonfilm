@@ -115,7 +115,11 @@ export default function BioEnrichmentRunDetailsPage() {
           <div className="rounded-lg border border-blue-700 bg-blue-900/30 p-4">
             <div className="mb-2 flex items-center justify-between text-sm">
               <span className="text-blue-200">
-                Processing: {progress.currentActorName || "Starting..."}
+                {formatBioProgressStatus(
+                  progress.currentActorName,
+                  progress.actorsProcessed,
+                  progress.actorsQueried
+                )}
               </span>
               <span className="text-blue-200">
                 {progress.actorsProcessed} / {progress.actorsQueried} actors (
@@ -330,6 +334,28 @@ export default function BioEnrichmentRunDetailsPage() {
       )}
     </AdminLayout>
   )
+}
+
+/**
+ * Formats progress status for the running bio enrichment banner.
+ * Supports both parallel mode ("N in flight") and legacy single-actor mode.
+ */
+function formatBioProgressStatus(
+  currentActorName: string | null,
+  actorsProcessed: number,
+  actorsQueried: number
+): string {
+  if (!currentActorName) return "Processing: Starting..."
+
+  // Parallel mode: currentActorName contains "N in flight"
+  const inFlightMatch = currentActorName.match(/^(\d+)\s+in\s+flight$/i)
+  if (inFlightMatch) {
+    const inFlight = parseInt(inFlightMatch[1], 10)
+    return `Processing ${inFlight} actor${inFlight !== 1 ? "s" : ""} (${actorsProcessed}/${actorsQueried} completed)`
+  }
+
+  // Legacy single-actor mode: show actor name
+  return `Processing: ${currentActorName}`
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {

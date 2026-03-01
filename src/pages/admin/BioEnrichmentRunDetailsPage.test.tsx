@@ -443,6 +443,88 @@ describe("BioEnrichmentRunDetailsPage", () => {
     })
   })
 
+  describe("running enrichment state", () => {
+    const mockRunningRun: bioHooks.BioEnrichmentRunDetails = {
+      ...mockRunDetails,
+      status: "running",
+      completed_at: null,
+      duration_ms: null,
+      exit_reason: null,
+      actors_processed: 10,
+      actors_enriched: 7,
+      fill_rate: null,
+      total_cost_usd: "0.25",
+      current_actor_index: 15,
+      current_actor_name: "Marlon Brando",
+    }
+
+    const mockProgress: bioHooks.BioEnrichmentRunProgress = {
+      status: "running",
+      currentActorIndex: 15,
+      currentActorName: "Marlon Brando",
+      actorsQueried: 50,
+      actorsProcessed: 14,
+      actorsEnriched: 10,
+      actorsWithSubstantiveContent: 8,
+      totalCostUsd: 0.42,
+      synthesisCostUsd: 0.3,
+      sourceCostUsd: 0.12,
+      progressPercentage: 28.0,
+      elapsedMs: 30000,
+      estimatedTimeRemainingMs: 77000,
+    }
+
+    beforeEach(() => {
+      vi.mocked(bioHooks.useBioEnrichmentRunDetails).mockReturnValue({
+        data: mockRunningRun,
+        isLoading: false,
+        error: null,
+      } as ReturnType<typeof bioHooks.useBioEnrichmentRunDetails>)
+
+      vi.mocked(bioHooks.useBioEnrichmentRunProgress).mockReturnValue({
+        data: mockProgress,
+        isLoading: false,
+        error: null,
+      } as ReturnType<typeof bioHooks.useBioEnrichmentRunProgress>)
+    })
+
+    it("shows progress banner with legacy single-actor name", async () => {
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByText("Processing: Marlon Brando")).toBeInTheDocument()
+        expect(screen.getByText(/28/)).toBeInTheDocument()
+      })
+    })
+
+    it("shows parallel progress format when currentActorName is 'N in flight'", async () => {
+      vi.mocked(bioHooks.useBioEnrichmentRunProgress).mockReturnValue({
+        data: {
+          ...mockProgress,
+          currentActorName: "5 in flight",
+          actorsProcessed: 20,
+          actorsQueried: 100,
+        },
+        isLoading: false,
+        error: null,
+      } as ReturnType<typeof bioHooks.useBioEnrichmentRunProgress>)
+
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByText("Processing 5 actors (20/100 completed)")).toBeInTheDocument()
+      })
+    })
+
+    it("shows stop button when running", async () => {
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByText("Stop Run")).toBeInTheDocument()
+      })
+    })
+  })
+
   describe("configuration section", () => {
     it("displays configuration when present", () => {
       renderPage()

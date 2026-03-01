@@ -149,7 +149,11 @@ export default function EnrichmentRunDetailsPage() {
               <div>
                 <h2 className="text-lg font-semibold text-blue-100">Running</h2>
                 <p className="text-sm text-blue-200">
-                  {progress.currentActorName || "Processing..."}
+                  {formatProgressStatus(
+                    progress.currentActorName,
+                    progress.actorsProcessed,
+                    progress.actorsQueried
+                  )}
                 </p>
               </div>
               <div className="text-right">
@@ -651,6 +655,28 @@ function ActorLogsModalWrapper({
       onClose={onClose}
     />
   )
+}
+
+/**
+ * Formats progress status for the running enrichment banner.
+ * Supports both parallel mode ("N in flight") and legacy single-actor mode.
+ */
+function formatProgressStatus(
+  currentActorName: string | null,
+  actorsProcessed: number,
+  actorsQueried: number
+): string {
+  if (!currentActorName) return "Processing..."
+
+  // Parallel mode: currentActorName contains "N in flight"
+  const inFlightMatch = currentActorName.match(/^(\d+)\s+in\s+flight$/i)
+  if (inFlightMatch) {
+    const inFlight = parseInt(inFlightMatch[1], 10)
+    return `Processing ${inFlight} actor${inFlight !== 1 ? "s" : ""} (${actorsProcessed}/${actorsQueried} completed)`
+  }
+
+  // Legacy single-actor mode: show actor name
+  return currentActorName
 }
 
 /**

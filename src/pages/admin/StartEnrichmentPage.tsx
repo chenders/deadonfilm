@@ -32,6 +32,9 @@ export default function StartEnrichmentPage() {
   const [usActorsOnly, setUsActorsOnly] = useState<boolean>(false)
   const [sortBy, setSortBy] = useState<"popularity" | "interestingness">("popularity")
 
+  // Concurrency
+  const [concurrency, setConcurrency] = useState("5")
+
   // Source selection flags - defaults match CLI script (enabled by default)
   const [free, setFree] = useState<boolean>(true)
   const [paid, setPaid] = useState<boolean>(true)
@@ -151,6 +154,7 @@ export default function StartEnrichmentPage() {
     const parsedConfidence = parseFloat(confidence)
     const parsedMaxLinkedArticles = parseInt(wikipediaMaxLinkedArticles, 10)
     const parsedMaxSections = parseInt(wikipediaMaxSections, 10)
+    const parsedConcurrency = parseInt(concurrency, 10)
 
     try {
       const result = await startEnrichment.mutateAsync({
@@ -168,6 +172,7 @@ export default function StartEnrichmentPage() {
             }),
         maxTotalCost: isNaN(parsedMaxTotalCost) ? 10 : Math.max(0.01, parsedMaxTotalCost),
         maxCostPerActor,
+        concurrency: isNaN(parsedConcurrency) ? 5 : Math.max(1, Math.min(20, parsedConcurrency)),
         confidence: isNaN(parsedConfidence) ? 0.5 : Math.max(0, Math.min(1, parsedConfidence)),
         free,
         paid,
@@ -740,6 +745,36 @@ export default function StartEnrichmentPage() {
                   />
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Performance */}
+          <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-admin-text-primary">Performance</h2>
+            <div>
+              <label
+                htmlFor="concurrency"
+                className="block text-sm font-medium text-admin-text-secondary"
+              >
+                Concurrency
+                <span className="ml-1 text-admin-text-muted">(1-20)</span>
+              </label>
+              <input
+                id="concurrency"
+                type="number"
+                min="1"
+                max="20"
+                value={concurrency}
+                onChange={(e) => setConcurrency(e.target.value)}
+                onBlur={() => {
+                  const n = parseInt(concurrency, 10)
+                  setConcurrency(String(isNaN(n) ? 5 : Math.max(1, Math.min(20, n))))
+                }}
+                className="mt-1 block w-32 rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
+              />
+              <p className="mt-1 text-sm text-admin-text-muted">
+                Number of actors to process in parallel
+              </p>
             </div>
           </div>
 

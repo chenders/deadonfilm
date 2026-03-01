@@ -118,6 +118,7 @@ export interface StartBioEnrichmentRequest {
   minPopularity?: number
   actorIds?: number[]
   confidenceThreshold?: number
+  concurrency?: number
   maxCostPerActor?: number
   maxTotalCost?: number
   allowRegeneration?: boolean

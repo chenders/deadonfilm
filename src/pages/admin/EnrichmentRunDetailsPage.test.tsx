@@ -422,13 +422,32 @@ describe("EnrichmentRunDetailsPage", () => {
       } as any)
     })
 
-    it("shows progress banner when running", async () => {
+    it("shows progress banner with legacy single-actor name", async () => {
       renderPage()
 
       await waitFor(() => {
         expect(screen.getByText("Running")).toBeInTheDocument()
         expect(screen.getByText("Processing Actor")).toBeInTheDocument()
         expect(screen.getByText("28.0%")).toBeInTheDocument()
+      })
+    })
+
+    it("shows parallel progress format when currentActorName is 'N in flight'", async () => {
+      vi.mocked(enrichmentHooks.useEnrichmentRunProgress).mockReturnValue({
+        data: {
+          ...mockProgress,
+          currentActorName: "5 in flight",
+          actorsProcessed: 20,
+          actorsQueried: 100,
+        },
+        isLoading: false,
+        error: null,
+      } as any)
+
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByText("Processing 5 actors (20/100 completed)")).toBeInTheDocument()
       })
     })
 

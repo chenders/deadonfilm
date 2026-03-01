@@ -410,6 +410,28 @@ describe("Admin Biography Enrichment Endpoints", () => {
       expect(jobPayload.allowRegeneration).toBe(false)
     })
 
+    it("forwards concurrency to job payload and run config", async () => {
+      mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 47 }] })
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] })
+
+      const { queueManager } = await import("../../lib/jobs/queue-manager.js")
+
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/enrich-batch")
+        .send({ actorIds: [1], concurrency: 10 })
+
+      expect(res.status).toBe(200)
+
+      // Verify forwarded to addJob payload
+      const jobPayload = vi.mocked(queueManager.addJob).mock.calls[0][1] as Record<string, unknown>
+      expect(jobPayload.concurrency).toBe(10)
+
+      // Verify included in persisted run config
+      const insertCall = mockPoolQuery.mock.calls[0]
+      const configJson = JSON.parse(insertCall[1][0] as string)
+      expect(configJson.concurrency).toBe(10)
+    })
+
     it("forwards earlyStopSourceCount to job payload and run config", async () => {
       mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 46 }] })
       mockPoolQuery.mockResolvedValueOnce({ rows: [] })
