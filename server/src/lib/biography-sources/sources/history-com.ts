@@ -139,7 +139,7 @@ export class HistoryComBiographySource extends BaseBiographySource {
 
   /**
    * Pick the best URL from candidates.
-   * History.com uses /topics/ paths for curated biographical content.
+   * History.com uses /topics/, /biographies/, and /people/ paths for curated biographical content.
    */
   private pickBestUrl(urls: string[]): string {
     const topicsUrl = urls.find(

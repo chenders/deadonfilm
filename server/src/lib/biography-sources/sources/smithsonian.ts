@@ -20,7 +20,7 @@ import { fetchPageWithFallbacks } from "../../shared/fetch-page-with-fallbacks.j
 const MIN_CONTENT_LENGTH = 200
 
 export class SmithsonianBiographySource extends BaseBiographySource {
-  readonly name = "Smithsonian"
+  readonly name = "Smithsonian Magazine"
   readonly type = BiographySourceType.SMITHSONIAN_BIO
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
@@ -54,7 +54,7 @@ export class SmithsonianBiographySource extends BaseBiographySource {
         success: false,
         source: this.createSourceEntry(startTime, 0, { queryUsed: query }),
         data: null,
-        error: "No Smithsonian results found via web search",
+        error: "No Smithsonian Magazine results found via web search",
       }
     }
 
@@ -79,7 +79,7 @@ export class SmithsonianBiographySource extends BaseBiographySource {
           queryUsed: query,
         }),
         data: null,
-        error: `Smithsonian page fetch failed: ${pageResult.error || "empty content"}`,
+        error: `Smithsonian Magazine page fetch failed: ${pageResult.error || "empty content"}`,
       }
     }
 
@@ -99,7 +99,7 @@ export class SmithsonianBiographySource extends BaseBiographySource {
           domain: "smithsonianmag.com",
         }),
         data: null,
-        error: `Smithsonian content too short (${text.length} chars, minimum ${MIN_CONTENT_LENGTH})`,
+        error: `Smithsonian Magazine content too short (${text.length} chars, minimum ${MIN_CONTENT_LENGTH})`,
       }
     }
 
@@ -140,7 +140,7 @@ export class SmithsonianBiographySource extends BaseBiographySource {
 
   /**
    * Pick the best URL from candidates.
-   * Smithsonian Magazine uses /history/ and /biography/ paths for biographical content.
+   * Smithsonian Magazine uses /history/, /biography/, and /people-places/ paths for biographical content.
    */
   private pickBestUrl(urls: string[]): string {
     const bioUrl = urls.find(

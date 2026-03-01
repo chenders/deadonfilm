@@ -118,7 +118,7 @@ The enrichment pipeline goes beyond the basic 6-line biography. It researches 37
 | Brave Search | Brave Search API | Requires `BRAVE_SEARCH_API_KEY` |
 
 #### Phase 4: News Sources
-Guardian, NYTimes, AP News, Reuters, Washington Post, LA Times, BBC News, NPR, PBS, People, The Independent, The Telegraph, Time, The New Yorker, Rolling Stone, National Geographic, Smithsonian, History.com
+Guardian, NYTimes, AP News, Reuters, Washington Post, LA Times, BBC News, NPR, PBS, People, The Independent, The Telegraph, Time, The New Yorker, Rolling Stone, National Geographic, Smithsonian Magazine, History.com
 
 #### Phase 5: Obituary Sites
 Legacy.com, Find a Grave

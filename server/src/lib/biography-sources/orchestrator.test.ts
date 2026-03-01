@@ -173,7 +173,7 @@ vi.mock("./sources/national-geographic.js", () => ({
   NationalGeographicBiographySource: makeMockSourceClass("National Geographic"),
 }))
 vi.mock("./sources/smithsonian.js", () => ({
-  SmithsonianBiographySource: makeMockSourceClass("Smithsonian"),
+  SmithsonianBiographySource: makeMockSourceClass("Smithsonian Magazine"),
 }))
 vi.mock("./sources/history-com.js", () => ({
   HistoryComBiographySource: makeMockSourceClass("History.com"),
@@ -406,7 +406,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
       expect(names[26]).toBe("The New Yorker")
       expect(names[27]).toBe("Rolling Stone")
       expect(names[28]).toBe("National Geographic")
-      expect(names[29]).toBe("Smithsonian")
+      expect(names[29]).toBe("Smithsonian Magazine")
       expect(names[30]).toBe("History.com")
       expect(names[31]).toBe("Legacy")
       expect(names[32]).toBe("FindAGrave")

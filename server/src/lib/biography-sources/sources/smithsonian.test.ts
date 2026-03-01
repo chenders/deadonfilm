@@ -69,7 +69,10 @@ function buildDuckDuckGoHtml(urls: Array<{ url: string; title: string; snippet: 
   return `<html><body>${results}</body></html>`
 }
 
-function buildSmithsonianPage(content: string, title = "Neil Armstrong | Smithsonian"): string {
+function buildSmithsonianPage(
+  content: string,
+  title = "Neil Armstrong | Smithsonian Magazine"
+): string {
   return `<html>
 <head>
   <title>${title}</title>
@@ -116,7 +119,7 @@ describe("SmithsonianBiographySource", () => {
 
   describe("properties", () => {
     it("has correct name", () => {
-      expect(source.name).toBe("Smithsonian")
+      expect(source.name).toBe("Smithsonian Magazine")
     })
 
     it("has correct type", () => {
@@ -187,7 +190,7 @@ describe("SmithsonianBiographySource", () => {
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("No Smithsonian results found")
+      expect(result.error).toContain("No Smithsonian Magazine results found")
     })
 
     it("returns failure when page fetch fails", async () => {

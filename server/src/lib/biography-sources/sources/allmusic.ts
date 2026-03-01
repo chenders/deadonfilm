@@ -138,7 +138,7 @@ export class AllMusicBiographySource extends BaseBiographySource {
 
   /**
    * Pick the best URL from candidates.
-   * AllMusic uses /artist/ paths for artist biography pages.
+   * AllMusic uses /artist/ and /artists/ paths for artist biography pages.
    */
   private pickBestUrl(urls: string[]): string {
     const artistUrl = urls.find((u) => u.includes("/artist/") || u.includes("/artists/"))
