@@ -8,6 +8,15 @@ vi.mock("./cache.js", () => ({
   invalidateActorCache: vi.fn(),
 }))
 
+// Mock newrelic — startSegment always executes the callback even without
+// a real agent, but mocking isolates tests from the newrelic module.
+vi.mock("newrelic", () => ({
+  default: {
+    startSegment: (_name: string, _record: boolean, handler: () => unknown) => handler(),
+    recordCustomEvent: vi.fn(),
+  },
+}))
+
 import {
   writeBiographyToProduction,
   writeBiographyToStaging,
@@ -122,7 +131,7 @@ describe("writeBiographyToProduction", () => {
     expect(mockQuery.mock.calls[1][0]).toContain("INSERT INTO actor_biography_details")
   })
 
-  it("updates actors table with narrative and increments biography_version", async () => {
+  it("updates actors table with narrative and sets biography_version", async () => {
     const data = makeBiographyData({ narrative: "Full narrative text" })
 
     await writeBiographyToProduction(mockPool, 42, data, makeSources())
@@ -131,10 +140,10 @@ describe("writeBiographyToProduction", () => {
     // With no archive: calls are SELECT, INSERT upsert, UPDATE actors
     const updateCall = mockQuery.mock.calls[2]
     expect(updateCall[0]).toContain("biography = $1")
-    expect(updateCall[0]).toContain("biography_version = COALESCE(biography_version, 0) + 1")
+    expect(updateCall[0]).toContain("biography_version = $2")
     expect(updateCall[0]).toContain("biography_source_type = 'enriched'")
     expect(updateCall[0]).toContain("updated_at = NOW()")
-    expect(updateCall[1]).toEqual(["Full narrative text", 42])
+    expect(updateCall[1]).toEqual(["Full narrative text", "5.0.0", 42])
   })
 
   it("skips actors table update when narrative is null", async () => {

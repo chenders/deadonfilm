@@ -42,7 +42,6 @@ import { FindAGraveSource } from "./sources/findagrave.js"
 import { LegacySource } from "./sources/legacy.js"
 import { BFISightSoundSource } from "./sources/bfi-sight-sound.js"
 import { WikipediaSource } from "./sources/wikipedia.js"
-import { IMDbSource } from "./sources/imdb.js"
 import { VarietySource } from "./sources/variety.js"
 import { DeadlineSource } from "./sources/deadline.js"
 import { NewsAPISource } from "./sources/newsapi.js"
@@ -58,6 +57,7 @@ import { TMZSource } from "./sources/tmz.js"
 import { PeopleSource } from "./sources/people.js"
 import { BBCNewsSource } from "./sources/bbc-news.js"
 import { ReutersSource } from "./sources/reuters.js"
+import { WashingtonPostSource } from "./sources/washington-post.js"
 import { GoogleNewsRSSSource } from "./sources/google-news-rss.js"
 import { BraveSearchSource } from "./sources/brave.js"
 import { FamilySearchSource } from "./sources/familysearch.js"
@@ -241,7 +241,6 @@ export class DeathEnrichmentOrchestrator {
       // Phase 1: Structured data
       new WikidataSource(),
       new WikipediaSource(), // Wikipedia Death section extraction
-      new IMDbSource(), // IMDb bio pages (scraped)
       new BFISightSoundSource(), // International film obituaries (2015+ only)
 
       // Phase 2: Web Search (with link following)
@@ -256,6 +255,7 @@ export class DeathEnrichmentOrchestrator {
       new NYTimesSource(), // NYT Article Search API (requires API key)
       new APNewsSource(), // AP News (scraped)
       new ReutersSource(), // Reuters - international wire service (scraped + archive.org fallback)
+      new WashingtonPostSource(), // Washington Post - major US newspaper (scraped + archive.org fallback)
       new NewsAPISource(), // NewsAPI - aggregates 80,000+ sources (requires API key)
       new DeadlineSource(), // Deadline Hollywood - entertainment news (scraped)
       new VarietySource(), // Variety - entertainment trade publication (scraped)

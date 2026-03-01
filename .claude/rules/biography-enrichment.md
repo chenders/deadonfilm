@@ -3,7 +3,20 @@ globs: ["server/src/lib/biography-sources/**", "server/src/lib/biography/**", "s
 ---
 # Biography Enrichment System
 
-Enriches actor records with narrative personal life biographies from ~19 active data sources, synthesized by Claude into structured fields.
+Enriches actor records with narrative personal life biographies from 30+ active data sources (29 content sources + 4 web search providers), synthesized by Claude into structured fields.
+
+## Adding New Sources
+
+**IMPORTANT**: News sources exist in **both** the death enrichment and biography enrichment systems. When adding a new news source, always implement it in both:
+
+1. **Biography source**: `server/src/lib/biography-sources/sources/{name}.ts` — searches for profiles/interviews, extracts biographical info
+2. **Death source**: `server/src/lib/death-sources/sources/{name}.ts` — searches for obituaries, extracts death info
+3. Register in **both** orchestrators
+4. Add enum entries to **both** type files (`BiographySourceType` and `DataSourceType`)
+
+See the death enrichment rules (`.claude/rules/death-enrichment.md`) for the full list of shared sources.
+
+**Reliability tiers**: Both systems share the same `ReliabilityTier` enum from `server/src/lib/death-sources/types.ts`, based on Wikipedia's Reliable Sources Perennial list (RSP). See the death enrichment rules for the full tier table and guidance on assigning tiers to new sources.
 
 ## Key Difference from Death Enrichment
 
@@ -13,7 +26,7 @@ Enriches actor records with narrative personal life biographies from ~19 active 
 | Stopping | Confidence threshold (0.5) | 3+ high-quality sources (dual threshold) |
 | Content focus | Cause, manner, circumstances | Childhood, family, education, personal life |
 | AI cleanup | Optional Claude cleanup | Always Claude synthesis (Stage 3) |
-| Monitoring | New Relic + StatusBar | Console logging only |
+| Monitoring | New Relic + StatusBar | New Relic custom events |
 
 ## Architecture
 
@@ -94,7 +107,7 @@ Enriches actor records with narrative personal life biographies from ~19 active 
 | Brave Search | Brave Search API | Requires `BRAVE_SEARCH_API_KEY` |
 
 ### Phase 4: News Sources
-Guardian, NYTimes, AP News, BBC News, People
+Guardian, NYTimes, AP News, Reuters, Washington Post, LA Times, BBC News, NPR, PBS, People, The Independent, The Telegraph, Time, The New Yorker, Rolling Stone, National Geographic
 
 ### Phase 5: Obituary Sites
 Legacy.com, Find a Grave
@@ -134,7 +147,7 @@ Internet Archive, Chronicling America, Trove, Europeana
     reference: true,             // Britannica, Biography.com
     books: true,                 // Google Books, Open Library, IA Books
     webSearch: true,             // Google, Bing, DuckDuckGo, Brave
-    news: true,                  // Guardian, NYT, AP, BBC, People
+    news: true,                  // Guardian, NYT, AP, Reuters, WaPo, LA Times, BBC, NPR, PBS, People, Independent, Telegraph, Time, New Yorker, Rolling Stone, Nat Geo
     obituary: true,              // Legacy, FindAGrave
     archives: true,              // Internet Archive, Chronicling America, Trove, Europeana
   },

@@ -79,6 +79,8 @@ Route handlers and library functions should stay under 60 lines. Decompose:
 - **Unused variables**: remove before committing
 - **Early returns** over deep nesting — guard clauses at top of function
 - **Error handling**: never swallow errors silently — always log with pino
+- **Enrichment naming**: this project has two enrichment systems (death and biography). New enrichment variables/fields must indicate which system they belong to (e.g., `deathEnrichmentVersion`, `bioEnrichedAt`). Don't use bare `enrichment` without a death/bio qualifier.
+- **Documentation sync**: when adding/removing sources, changing architecture, or adding features, update `README.md` and linked docs (`docs/biography-system.md`, `docs/death-research-pipeline.md`, `docs/architecture.md`, `docs/api.md`) to keep source counts, feature lists, and architecture descriptions accurate.
 
 ---
 

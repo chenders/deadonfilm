@@ -1049,7 +1049,7 @@ router.get("/:id(\\d+)/metadata", async (req: Request, res: Response): Promise<v
       biography: string | null
       biography_generated_at: string | null
       biography_source_type: string | null
-      biography_version: number | null
+      biography_version: string | null
     }>(
       `SELECT id, name, deathday, is_obscure, deathday_confidence,
               has_detailed_death_info, enriched_at, enrichment_source,
@@ -1172,6 +1172,7 @@ router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Pro
     const { linkMultipleFields, hasEntityLinks } = await import("../../lib/entity-linker/index.js")
     const { MIN_CIRCUMSTANCES_LENGTH, MIN_RUMORED_CIRCUMSTANCES_LENGTH } =
       await import("../../lib/claude-batch/constants.js")
+    const { DEATH_ENRICHMENT_VERSION } = await import("../../lib/enrichment-version.js")
 
     const actorForEnrichment = {
       id: actor.id,
@@ -1318,7 +1319,7 @@ router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Pro
         : null,
       entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
       enrichmentSource: "admin-inline-enrichment",
-      enrichmentVersion: "4.0.0",
+      enrichmentVersion: DEATH_ENRICHMENT_VERSION,
     }
 
     await writeToProduction(pool, enrichmentData, circumstancesData)

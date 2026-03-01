@@ -19,16 +19,23 @@ interface ActorWithVersions {
   popularity: number | null
   tmdb_id: number | null
   enrichment_version: string | null
-  biography_version: number | null
+  biography_version: string | null
 }
 
-// Skip logic: death enrichment already done at v4.0.0, bio done at version >= 1
+// Death: skip actors already enriched at the current version.
+// Keep in sync with DEATH_ENRICHMENT_VERSION in server/src/lib/enrichment-version.ts
+const CURRENT_DEATH_ENRICHMENT_VERSION = "5.0.0"
+
 function shouldSkipDeath(actor: ActorWithVersions): boolean {
-  return actor.enrichment_version === "4.0.0"
+  return actor.enrichment_version === CURRENT_DEATH_ENRICHMENT_VERSION
 }
+
+// Bio: skip actors that have any biography enrichment (version-independent).
+// Biography enrichment is designed to run once per actor; re-enrichment
+// requires explicit allowRegeneration=true.
 function shouldSkipBio(actor: ActorWithVersions, allowRegeneration: boolean): boolean {
   if (allowRegeneration) return false
-  return actor.biography_version != null && actor.biography_version >= 1
+  return actor.biography_version != null
 }
 
 export default function CombinedEnrichmentPage(): React.JSX.Element {
@@ -544,8 +551,8 @@ function DeathOptionsForm(props: DeathOptionsProps): React.JSX.Element {
     <div className="space-y-6">
       {props.actorCount === 0 ? (
         <p className="text-sm text-yellow-400">
-          All {props.skipCount} actors already have death enrichment (v4.0.0). This step will be
-          skipped.
+          All {props.skipCount} actor{props.skipCount !== 1 ? "s" : ""} already have death
+          enrichment. This step will be skipped.
         </p>
       ) : (
         <p className="text-sm text-admin-text-muted">

@@ -1,7 +1,7 @@
 /**
- * Enrichment Runner Library
+ * Death Enrichment Runner Library
  *
- * Core enrichment loop extracted from enrich-death-details.ts for use
+ * Core DEATH enrichment loop extracted from enrich-death-details.ts for use
  * by both the CLI script and BullMQ job handler.
  *
  * This module provides:
@@ -35,6 +35,7 @@ import { isViolentDeath } from "./death-sources/claude-cleanup.js"
 import { linkMultipleFields, hasEntityLinks } from "./entity-linker/index.js"
 import { RunLogger } from "./run-logger.js"
 import { logger } from "./logger.js"
+import { DEATH_ENRICHMENT_VERSION } from "./enrichment-version.js"
 
 /**
  * Configuration for an enrichment run
@@ -593,7 +594,9 @@ export class EnrichmentRunner {
               : null,
             entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
             enrichmentSource: "multi-source-enrichment",
-            enrichmentVersion: useReliabilityThreshold ? "4.0.0" : "4.0.0-no-reliability",
+            enrichmentVersion: useReliabilityThreshold
+              ? DEATH_ENRICHMENT_VERSION
+              : `${DEATH_ENRICHMENT_VERSION}-no-reliability`,
           }
 
           // Record per-actor results for all runs with a runId

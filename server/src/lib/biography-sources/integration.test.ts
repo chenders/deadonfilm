@@ -768,9 +768,10 @@ describe("Biography Enrichment Integration Test", () => {
       // Call 4: UPDATE actors table with narrative
       const updateCall = mockQuery.mock.calls[3]
       expect(updateCall[0]).toContain("biography = $1")
-      expect(updateCall[0]).toContain("biography_version = COALESCE(biography_version, 0) + 1")
+      expect(updateCall[0]).toContain("biography_version = $2")
       expect(updateCall[1][0]).toContain("Glendale Union High School") // narrative
-      expect(updateCall[1][1]).toBe(testActor.id)
+      expect(updateCall[1][1]).toBe("5.0.0") // BIO_ENRICHMENT_VERSION
+      expect(updateCall[1][2]).toBe(testActor.id)
 
       // Cache invalidated
       expect(invalidateActorCache).toHaveBeenCalledWith(testActor.id)

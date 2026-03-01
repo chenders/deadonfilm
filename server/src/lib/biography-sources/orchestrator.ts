@@ -45,8 +45,19 @@ import { BraveBiographySearch } from "./sources/brave-search.js"
 import { GuardianBiographySource } from "./sources/guardian.js"
 import { NYTimesBiographySource } from "./sources/nytimes.js"
 import { APNewsBiographySource } from "./sources/ap-news.js"
+import { ReutersBiographySource } from "./sources/reuters.js"
+import { WashingtonPostBiographySource } from "./sources/washington-post.js"
 import { BBCNewsBiographySource } from "./sources/bbc-news.js"
 import { PeopleBiographySource } from "./sources/people.js"
+import { LATimesBiographySource } from "./sources/la-times.js"
+import { NPRBiographySource } from "./sources/npr.js"
+import { IndependentBiographySource } from "./sources/independent.js"
+import { TelegraphBiographySource } from "./sources/telegraph.js"
+import { TimeBiographySource } from "./sources/time.js"
+import { NewYorkerBiographySource } from "./sources/new-yorker.js"
+import { PBSBiographySource } from "./sources/pbs.js"
+import { RollingStoneBiographySource } from "./sources/rolling-stone.js"
+import { NationalGeographicBiographySource } from "./sources/national-geographic.js"
 
 // Source imports — Obituary Sites
 import { LegacyBiographySource } from "./sources/legacy.js"
@@ -213,14 +224,25 @@ export class BiographyEnrichmentOrchestrator {
       }
     }
 
-    // Phase 4: News sources (Guardian, NYT, AP, BBC, People)
+    // Phase 4: News sources
     if (this.config.sourceCategories.news) {
       const newsSources: BaseBiographySource[] = [
         new GuardianBiographySource(),
         new NYTimesBiographySource(),
         new APNewsBiographySource(),
+        new ReutersBiographySource(),
+        new WashingtonPostBiographySource(),
+        new LATimesBiographySource(),
         new BBCNewsBiographySource(),
+        new NPRBiographySource(),
+        new PBSBiographySource(),
         new PeopleBiographySource(),
+        new IndependentBiographySource(),
+        new TelegraphBiographySource(),
+        new TimeBiographySource(),
+        new NewYorkerBiographySource(),
+        new RollingStoneBiographySource(),
+        new NationalGeographicBiographySource(),
       ]
       for (const source of newsSources) {
         if (source.isAvailable()) {

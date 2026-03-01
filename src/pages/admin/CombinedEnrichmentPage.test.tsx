@@ -26,7 +26,7 @@ const mockActors = [
     name: "Actor Two",
     popularity: 30.0,
     tmdb_id: 200,
-    enrichment_version: "4.0.0",
+    enrichment_version: "5.0.0",
     biography_version: null,
   },
   {
@@ -35,7 +35,7 @@ const mockActors = [
     popularity: 10.0,
     tmdb_id: 300,
     enrichment_version: null,
-    biography_version: 2,
+    biography_version: "5.0.0",
   },
 ]
 
@@ -172,7 +172,7 @@ describe("CombinedEnrichmentPage", () => {
       expect(screen.getByText("Actor One")).toBeInTheDocument()
     })
 
-    // Actor Two has enrichment_version "4.0.0" -> death skip pill
+    // Actor Two has enrichment_version "5.0.0" -> death skip pill
     expect(screen.getByTestId("skip-death-2")).toHaveTextContent("Death ✓")
 
     // Bio skip pills are NOT shown because bioAllowRegeneration defaults to true
@@ -242,7 +242,7 @@ describe("CombinedEnrichmentPage", () => {
     fireEvent.click(screen.getByTestId("submit-both"))
 
     await waitFor(() => {
-      // Death: actors 1 and 3 (actor 2 has enrichment_version "4.0.0")
+      // Death: actors 1 and 3 (actor 2 has enrichment_version "5.0.0")
       expect(mockDeathMutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
           actorIds: [1, 3],
@@ -298,6 +298,60 @@ describe("CombinedEnrichmentPage", () => {
     expect(screen.getByText(/bio service unavailable/i)).toBeInTheDocument()
   })
 
+  it("skips bio for actors with any biography_version when regeneration is off", async () => {
+    // Include an actor with a legacy integer version (older enrichment)
+    const actorsWithOldVersion = [
+      {
+        id: 1,
+        name: "No Bio",
+        popularity: 50,
+        tmdb_id: 100,
+        enrichment_version: null,
+        biography_version: null,
+      },
+      {
+        id: 2,
+        name: "Legacy Bio",
+        popularity: 30,
+        tmdb_id: 200,
+        enrichment_version: null,
+        biography_version: "2",
+      },
+      {
+        id: 3,
+        name: "Current Bio",
+        popularity: 10,
+        tmdb_id: 300,
+        enrichment_version: null,
+        biography_version: "5.0.0",
+      },
+    ]
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(actorsWithOldVersion) })
+
+    renderPage([1, 2, 3])
+
+    await waitFor(() => {
+      expect(screen.getByText("No Bio")).toBeInTheDocument()
+    })
+
+    // Switch to bio tab and uncheck "Allow Regeneration"
+    fireEvent.click(screen.getByTestId("tab-bio"))
+    const regenCheckbox = screen.getByRole("checkbox", { name: /allow regeneration/i })
+    fireEvent.click(regenCheckbox) // uncheck (default is checked)
+
+    // Both actors with any biography_version should show skip pills
+    expect(screen.getByTestId("skip-bio-2")).toBeInTheDocument()
+    expect(screen.getByTestId("skip-bio-3")).toBeInTheDocument()
+    expect(screen.queryByTestId("skip-bio-1")).not.toBeInTheDocument()
+
+    // Submit — only actor 1 should be sent for bio enrichment
+    fireEvent.click(screen.getByTestId("submit-both"))
+
+    await waitFor(() => {
+      expect(mockBioMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ actorIds: [1] }))
+    })
+  })
+
   it("handles case where all actors skip one type", async () => {
     // All actors already have death enrichment
     const allDeathDone = [
@@ -306,7 +360,7 @@ describe("CombinedEnrichmentPage", () => {
         name: "Done Actor",
         popularity: 50.0,
         tmdb_id: 100,
-        enrichment_version: "4.0.0",
+        enrichment_version: "5.0.0",
         biography_version: null,
       },
     ]
@@ -322,7 +376,7 @@ describe("CombinedEnrichmentPage", () => {
     })
 
     // Death tab should show "0" actors and yellow warning
-    expect(screen.getByText(/all 1 actors already have death enrichment/i)).toBeInTheDocument()
+    expect(screen.getByText(/all 1 actor already have death enrichment/i)).toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId("submit-both"))
 
