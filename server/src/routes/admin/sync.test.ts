@@ -8,8 +8,11 @@ import express from "express"
 import router from "./sync.js"
 
 // Mock dependencies
+const mockPoolQuery = vi.fn()
+const mockPool = { query: mockPoolQuery }
+
 vi.mock("../../lib/db/pool.js", () => ({
-  getPool: vi.fn(),
+  getPool: vi.fn(() => mockPool),
 }))
 
 vi.mock("../../lib/logger.js", () => ({
@@ -32,17 +35,9 @@ vi.mock("../../../scripts/sync-tmdb-changes.js", () => ({
 
 describe("Admin Sync Endpoints", () => {
   let app: express.Application
-  let mockPool: { query: ReturnType<typeof vi.fn> }
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks()
-
-    mockPool = {
-      query: vi.fn(),
-    }
-
-    const { getPool } = await import("../../lib/db/pool.js")
-    vi.mocked(getPool).mockReturnValue(mockPool as any)
 
     // Create test app
     app = express()
@@ -56,7 +51,7 @@ describe("Admin Sync Endpoints", () => {
 
   describe("GET /admin/api/sync/status", () => {
     it("returns status with last sync when completed sync exists", async () => {
-      mockPool.query
+      mockPoolQuery
         .mockResolvedValueOnce({
           rows: [
             {
@@ -91,7 +86,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("returns status with running sync info when sync is running", async () => {
-      mockPool.query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({
         rows: [
           {
             id: 2,
@@ -112,7 +107,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("returns empty status when no syncs exist", async () => {
-      mockPool.query.mockResolvedValue({ rows: [] })
+      mockPoolQuery.mockResolvedValue({ rows: [] })
 
       const response = await request(app).get("/admin/api/sync/status").expect(200)
 
@@ -125,7 +120,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("returns 500 on database error", async () => {
-      mockPool.query.mockRejectedValue(new Error("Database error"))
+      mockPoolQuery.mockRejectedValueOnce(new Error("Database error"))
 
       const response = await request(app).get("/admin/api/sync/status").expect(500)
 
@@ -153,11 +148,11 @@ describe("Admin Sync Endpoints", () => {
     }
 
     it("returns paginated history with default limit", async () => {
-      mockPool.query.mockResolvedValue({ rows: [mockHistoryRow] })
+      mockPoolQuery.mockResolvedValue({ rows: [mockHistoryRow] })
 
       const response = await request(app).get("/admin/api/sync/history").expect(200)
 
-      expect(mockPool.query).toHaveBeenCalledWith(expect.any(String), [20])
+      expect(mockPoolQuery).toHaveBeenCalledWith(expect.any(String), [20])
       expect(response.body.history).toHaveLength(1)
       expect(response.body.history[0]).toEqual({
         id: 1,
@@ -175,39 +170,39 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("accepts custom limit parameter", async () => {
-      mockPool.query.mockResolvedValue({ rows: [] })
+      mockPoolQuery.mockResolvedValue({ rows: [] })
 
       await request(app).get("/admin/api/sync/history?limit=50").expect(200)
 
-      expect(mockPool.query).toHaveBeenCalledWith(expect.any(String), [50])
+      expect(mockPoolQuery).toHaveBeenCalledWith(expect.any(String), [50])
     })
 
     it("clamps limit to maximum of 100", async () => {
-      mockPool.query.mockResolvedValue({ rows: [] })
+      mockPoolQuery.mockResolvedValue({ rows: [] })
 
       await request(app).get("/admin/api/sync/history?limit=500").expect(200)
 
-      expect(mockPool.query).toHaveBeenCalledWith(expect.any(String), [100])
+      expect(mockPoolQuery).toHaveBeenCalledWith(expect.any(String), [100])
     })
 
     it("clamps limit to minimum of 1", async () => {
-      mockPool.query.mockResolvedValue({ rows: [] })
+      mockPoolQuery.mockResolvedValue({ rows: [] })
 
       await request(app).get("/admin/api/sync/history?limit=-5").expect(200)
 
-      expect(mockPool.query).toHaveBeenCalledWith(expect.any(String), [1])
+      expect(mockPoolQuery).toHaveBeenCalledWith(expect.any(String), [1])
     })
 
     it("handles invalid limit gracefully", async () => {
-      mockPool.query.mockResolvedValue({ rows: [] })
+      mockPoolQuery.mockResolvedValue({ rows: [] })
 
       await request(app).get("/admin/api/sync/history?limit=invalid").expect(200)
 
-      expect(mockPool.query).toHaveBeenCalledWith(expect.any(String), [20])
+      expect(mockPoolQuery).toHaveBeenCalledWith(expect.any(String), [20])
     })
 
     it("returns 500 on database error", async () => {
-      mockPool.query.mockRejectedValue(new Error("Database error"))
+      mockPoolQuery.mockRejectedValueOnce(new Error("Database error"))
 
       const response = await request(app).get("/admin/api/sync/history").expect(500)
 
@@ -242,7 +237,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("triggers sync with default parameters", async () => {
-      mockPool.query.mockResolvedValue({ rows: [{ id: 1 }] })
+      mockPoolQuery.mockResolvedValue({ rows: [{ id: 1 }] })
 
       const response = await request(app).post("/admin/api/sync/tmdb").send({}).expect(200)
 
@@ -257,7 +252,7 @@ describe("Admin Sync Endpoints", () => {
 
     it("acquires distributed lock when starting sync", async () => {
       const { acquireLock } = await import("../../lib/redis.js")
-      mockPool.query.mockResolvedValue({ rows: [{ id: 42 }] })
+      mockPoolQuery.mockResolvedValue({ rows: [{ id: 42 }] })
 
       await request(app).post("/admin/api/sync/tmdb").send({}).expect(200)
 
@@ -277,7 +272,7 @@ describe("Admin Sync Endpoints", () => {
     it("returns 409 when lock acquisition fails due to race condition", async () => {
       const { acquireLock } = await import("../../lib/redis.js")
       vi.mocked(acquireLock).mockResolvedValue(false)
-      mockPool.query
+      mockPoolQuery
         .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // INSERT
         .mockResolvedValueOnce({}) // UPDATE to failed
 
@@ -289,7 +284,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("triggers people-only sync", async () => {
-      mockPool.query.mockResolvedValue({ rows: [{ id: 1 }] })
+      mockPoolQuery.mockResolvedValue({ rows: [{ id: 1 }] })
 
       const response = await request(app)
         .post("/admin/api/sync/tmdb")
@@ -300,7 +295,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("triggers movies-only sync", async () => {
-      mockPool.query.mockResolvedValue({ rows: [{ id: 1 }] })
+      mockPoolQuery.mockResolvedValue({ rows: [{ id: 1 }] })
 
       const response = await request(app)
         .post("/admin/api/sync/tmdb")
@@ -311,7 +306,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("triggers shows-only sync", async () => {
-      mockPool.query.mockResolvedValue({ rows: [{ id: 1 }] })
+      mockPoolQuery.mockResolvedValue({ rows: [{ id: 1 }] })
 
       const response = await request(app)
         .post("/admin/api/sync/tmdb")
@@ -322,7 +317,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("triggers dry run sync", async () => {
-      mockPool.query.mockResolvedValue({ rows: [{ id: 1 }] })
+      mockPoolQuery.mockResolvedValue({ rows: [{ id: 1 }] })
 
       const response = await request(app)
         .post("/admin/api/sync/tmdb")
@@ -334,7 +329,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("accepts custom days parameter", async () => {
-      mockPool.query.mockResolvedValue({ rows: [{ id: 1 }] })
+      mockPoolQuery.mockResolvedValue({ rows: [{ id: 1 }] })
 
       const response = await request(app).post("/admin/api/sync/tmdb").send({ days: 7 }).expect(200)
 
@@ -342,7 +337,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("returns 500 on database error", async () => {
-      mockPool.query.mockRejectedValue(new Error("Database error"))
+      mockPoolQuery.mockRejectedValueOnce(new Error("Database error"))
 
       const response = await request(app).post("/admin/api/sync/tmdb").send({}).expect(500)
 
@@ -350,7 +345,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("releases lock on database error after acquiring lock", async () => {
-      mockPool.query
+      mockPoolQuery
         .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // INSERT succeeds
         .mockRejectedValueOnce(new Error("Database error")) // Subsequent query fails
 
@@ -388,7 +383,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("cancels a running sync successfully", async () => {
-      mockPool.query
+      mockPoolQuery
         .mockResolvedValueOnce({ rows: [{ id: 1, status: "running" }] }) // Check query
         .mockResolvedValueOnce({ rows: [mockRunningSyncRecord] }) // Update query
 
@@ -411,7 +406,7 @@ describe("Admin Sync Endpoints", () => {
 
     it("releases Redis lock when cancelling", async () => {
       const { releaseLock } = await import("../../lib/redis.js")
-      mockPool.query
+      mockPoolQuery
         .mockResolvedValueOnce({ rows: [{ id: 1, status: "running" }] })
         .mockResolvedValueOnce({ rows: [mockRunningSyncRecord] })
 
@@ -427,7 +422,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("returns 404 when sync not found", async () => {
-      mockPool.query.mockResolvedValueOnce({ rows: [] })
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] })
 
       const response = await request(app).post("/admin/api/sync/999/cancel").expect(404)
 
@@ -435,7 +430,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("returns 400 when sync is not running", async () => {
-      mockPool.query.mockResolvedValueOnce({ rows: [{ id: 1, status: "completed" }] })
+      mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 1, status: "completed" }] })
 
       const response = await request(app).post("/admin/api/sync/1/cancel").expect(400)
 
@@ -443,7 +438,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("returns 400 when sync already failed", async () => {
-      mockPool.query.mockResolvedValueOnce({ rows: [{ id: 1, status: "failed" }] })
+      mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 1, status: "failed" }] })
 
       const response = await request(app).post("/admin/api/sync/1/cancel").expect(400)
 
@@ -451,7 +446,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("returns 500 on database error", async () => {
-      mockPool.query.mockRejectedValue(new Error("Database error"))
+      mockPoolQuery.mockRejectedValueOnce(new Error("Database error"))
 
       const response = await request(app).post("/admin/api/sync/1/cancel").expect(500)
 
@@ -479,7 +474,7 @@ describe("Admin Sync Endpoints", () => {
     }
 
     it("returns sync details for valid ID", async () => {
-      mockPool.query.mockResolvedValue({ rows: [mockSyncRecord] })
+      mockPoolQuery.mockResolvedValue({ rows: [mockSyncRecord] })
 
       const response = await request(app).get("/admin/api/sync/1").expect(200)
 
@@ -505,7 +500,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("returns 404 when sync not found", async () => {
-      mockPool.query.mockResolvedValue({ rows: [] })
+      mockPoolQuery.mockResolvedValue({ rows: [] })
 
       const response = await request(app).get("/admin/api/sync/999").expect(404)
 
@@ -513,7 +508,7 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("returns 500 on database error", async () => {
-      mockPool.query.mockRejectedValue(new Error("Database error"))
+      mockPoolQuery.mockRejectedValueOnce(new Error("Database error"))
 
       const response = await request(app).get("/admin/api/sync/1").expect(500)
 
