@@ -206,8 +206,6 @@ export class ParallelBatchRunner<T, R> {
           }
 
           results[index] = result
-        } catch (error) {
-          throw error
         } finally {
           completed++
           inFlight--

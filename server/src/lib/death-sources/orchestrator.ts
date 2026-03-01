@@ -15,7 +15,6 @@ import type {
   EnrichmentConfig,
   EnrichmentData,
   EnrichmentResult,
-  EnrichmentSourceEntry,
   EnrichmentStats,
   SourceAttemptStats,
   RawSourceData,
@@ -187,9 +186,12 @@ export class DeathEnrichmentOrchestrator {
     this.config = {
       ...DEFAULT_CONFIG,
       ...config,
+      // Deep-merge nested objects so partial overrides preserve defaults
       sourceCategories: { ...DEFAULT_CONFIG.sourceCategories, ...(config.sourceCategories ?? {}) },
       linkFollow: { ...DEFAULT_LINK_FOLLOW_CONFIG, ...(config.linkFollow ?? {}) },
-      claudeCleanup: { ...DEFAULT_CONFIG.claudeCleanup, ...(config.claudeCleanup ?? {}) },
+      claudeCleanup: config.claudeCleanup
+        ? { ...DEFAULT_CONFIG.claudeCleanup, ...config.claudeCleanup }
+        : DEFAULT_CONFIG.claudeCleanup,
     }
     this.logger = logger || getEnrichmentLogger()
     this.rateLimiter = new SourceRateLimiter()
