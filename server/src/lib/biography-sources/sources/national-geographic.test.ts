@@ -134,12 +134,12 @@ describe("NationalGeographicBiographySource", () => {
       expect(source.estimatedCostPerQuery).toBe(0)
     })
 
-    it("has TIER_1_NEWS reliability", () => {
-      expect(source.reliabilityTier).toBe(ReliabilityTier.TIER_1_NEWS)
+    it("has TRADE_PRESS reliability", () => {
+      expect(source.reliabilityTier).toBe(ReliabilityTier.TRADE_PRESS)
     })
 
-    it("has 0.95 reliability score", () => {
-      expect(source.reliabilityScore).toBe(0.95)
+    it("has 0.9 reliability score", () => {
+      expect(source.reliabilityScore).toBe(0.9)
     })
   })
 
@@ -285,8 +285,8 @@ describe("NationalGeographicBiographySource", () => {
       expect(result.source.domain).toBe("nationalgeographic.com")
       expect(result.source.contentType).toBe("profile")
       expect(result.source.url).toContain("nationalgeographic.com")
-      expect(result.source.reliabilityTier).toBe(ReliabilityTier.TIER_1_NEWS)
-      expect(result.source.reliabilityScore).toBe(0.95)
+      expect(result.source.reliabilityTier).toBe(ReliabilityTier.TRADE_PRESS)
+      expect(result.source.reliabilityScore).toBe(0.9)
     })
 
     it("handles web search HTTP errors", async () => {

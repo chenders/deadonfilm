@@ -16,10 +16,11 @@ exports.up = (pgm) => {
  * @param {import('node-pg-migrate').MigrationBuilder} pgm
  */
 exports.down = (pgm) => {
-  // Convert back to integer — semver strings like "5.0.0" will fail,
-  // but pure numeric strings from pre-migration data will work
+  // Convert back to integer — semver strings like "5.0.0" are cast to NULL
+  // to avoid crashing on non-numeric values written after the up migration
   pgm.alterColumn("actors", "biography_version", {
     type: "integer",
-    using: "biography_version::integer",
+    using:
+      "CASE WHEN biography_version ~ '^[0-9]+$' THEN biography_version::integer ELSE NULL END",
   })
 }

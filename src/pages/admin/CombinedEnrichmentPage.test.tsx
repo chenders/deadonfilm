@@ -26,7 +26,7 @@ const mockActors = [
     name: "Actor Two",
     popularity: 30.0,
     tmdb_id: 200,
-    enrichment_version: "4.0.0",
+    enrichment_version: "5.0.0",
     biography_version: null,
   },
   {
@@ -35,7 +35,7 @@ const mockActors = [
     popularity: 10.0,
     tmdb_id: 300,
     enrichment_version: null,
-    biography_version: 2,
+    biography_version: "5.0.0",
   },
 ]
 
@@ -172,7 +172,7 @@ describe("CombinedEnrichmentPage", () => {
       expect(screen.getByText("Actor One")).toBeInTheDocument()
     })
 
-    // Actor Two has enrichment_version "4.0.0" -> death skip pill
+    // Actor Two has enrichment_version "5.0.0" -> death skip pill
     expect(screen.getByTestId("skip-death-2")).toHaveTextContent("Death ✓")
 
     // Bio skip pills are NOT shown because bioAllowRegeneration defaults to true
@@ -242,7 +242,7 @@ describe("CombinedEnrichmentPage", () => {
     fireEvent.click(screen.getByTestId("submit-both"))
 
     await waitFor(() => {
-      // Death: actors 1 and 3 (actor 2 has enrichment_version "4.0.0")
+      // Death: actors 1 and 3 (actor 2 has enrichment_version "5.0.0")
       expect(mockDeathMutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
           actorIds: [1, 3],
@@ -306,7 +306,7 @@ describe("CombinedEnrichmentPage", () => {
         name: "Done Actor",
         popularity: 50.0,
         tmdb_id: 100,
-        enrichment_version: "4.0.0",
+        enrichment_version: "5.0.0",
         biography_version: null,
       },
     ]

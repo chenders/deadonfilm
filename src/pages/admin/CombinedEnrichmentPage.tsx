@@ -19,16 +19,16 @@ interface ActorWithVersions {
   popularity: number | null
   tmdb_id: number | null
   enrichment_version: string | null
-  biography_version: number | null
+  biography_version: string | null
 }
 
-// Skip logic: death enrichment already done at v4.0.0, bio done at version >= 1
+// Skip logic: death enrichment already done at current version, bio already enriched
 function shouldSkipDeath(actor: ActorWithVersions): boolean {
-  return actor.enrichment_version === "4.0.0"
+  return actor.enrichment_version === "5.0.0"
 }
 function shouldSkipBio(actor: ActorWithVersions, allowRegeneration: boolean): boolean {
   if (allowRegeneration) return false
-  return actor.biography_version != null && actor.biography_version >= 1
+  return actor.biography_version != null
 }
 
 export default function CombinedEnrichmentPage(): React.JSX.Element {

@@ -17,7 +17,7 @@ import { invalidateActorCache } from "./cache.js"
  * Steps:
  * 1. Archive old biography to biography_legacy (one-time, only if not already archived)
  * 2. Upsert actor_biography_details with COALESCE strategy
- * 3. Update actors table (biography = narrative, increment biography_version)
+ * 3. Update actors table (biography = narrative, set biography_version to '5.0.0')
  * 4. Invalidate actor cache
  */
 export async function writeBiographyToProduction(

@@ -23,7 +23,7 @@ export class NationalGeographicBiographySource extends BaseBiographySource {
   readonly type = BiographySourceType.NATIONAL_GEOGRAPHIC_BIO
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
-  readonly reliabilityTier = ReliabilityTier.TIER_1_NEWS
+  readonly reliabilityTier = ReliabilityTier.TRADE_PRESS
 
   protected minDelayMs = 1500
   protected requestTimeoutMs = 15000

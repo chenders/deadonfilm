@@ -81,7 +81,7 @@ Sources are tried in this order:
 | Brave Search | Brave Search API | Requires `BRAVE_SEARCH_API_KEY`, $0.005/query |
 
 ### Phase 3: News Sources
-Guardian, NYTimes, AP News, NewsAPI, Deadline, Variety, Hollywood Reporter, TMZ, People, BBC News, Google News RSS
+Guardian, NYTimes, AP News, Reuters, Washington Post, NewsAPI, Deadline, Variety, Hollywood Reporter, TMZ, People, BBC News, Google News RSS
 
 ### Phase 4: Obituary Sites
 Find a Grave (direct API), Legacy.com (DuckDuckGo search)
@@ -163,7 +163,6 @@ DDG's deprecated HTML endpoint (`html.duckduckgo.com/html/`) increasingly return
 ## Rate Limiting & Caching
 
 - Default rate limit: 1000ms between requests per source
-- IMDb: 3000ms (respectful scraping)
 - Wikidata/Wikipedia: 500ms
 - Results are cached per source+actor (prevents redundant lookups across runs)
 - `SourceAccessBlockedError` (403/429) is cached to avoid re-hitting blocked sources

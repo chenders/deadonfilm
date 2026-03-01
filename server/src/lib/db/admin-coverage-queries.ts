@@ -257,7 +257,7 @@ export async function getActorsForCoverage(
       whereClauses.push(`biography_version IS NULL`)
     } else {
       whereClauses.push(`biography_version = $${paramIndex++}`)
-      params.push(parseInt(filters.bioEnrichmentVersion, 10))
+      params.push(filters.bioEnrichmentVersion)
     }
   }
 
