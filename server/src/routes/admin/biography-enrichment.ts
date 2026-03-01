@@ -109,13 +109,13 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       pagination: {
         page,
         pageSize,
-        total: parseInt(countResult.rows[0]?.total ?? "0"),
-        totalPages: Math.ceil(parseInt(countResult.rows[0]?.total ?? "0") / pageSize),
+        total: parseInt(countResult.rows[0]?.total ?? "0", 10),
+        totalPages: Math.ceil(parseInt(countResult.rows[0]?.total ?? "0", 10) / pageSize),
       },
       stats: {
-        totalDeceased: parseInt(statsResult.rows[0]?.total_deceased ?? "0"),
-        enriched: parseInt(statsResult.rows[0]?.enriched ?? "0"),
-        needsEnrichment: parseInt(statsResult.rows[0]?.needs_enrichment ?? "0"),
+        totalDeceased: parseInt(statsResult.rows[0]?.total_deceased ?? "0", 10),
+        enriched: parseInt(statsResult.rows[0]?.enriched ?? "0", 10),
+        needsEnrichment: parseInt(statsResult.rows[0]?.needs_enrichment ?? "0", 10),
       },
     })
   } catch (error) {

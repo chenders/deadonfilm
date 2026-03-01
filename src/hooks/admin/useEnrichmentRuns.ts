@@ -119,7 +119,6 @@ export interface StartEnrichmentRequest {
   maxTotalCost?: number
   concurrency?: number
   claudeCleanup?: boolean
-  gatherAllSources?: boolean
   followLinks?: boolean
   aiLinkSelection?: boolean
   aiContentExtraction?: boolean

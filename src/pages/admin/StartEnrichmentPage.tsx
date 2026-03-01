@@ -177,7 +177,6 @@ export default function StartEnrichmentPage() {
         free,
         paid,
         ai,
-        gatherAllSources,
         claudeCleanup,
         followLinks,
         aiLinkSelection,
