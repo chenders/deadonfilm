@@ -228,8 +228,8 @@ export default function UnnaturalDeathsPage() {
               onClick={() => updateParams({ category: "all" })}
               className={`rounded-full px-3 py-1 text-sm transition-colors ${
                 category === "all"
-                  ? "bg-brown-dark text-white"
-                  : "bg-beige text-brown-dark hover:bg-brown-light hover:text-white"
+                  ? "bg-brown-dark text-cream"
+                  : "bg-beige text-brown-dark hover:bg-brown-medium/20"
               }`}
               data-testid="category-tab-all"
             >
@@ -241,8 +241,8 @@ export default function UnnaturalDeathsPage() {
                 onClick={() => updateParams({ category: cat.id })}
                 className={`rounded-full px-3 py-1 text-sm transition-colors ${
                   category === cat.id
-                    ? "bg-brown-dark text-white"
-                    : "bg-beige text-brown-dark hover:bg-brown-light hover:text-white"
+                    ? "bg-brown-dark text-cream"
+                    : "bg-beige text-brown-dark hover:bg-brown-medium/20"
                 }`}
                 data-testid={`category-tab-${cat.id}`}
               >
@@ -306,7 +306,7 @@ export default function UnnaturalDeathsPage() {
                 <button
                   onClick={() => updateParams({ page: page - 1 })}
                   disabled={page <= 1}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-brown-medium px-4 py-2 text-sm text-cream transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Previous
                 </button>
@@ -318,7 +318,7 @@ export default function UnnaturalDeathsPage() {
                 <button
                   onClick={() => updateParams({ page: page + 1 })}
                   disabled={page >= data.pagination.totalPages}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-brown-medium px-4 py-2 text-sm text-cream transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Next
                 </button>

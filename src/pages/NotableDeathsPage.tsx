@@ -160,7 +160,7 @@ export default function NotableDeathsPage() {
               data-testid={`filter-${f.id}`}
               className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
                 filter === f.id
-                  ? "bg-brown-dark text-white"
+                  ? "bg-brown-dark text-cream"
                   : "bg-brown-medium/10 text-brown-dark hover:bg-brown-medium/20"
               }`}
             >
@@ -264,7 +264,7 @@ export default function NotableDeathsPage() {
                 <button
                   onClick={() => goToPage(page - 1)}
                   disabled={page <= 1}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-brown-medium px-4 py-2 text-sm text-cream transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Previous
                 </button>
@@ -276,7 +276,7 @@ export default function NotableDeathsPage() {
                 <button
                   onClick={() => goToPage(page + 1)}
                   disabled={page >= data.pagination.totalPages}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-brown-medium px-4 py-2 text-sm text-cream transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Next
                 </button>
