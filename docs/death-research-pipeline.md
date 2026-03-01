@@ -12,7 +12,6 @@ The system starts with sources that provide structured, machine-readable data at
 |---|---|---|
 | **Wikidata** | SPARQL query by name + birth/death year | P509 (cause), P1196 (manner), P20 (place). 500ms rate limit |
 | **Wikipedia** | API search, extract Death/Health sections | AI-assisted section selection optional |
-| **IMDb** | Scrape `/name/{id}/bio` page | Uses known IMDb ID or suggestion API search. 3000ms rate limit |
 | **BFI Sight & Sound** | Annual memoriam list URL by death year | Only covers 2015+ deaths |
 
 ### Stage 2: Search Engines with Link Following
@@ -33,6 +32,8 @@ Search engines find obituaries, news articles, and reference pages. The system t
 | **The Guardian** | API | Free |
 | **New York Times** | API | Free tier |
 | **AP News** | Web search | Free |
+| **Reuters** | Web search + archive.org fallback | International wire service |
+| **Washington Post** | Web search + archive.org fallback | Major US newspaper |
 | **NewsAPI** | Aggregator API (80K+ sources) | Free: 100/day |
 | **Variety** | Web search | Entertainment industry |
 | **Deadline Hollywood** | Web search | Entertainment industry |
@@ -119,7 +120,6 @@ Two strategies for accessing content behind paywalls:
 ## Rate Limiting & Caching
 
 - Default rate limit: 1000ms between requests per source
-- IMDb: 3000ms (respectful scraping)
 - Wikidata/Wikipedia: 500ms
 - Results are cached per source+actor to prevent redundant lookups across runs
 - Blocked responses (403/429) are cached to avoid re-hitting blocked sources
@@ -176,13 +176,13 @@ The full data pipeline from raw TMDB data to enriched death records:
 
 **AI Models (11):** Claude (Anthropic), Gemini Flash, Gemini Pro (Google), GPT-4o, GPT-4o Mini (OpenAI), Perplexity (sonar-pro), Grok (xAI), DeepSeek, Mistral, Groq/Llama 3.3 70B, Claude Batch
 
-**Knowledge Bases (4):** Wikidata (SPARQL), Wikipedia, IMDb, TMDB
+**Knowledge Bases (3):** Wikidata (SPARQL), Wikipedia, TMDB
 
-**Film Industry Archives (2):** BFI Sight & Sound, IMDb bio pages
+**Film Industry Archives (1):** BFI Sight & Sound
 
 **Search Engines (4):** DuckDuckGo, Google Custom Search, Bing Web Search, Brave Search
 
-**News Sources (11+):** The Guardian (API), New York Times (API), AP News, NewsAPI (80K+ sources), Variety, Deadline Hollywood, Hollywood Reporter, TMZ, People, BBC News, Google News RSS — plus dozens more via search engine link-following
+**News Sources (13+):** The Guardian (API), New York Times (API), AP News, Reuters, Washington Post, NewsAPI (80K+ sources), Variety, Deadline Hollywood, Hollywood Reporter, TMZ, People, BBC News, Google News RSS — plus dozens more via search engine link-following
 
 **Cemetery & Obituary Sites (2):** Find a Grave, Legacy.com
 

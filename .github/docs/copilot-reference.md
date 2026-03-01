@@ -127,9 +127,9 @@ A movie is "obscure" if: no poster, OR (English + popularity <5 + cast <5), OR (
 ## Death Enrichment
 
 Sources tried in priority order, stopping at confidence threshold (0.5):
-1. Structured Data (free) — Wikidata, Wikipedia, IMDb, BFI
+1. Structured Data (free) — Wikidata, Wikipedia, BFI
 2. Web Search — Google, Bing, DuckDuckGo, Brave
-3. News Sources — Guardian, NYTimes, AP, etc.
+3. News Sources — Guardian, NYTimes, AP, Reuters, Washington Post, etc.
 4. Obituary Sites — Find a Grave, Legacy.com
 5. Historical Archives — Trove, Europeana, Internet Archive
 6. Genealogy — FamilySearch
@@ -141,13 +141,14 @@ See `.claude/rules/death-enrichment.md` for full details.
 
 ## Biography Enrichment
 
-Personal life narratives from ~19 sources, synthesized by Claude:
+Personal life narratives from 29 sources, synthesized by Claude:
 1. Structured Data — Wikidata, Wikipedia
 2. Reference Sites — Britannica, Biography.com
-3. Web Search — Google, Bing, DuckDuckGo, Brave
-4. News Sources — Guardian, NYTimes, AP, BBC, People
-5. Obituary Sites — Legacy.com, Find a Grave
-6. Historical Archives — Internet Archive, Chronicling America, Trove, Europeana
+3. Books — Google Books, Open Library, IA Books
+4. Web Search — Google, Bing, DuckDuckGo, Brave
+5. News Sources — Guardian, NYTimes, AP, Reuters, WaPo, LA Times, BBC, NPR, PBS, People, Independent, Telegraph, Time, New Yorker, Rolling Stone, National Geographic
+6. Obituary Sites — Legacy.com, Find a Grave
+7. Historical Archives — Internet Archive, Chronicling America, Trove, Europeana
 
 Key differences from death enrichment: accumulates ALL raw data, three-stage pipeline, career content filtering, COALESCE upsert.
 

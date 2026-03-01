@@ -3,7 +3,7 @@ globs: ["server/src/lib/biography-sources/**", "server/src/lib/biography/**", "s
 ---
 # Biography Enrichment System
 
-Enriches actor records with narrative personal life biographies from ~19 active data sources, synthesized by Claude into structured fields.
+Enriches actor records with narrative personal life biographies from 29 active data sources, synthesized by Claude into structured fields.
 
 ## Adding New Sources
 
@@ -107,7 +107,7 @@ See the death enrichment rules (`.claude/rules/death-enrichment.md`) for the ful
 | Brave Search | Brave Search API | Requires `BRAVE_SEARCH_API_KEY` |
 
 ### Phase 4: News Sources
-Guardian, NYTimes, AP News, BBC News, People
+Guardian, NYTimes, AP News, Reuters, Washington Post, LA Times, BBC News, NPR, PBS, People, The Independent, The Telegraph, Time, The New Yorker, Rolling Stone, National Geographic
 
 ### Phase 5: Obituary Sites
 Legacy.com, Find a Grave

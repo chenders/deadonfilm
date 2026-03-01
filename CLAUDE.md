@@ -77,7 +77,7 @@ server/src/                   # Backend
 ├── routes/                   # Express routes (public + admin/)
 ├── lib/                      # Core library modules
 │   ├── death-sources/        # Death enrichment system (orchestrator, 50+ sources, AI providers)
-│   ├── biography-sources/    # Biography enrichment system (orchestrator, 19 sources, Claude synthesis)
+│   ├── biography-sources/    # Biography enrichment system (orchestrator, 29 sources, Claude synthesis)
 │   ├── biography/            # Biography utilities (golden test cases, Wikipedia fetcher)
 │   ├── jobs/                 # BullMQ queue manager, workers, handlers
 │   ├── db/                   # Database query modules

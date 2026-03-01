@@ -8,7 +8,7 @@ Two systems work together:
 
 1. **Biography Generator** — Produces concise 6-line summaries from TMDB and Wikipedia via Claude Sonnet. This is the "teaser" biography shown on the actor page.
 
-2. **Biography Enrichment Pipeline** — Researches 19+ sources to build rich, multi-paragraph personal narratives with structured data: family background, education, personal struggles, lesser-known facts, and life circumstance tags. This is the "Life" section on actor pages, shown in an expandable card.
+2. **Biography Enrichment Pipeline** — Researches 29 sources to build rich, multi-paragraph personal narratives with structured data: family background, education, personal struggles, lesser-known facts, and life circumstance tags. This is the "Life" section on actor pages, shown in an expandable card.
 
 ## Biography Generator
 
@@ -63,7 +63,7 @@ REQUIREMENTS:
 
 ## Biography Enrichment Pipeline
 
-The enrichment pipeline goes beyond the basic 6-line biography. It researches 19+ sources to build multi-paragraph personal narratives with structured data fields.
+The enrichment pipeline goes beyond the basic 6-line biography. It researches 29 sources to build multi-paragraph personal narratives with structured data fields.
 
 ### Three-Stage Content Pipeline
 
@@ -100,6 +100,13 @@ The enrichment pipeline goes beyond the basic 6-line biography. It researches 19
 | **Britannica** | DuckDuckGo `site:britannica.com` search | High-quality biographical content |
 | **Biography.com** | DuckDuckGo `site:biography.com` search | Dedicated biography resource |
 
+#### Phase 2.5: Books/Publications
+| Source | Method | Notes |
+|--------|--------|-------|
+| **Google Books** | Google Books API v1 snippets + descriptions | Requires `GOOGLE_BOOKS_API_KEY`, 1,000 req/day |
+| **Open Library** | Person-subject search + Search Inside API | Free, no API key |
+| **IA Books** | Internet Archive advanced search + OCR | Free, public domain full text |
+
 #### Phase 3: Web Search (with link following)
 | Source | Method | Notes |
 |--------|--------|-------|
@@ -109,7 +116,7 @@ The enrichment pipeline goes beyond the basic 6-line biography. It researches 19
 | Brave Search | Brave Search API | Requires `BRAVE_SEARCH_API_KEY` |
 
 #### Phase 4: News Sources
-Guardian, NYTimes, AP News, BBC News, People
+Guardian, NYTimes, AP News, Reuters, Washington Post, LA Times, BBC News, NPR, PBS, People, The Independent, The Telegraph, Time, The New Yorker, Rolling Stone, National Geographic
 
 #### Phase 5: Obituary Sites
 Legacy.com, Find a Grave
@@ -119,7 +126,7 @@ Internet Archive, Chronicling America, Trove, Europeana
 
 ### Orchestrator Flow
 
-1. Initialize sources by category (free → reference → web search → news → obituary → archives)
+1. Initialize sources by category (free → reference → books → web search → news → obituary → archives)
 2. For each actor, try sources sequentially, accumulating ALL successful results
 3. **Early stopping**: After 3+ high-quality sources meeting dual threshold (confidence ≥ 0.6 AND reliability ≥ 0.6)
 4. Send all accumulated raw data to Claude synthesis (Stage 3)
@@ -150,7 +157,7 @@ Internet Archive, Chronicling America, Trove, Europeana
 | `actor_biography_details` | Enriched biography: narrative, family, education, factors, sources |
 | `biography_legacy` | One-time archive of old `actors.biography` before first enrichment |
 | `actors.biography` | Updated with `narrative` from enrichment |
-| `actors.biography_version` | Incremented on each enrichment |
+| `actors.biography_version` | Semver string set on enrichment (e.g., "5.0.0") |
 
 ## Lesser-Known Facts
 
