@@ -141,9 +141,7 @@ export class TCMBiographySource extends BaseBiographySource {
    * TCM uses /tcmdb/person/ paths for actor database pages.
    */
   private pickBestUrl(urls: string[]): string {
-    const dbUrl = urls.find(
-      (u) => u.includes("/tcmdb/person/") || u.includes("/tcmdb/title/") || u.includes("/tcmdb/")
-    )
+    const dbUrl = urls.find((u) => u.includes("/tcmdb/person/"))
     return dbUrl ?? urls[0]
   }
 }
