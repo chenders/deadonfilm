@@ -122,7 +122,7 @@ describe("writeBiographyToProduction", () => {
     expect(mockQuery.mock.calls[1][0]).toContain("INSERT INTO actor_biography_details")
   })
 
-  it("updates actors table with narrative and increments biography_version", async () => {
+  it("updates actors table with narrative and sets biography_version", async () => {
     const data = makeBiographyData({ narrative: "Full narrative text" })
 
     await writeBiographyToProduction(mockPool, 42, data, makeSources())
@@ -131,7 +131,7 @@ describe("writeBiographyToProduction", () => {
     // With no archive: calls are SELECT, INSERT upsert, UPDATE actors
     const updateCall = mockQuery.mock.calls[2]
     expect(updateCall[0]).toContain("biography = $1")
-    expect(updateCall[0]).toContain("biography_version = COALESCE(biography_version, 0) + 1")
+    expect(updateCall[0]).toContain("biography_version = '5.0.0'")
     expect(updateCall[0]).toContain("biography_source_type = 'enriched'")
     expect(updateCall[0]).toContain("updated_at = NOW()")
     expect(updateCall[1]).toEqual(["Full narrative text", 42])

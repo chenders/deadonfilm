@@ -90,7 +90,7 @@ export async function writeBiographyToProduction(
       await db.query(
         `UPDATE actors SET
           biography = $1,
-          biography_version = COALESCE(biography_version, 0) + 1,
+          biography_version = '5.0.0',
           biography_source_type = 'enriched',
           updated_at = NOW()
         WHERE id = $2`,

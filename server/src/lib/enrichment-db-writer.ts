@@ -1,8 +1,10 @@
 /**
- * Enrichment Database Writer
+ * Death Enrichment Database Writer
  *
- * Abstracts writing enrichment results to either production or staging tables.
+ * Writes DEATH enrichment results to either production or staging tables.
  * Used by enrich-death-details.ts script to support review workflow.
+ *
+ * For BIOGRAPHY enrichment writing, see biography-enrichment-db-writer.ts.
  */
 
 import type { Pool } from "pg"
@@ -46,7 +48,9 @@ export interface DeathCircumstancesData {
   relatedDeaths?: string | null
   sources?: object
   rawResponse?: object | null
+  /** Death enrichment source method (e.g., "multi-source-enrichment", "claude-batch"). Maps to actor_death_circumstances.enrichment_source */
   enrichmentSource?: string
+  /** Death enrichment version (semver, e.g., "5.0.0"). Maps to actor_death_circumstances.enrichment_version */
   enrichmentVersion?: string
   /** Auto-detected entity links in narrative fields */
   entityLinks?: StoredEntityLinks | null
@@ -141,7 +145,7 @@ export async function writeToProduction(
       circumstances.rawResponse ? JSON.stringify(circumstances.rawResponse) : null,
       circumstances.entityLinks ? JSON.stringify(circumstances.entityLinks) : null,
       circumstances.enrichmentSource || "multi-source-enrichment",
-      circumstances.enrichmentVersion || "4.0.0",
+      circumstances.enrichmentVersion || "5.0.0",
     ]
   )
 

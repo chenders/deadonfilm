@@ -40,6 +40,15 @@ export enum BiographySourceType {
   BBC_NEWS_BIO = "bbc-news-bio",
   WASHINGTON_POST_BIO = "washington-post-bio",
   PEOPLE_BIO = "people-bio",
+  LA_TIMES_BIO = "la-times-bio",
+  NPR_BIO = "npr-bio",
+  INDEPENDENT_BIO = "independent-bio",
+  TELEGRAPH_BIO = "telegraph-bio",
+  TIME_BIO = "time-bio",
+  NEW_YORKER_BIO = "new-yorker-bio",
+  PBS_BIO = "pbs-bio",
+  ROLLING_STONE_BIO = "rolling-stone-bio",
+  NATIONAL_GEOGRAPHIC_BIO = "national-geographic-bio",
 
   // Obituary Sites
   LEGACY_BIO = "legacy-bio",

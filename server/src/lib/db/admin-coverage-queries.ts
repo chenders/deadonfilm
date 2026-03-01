@@ -46,7 +46,7 @@ export interface ActorCoverageInfo {
   has_enriched_bio: boolean
   bio_enriched_at: string | null
   enrichment_version: string | null
-  biography_version: number | null
+  biography_version: string | null
   top_credits: ActorTopCredit[]
 }
 

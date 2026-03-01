@@ -79,6 +79,20 @@ beyond that, decompose it:
 Current violations to address when touching these files:
 - `server/src/routes/actor.ts` → `getActor()` is 215 lines — extract query and transform logic
 
+## Enrichment Variable Naming
+
+This project has **two separate enrichment systems** (death and biography) that both use the word "enrichment." Always disambiguate:
+
+- **New variables/fields**: Prefix with `death` or `bio`/`biography` (e.g., `deathEnrichmentVersion`, `bioEnrichedAt`)
+- **Database columns**: The `actors` table has `enrichment_version` (death-only) and `biography_version` (bio-only). These are legacy names — don't create new ambiguous columns
+- **Existing code**: The `DeathCircumstancesData` interface uses `enrichmentSource`/`enrichmentVersion` — these are death-only fields mapped to `actor_death_circumstances` table columns. Context makes them unambiguous but new code should prefer explicit naming.
+
+| Table | Death Fields | Biography Fields |
+|-------|-------------|-----------------|
+| `actors` | `enrichment_version`, `enrichment_source`, `enriched_at` | `biography_version`, `biography_source_type`, `biography_generated_at` |
+| `actor_death_circumstances` | `enrichment_version`, `enrichment_source`, `enriched_at` | — |
+| `actor_biography_details` | — | `updated_at` (used as bio enriched timestamp) |
+
 ## AbortSignal Handling
 
 When combining a caller-provided signal with a timeout, use `AbortSignal.any()` — never `??` which defeats the timeout:

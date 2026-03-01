@@ -130,8 +130,41 @@ vi.mock("./sources/ap-news.js", () => ({
 vi.mock("./sources/bbc-news.js", () => ({
   BBCNewsBiographySource: makeMockSourceClass("BBC News"),
 }))
+vi.mock("./sources/reuters.js", () => ({
+  ReutersBiographySource: makeMockSourceClass("Reuters"),
+}))
+vi.mock("./sources/washington-post.js", () => ({
+  WashingtonPostBiographySource: makeMockSourceClass("Washington Post"),
+}))
+vi.mock("./sources/la-times.js", () => ({
+  LATimesBiographySource: makeMockSourceClass("Los Angeles Times"),
+}))
 vi.mock("./sources/people.js", () => ({
   PeopleBiographySource: makeMockSourceClass("People"),
+}))
+vi.mock("./sources/npr.js", () => ({
+  NPRBiographySource: makeMockSourceClass("NPR"),
+}))
+vi.mock("./sources/pbs.js", () => ({
+  PBSBiographySource: makeMockSourceClass("PBS"),
+}))
+vi.mock("./sources/independent.js", () => ({
+  IndependentBiographySource: makeMockSourceClass("The Independent"),
+}))
+vi.mock("./sources/telegraph.js", () => ({
+  TelegraphBiographySource: makeMockSourceClass("The Telegraph"),
+}))
+vi.mock("./sources/time.js", () => ({
+  TimeBiographySource: makeMockSourceClass("Time"),
+}))
+vi.mock("./sources/new-yorker.js", () => ({
+  NewYorkerBiographySource: makeMockSourceClass("The New Yorker"),
+}))
+vi.mock("./sources/rolling-stone.js", () => ({
+  RollingStoneBiographySource: makeMockSourceClass("Rolling Stone"),
+}))
+vi.mock("./sources/national-geographic.js", () => ({
+  NationalGeographicBiographySource: makeMockSourceClass("National Geographic"),
 }))
 vi.mock("./sources/legacy.js", () => ({
   LegacyBiographySource: makeMockSourceClass("Legacy"),
@@ -322,8 +355,8 @@ describe("BiographyEnrichmentOrchestrator", () => {
     it("initializes all source categories by default", () => {
       const orchestrator = new BiographyEnrichmentOrchestrator()
 
-      // All 22 sources should be initialized (all categories enabled except AI)
-      expect(orchestrator.getSourceCount()).toBe(22)
+      // All 33 sources should be initialized (all categories enabled except AI)
+      expect(orchestrator.getSourceCount()).toBe(33)
     })
 
     it("initializes sources in correct priority order", () => {
@@ -346,14 +379,25 @@ describe("BiographyEnrichmentOrchestrator", () => {
       expect(names[11]).toBe("Guardian")
       expect(names[12]).toBe("NYTimes")
       expect(names[13]).toBe("AP News")
-      expect(names[14]).toBe("BBC News")
-      expect(names[15]).toBe("People")
-      expect(names[16]).toBe("Legacy")
-      expect(names[17]).toBe("FindAGrave")
-      expect(names[18]).toBe("Internet Archive")
-      expect(names[19]).toBe("Chronicling America")
-      expect(names[20]).toBe("Trove")
-      expect(names[21]).toBe("Europeana")
+      expect(names[14]).toBe("Reuters")
+      expect(names[15]).toBe("Washington Post")
+      expect(names[16]).toBe("Los Angeles Times")
+      expect(names[17]).toBe("BBC News")
+      expect(names[18]).toBe("NPR")
+      expect(names[19]).toBe("PBS")
+      expect(names[20]).toBe("People")
+      expect(names[21]).toBe("The Independent")
+      expect(names[22]).toBe("The Telegraph")
+      expect(names[23]).toBe("Time")
+      expect(names[24]).toBe("The New Yorker")
+      expect(names[25]).toBe("Rolling Stone")
+      expect(names[26]).toBe("National Geographic")
+      expect(names[27]).toBe("Legacy")
+      expect(names[28]).toBe("FindAGrave")
+      expect(names[29]).toBe("Internet Archive")
+      expect(names[30]).toBe("Chronicling America")
+      expect(names[31]).toBe("Trove")
+      expect(names[32]).toBe("Europeana")
     })
 
     it("filters out unavailable sources", () => {
@@ -394,7 +438,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       const orchestrator = new BiographyEnrichmentOrchestrator()
 
-      expect(orchestrator.getSourceCount()).toBe(20)
+      expect(orchestrator.getSourceCount()).toBe(31)
       expect(orchestrator.getSourceNames()).not.toContain("Google Search")
       expect(orchestrator.getSourceNames()).not.toContain("Bing Search")
     })
@@ -455,8 +499,8 @@ describe("BiographyEnrichmentOrchestrator", () => {
         },
       })
 
-      // Free (2) + News (5) = 7
-      expect(orchestrator.getSourceCount()).toBe(7)
+      // Free (2) + News (16) = 18
+      expect(orchestrator.getSourceCount()).toBe(18)
       expect(orchestrator.getSourceNames()).toContain("Wikidata")
       expect(orchestrator.getSourceNames()).toContain("Guardian")
       expect(orchestrator.getSourceNames()).not.toContain("Britannica")

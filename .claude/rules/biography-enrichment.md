@@ -16,6 +16,8 @@ Enriches actor records with narrative personal life biographies from ~19 active 
 
 See the death enrichment rules (`.claude/rules/death-enrichment.md`) for the full list of shared sources.
 
+**Reliability tiers**: Both systems share the same `ReliabilityTier` enum from `server/src/lib/death-sources/types.ts`, based on Wikipedia's Reliable Sources Perennial list (RSP). See the death enrichment rules for the full tier table and guidance on assigning tiers to new sources.
+
 ## Key Difference from Death Enrichment
 
 | Aspect | Death Enrichment | Biography Enrichment |

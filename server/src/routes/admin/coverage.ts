@@ -275,7 +275,7 @@ router.get("/actors/by-ids", async (req: Request, res: Response): Promise<void> 
       popularity: number | null
       tmdb_id: number | null
       enrichment_version: string | null
-      biography_version: number | null
+      biography_version: string | null
     }>(
       `SELECT id, name, dof_popularity::float as popularity, tmdb_id,
               enrichment_version, biography_version

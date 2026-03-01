@@ -1,7 +1,7 @@
 /**
- * Enrichment Runner Library
+ * Death Enrichment Runner Library
  *
- * Core enrichment loop extracted from enrich-death-details.ts for use
+ * Core DEATH enrichment loop extracted from enrich-death-details.ts for use
  * by both the CLI script and BullMQ job handler.
  *
  * This module provides:
@@ -593,7 +593,7 @@ export class EnrichmentRunner {
               : null,
             entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
             enrichmentSource: "multi-source-enrichment",
-            enrichmentVersion: useReliabilityThreshold ? "4.0.0" : "4.0.0-no-reliability",
+            enrichmentVersion: useReliabilityThreshold ? "5.0.0" : "5.0.0-no-reliability",
           }
 
           // Record per-actor results for all runs with a runId
