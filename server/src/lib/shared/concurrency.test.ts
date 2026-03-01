@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest"
-import { SourceRateLimiter } from "./concurrency.js"
+import { SourceRateLimiter, BatchCostTracker } from "./concurrency.js"
 
 describe("SourceRateLimiter", () => {
   let limiter: SourceRateLimiter
@@ -45,5 +45,38 @@ describe("SourceRateLimiter", () => {
     const stats = limiter.getStats()
     expect(stats.get("a.com")?.totalRequests).toBe(2)
     expect(stats.get("b.com")?.totalRequests).toBe(1)
+  })
+})
+
+describe("BatchCostTracker", () => {
+  it("accumulates cost across actors", () => {
+    const tracker = new BatchCostTracker(10.0)
+    tracker.addActorCost(1, 0.05)
+    tracker.addActorCost(2, 0.03)
+    expect(tracker.getTotalCost()).toBeCloseTo(0.08)
+    expect(tracker.isLimitExceeded()).toBe(false)
+  })
+
+  it("detects when limit is exceeded", () => {
+    const tracker = new BatchCostTracker(0.1)
+    tracker.addActorCost(1, 0.05)
+    tracker.addActorCost(2, 0.06)
+    expect(tracker.isLimitExceeded()).toBe(true)
+  })
+
+  it("tracks cost by source type", () => {
+    const tracker = new BatchCostTracker(10.0)
+    tracker.addSourceCost("wikipedia", 0.0)
+    tracker.addSourceCost("claude", 0.02)
+    tracker.addSourceCost("claude", 0.03)
+    const bySource = tracker.getCostBySource()
+    expect(bySource["claude"]).toBeCloseTo(0.05)
+    expect(bySource["wikipedia"]).toBeCloseTo(0.0)
+  })
+
+  it("handles no-limit case (Infinity)", () => {
+    const tracker = new BatchCostTracker(Infinity)
+    tracker.addActorCost(1, 100)
+    expect(tracker.isLimitExceeded()).toBe(false)
   })
 })

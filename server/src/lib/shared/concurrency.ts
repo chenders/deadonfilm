@@ -91,3 +91,39 @@ export class SourceRateLimiter {
     return stats
   }
 }
+
+/**
+ * Synchronous cost accumulation with limit checking.
+ *
+ * All reads and writes are synchronous (no await between check and update),
+ * so the Node event loop guarantees atomicity.
+ */
+export class BatchCostTracker {
+  private totalCost = 0
+  private costBySource: Record<string, number> = {}
+
+  constructor(private readonly maxTotalCost: number) {}
+
+  /** Add cost for a completed actor. Returns whether the limit is now exceeded. */
+  addActorCost(_actorId: number, cost: number): boolean {
+    this.totalCost += cost
+    return this.totalCost >= this.maxTotalCost
+  }
+
+  /** Track cost by source type (for reporting) */
+  addSourceCost(sourceType: string, cost: number): void {
+    this.costBySource[sourceType] = (this.costBySource[sourceType] ?? 0) + cost
+  }
+
+  getTotalCost(): number {
+    return this.totalCost
+  }
+
+  isLimitExceeded(): boolean {
+    return this.totalCost >= this.maxTotalCost
+  }
+
+  getCostBySource(): Record<string, number> {
+    return { ...this.costBySource }
+  }
+}
