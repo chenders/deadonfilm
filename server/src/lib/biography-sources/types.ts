@@ -36,7 +36,9 @@ export enum BiographySourceType {
   GUARDIAN_BIO = "guardian-bio",
   NYTIMES_BIO = "nytimes-bio",
   AP_NEWS_BIO = "ap-news-bio",
+  REUTERS_BIO = "reuters-bio",
   BBC_NEWS_BIO = "bbc-news-bio",
+  WASHINGTON_POST_BIO = "washington-post-bio",
   PEOPLE_BIO = "people-bio",
 
   // Obituary Sites

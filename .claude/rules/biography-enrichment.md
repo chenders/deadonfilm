@@ -5,6 +5,17 @@ globs: ["server/src/lib/biography-sources/**", "server/src/lib/biography/**", "s
 
 Enriches actor records with narrative personal life biographies from ~19 active data sources, synthesized by Claude into structured fields.
 
+## Adding New Sources
+
+**IMPORTANT**: News sources exist in **both** the death enrichment and biography enrichment systems. When adding a new news source, always implement it in both:
+
+1. **Biography source**: `server/src/lib/biography-sources/sources/{name}.ts` — searches for profiles/interviews, extracts biographical info
+2. **Death source**: `server/src/lib/death-sources/sources/{name}.ts` — searches for obituaries, extracts death info
+3. Register in **both** orchestrators
+4. Add enum entries to **both** type files (`BiographySourceType` and `DataSourceType`)
+
+See the death enrichment rules (`.claude/rules/death-enrichment.md`) for the full list of shared sources.
+
 ## Key Difference from Death Enrichment
 
 | Aspect | Death Enrichment | Biography Enrichment |

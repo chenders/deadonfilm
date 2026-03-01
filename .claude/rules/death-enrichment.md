@@ -5,6 +5,17 @@ globs: ["server/src/lib/death-sources/**", "server/scripts/*death*", "server/scr
 
 Enriches actor death records with cause, manner, location, and circumstances from ~25 active data sources.
 
+## Adding New Sources
+
+**IMPORTANT**: News sources (Guardian, NYT, AP, BBC, Reuters, WaPo, etc.) exist in **both** the death enrichment and biography enrichment systems. When adding a new news source, always implement it in both:
+
+1. **Death source**: `server/src/lib/death-sources/sources/{name}.ts` — searches for obituaries, extracts death info
+2. **Biography source**: `server/src/lib/biography-sources/sources/{name}.ts` — searches for profiles/interviews, extracts biographical info
+3. Register in **both** orchestrators
+4. Add enum entries to **both** type files (`DataSourceType` and `BiographySourceType`)
+
+Sources shared between both systems: Guardian, NYTimes, AP News, BBC News, Reuters, People, Washington Post, Legacy, Find a Grave, Google Books, Open Library, IA Books, Internet Archive, Chronicling America, Trove, Europeana, and all web search sources (Google, Bing, DuckDuckGo, Brave).
+
 ## Architecture
 
 | Component | Path | Purpose |

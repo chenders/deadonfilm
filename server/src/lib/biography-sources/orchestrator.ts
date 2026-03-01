@@ -45,6 +45,8 @@ import { BraveBiographySearch } from "./sources/brave-search.js"
 import { GuardianBiographySource } from "./sources/guardian.js"
 import { NYTimesBiographySource } from "./sources/nytimes.js"
 import { APNewsBiographySource } from "./sources/ap-news.js"
+import { ReutersBiographySource } from "./sources/reuters.js"
+import { WashingtonPostBiographySource } from "./sources/washington-post.js"
 import { BBCNewsBiographySource } from "./sources/bbc-news.js"
 import { PeopleBiographySource } from "./sources/people.js"
 
@@ -219,6 +221,8 @@ export class BiographyEnrichmentOrchestrator {
         new GuardianBiographySource(),
         new NYTimesBiographySource(),
         new APNewsBiographySource(),
+        new ReutersBiographySource(),
+        new WashingtonPostBiographySource(),
         new BBCNewsBiographySource(),
         new PeopleBiographySource(),
       ]
