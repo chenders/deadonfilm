@@ -1,11 +1,29 @@
 ---
-globs: ["CLAUDE.md", ".claude/rules/*.md", ".github/copilot-instructions.md", ".github/docs/copilot-reference.md"]
+globs: ["CLAUDE.md", ".claude/rules/*.md", ".github/copilot-instructions.md", ".github/docs/copilot-reference.md", "README.md", "docs/*.md"]
 ---
 # Documentation Sync
 
-When modifying any instruction file, **update the others to match**.
+When modifying code, features, architecture, or any instruction file, **update all affected documentation**.
 
-## Files to Keep in Sync
+## Public Documentation (README + docs/)
+
+The `README.md` links to these docs — **keep them accurate when making changes**:
+
+| File | Content | Update When |
+|------|---------|-------------|
+| `README.md` | Project overview, features, architecture diagram, getting started | New features, source counts, architecture changes |
+| `docs/biography-system.md` | Biography generation + enrichment pipeline | New bio sources, pipeline changes, editorial policy |
+| `docs/death-research-pipeline.md` | Death enrichment source inventory + pipeline | New death sources, source removal, pipeline changes |
+| `docs/architecture.md` | Deployment, env vars, infrastructure | Infrastructure changes, new services, env var changes |
+| `docs/api.md` | API endpoint documentation | New routes, changed request/response shapes |
+
+**Specific things to check in README.md:**
+- Source counts (e.g., "19+ sources", "80+ sources") — update when adding/removing sources
+- Feature descriptions — update when adding new discovery pages or capabilities
+- Architecture diagram — update when adding new services or external APIs
+- "The Numbers" table — update periodically (actor count, coverage percentages)
+
+## Instruction Files (Claude + Copilot)
 
 | File | Purpose | Audience |
 |------|---------|----------|
@@ -14,9 +32,7 @@ When modifying any instruction file, **update the others to match**.
 | `.github/copilot-instructions.md` | Focused code review rules (~100 lines) | GitHub Copilot |
 | `.github/docs/copilot-reference.md` | Extended reference (architecture, enrichment, etc.) | Developers |
 
-## What to Sync
-
-Copilot instructions (focused review rules) and the extended reference doc draw from CLAUDE.md and `.claude/rules/*.md`. When updating any of these, ensure consistency across all files for:
+When updating any instruction file, ensure consistency across all files for:
 
 - Project overview, tech stack, architecture
 - Development commands
