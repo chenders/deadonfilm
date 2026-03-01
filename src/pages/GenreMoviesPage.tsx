@@ -120,7 +120,7 @@ function GenreSelector({ currentGenreSlug }: { currentGenreSlug: string }) {
             key={g.slug}
             to={`/movies/genre/${g.slug}`}
             className={`rounded-full px-3 py-1 text-sm transition-colors ${
-              isActive ? "bg-brown-dark text-white" : "bg-beige text-brown-dark hover:bg-cream"
+              isActive ? "bg-brown-dark text-cream" : "bg-beige text-brown-dark hover:bg-cream"
             }`}
           >
             {g.genre}

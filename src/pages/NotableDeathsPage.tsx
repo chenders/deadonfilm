@@ -160,7 +160,7 @@ export default function NotableDeathsPage() {
               data-testid={`filter-${f.id}`}
               className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
                 filter === f.id
-                  ? "bg-brown-dark text-white"
+                  ? "bg-brown-dark text-cream"
                   : "bg-brown-medium/10 text-brown-dark hover:bg-brown-medium/20"
               }`}
             >

@@ -104,7 +104,7 @@ function DecadeSelector({ currentDecade }: { currentDecade: string }) {
             key={d.decade}
             to={`/deaths/decade/${decadeStr}`}
             className={`rounded-full px-3 py-1 text-sm transition-colors ${
-              isActive ? "bg-brown-dark text-white" : "bg-beige text-brown-dark hover:bg-cream"
+              isActive ? "bg-brown-dark text-cream" : "bg-beige text-brown-dark hover:bg-cream"
             }`}
           >
             {decadeStr}
