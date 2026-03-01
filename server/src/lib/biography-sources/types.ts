@@ -297,6 +297,8 @@ export interface BiographyEnrichmentConfig {
     mechanicalOnly: boolean // Skip Stage 2, use mechanical only
   }
   synthesisModel: string // default "claude-sonnet-4-20250514"
+  /** Number of actors to process concurrently (default: 5, range: 1-20) */
+  concurrency?: number
 }
 
 /**

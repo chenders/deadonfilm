@@ -696,6 +696,8 @@ export interface EnrichmentConfig {
   reliabilityThreshold?: number
   /** Enable/disable reliability threshold checking (default: true). Set false for A/B control. */
   useReliabilityThreshold?: boolean
+  /** Number of actors to process concurrently (default: 5, range: 1-20) */
+  concurrency?: number
 }
 
 /**

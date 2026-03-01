@@ -8,6 +8,22 @@
 
 import pLimit from "p-limit"
 
+/**
+ * Source execution phases. Sources within a phase run concurrently.
+ * Phases run sequentially so early stopping can be applied between phases.
+ */
+export enum SourcePhase {
+  STRUCTURED_DATA = "structured_data",
+  WEB_SEARCH = "web_search",
+  REFERENCE = "reference",
+  BOOKS = "books",
+  NEWS = "news",
+  OBITUARY = "obituary",
+  ARCHIVES = "archives",
+  GENEALOGY = "genealogy",
+  AI_MODELS = "ai_models",
+}
+
 interface DomainState {
   lastRequestTime: number
   queue: Array<{
