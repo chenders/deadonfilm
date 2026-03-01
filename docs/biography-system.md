@@ -8,7 +8,7 @@ Two systems work together:
 
 1. **Biography Generator** — Produces concise 6-line summaries from TMDB and Wikipedia via Claude Sonnet. This is the "teaser" biography shown on the actor page.
 
-2. **Biography Enrichment Pipeline** — Researches 29 sources to build rich, multi-paragraph personal narratives with structured data: family background, education, personal struggles, lesser-known facts, and life circumstance tags. This is the "Life" section on actor pages, shown in an expandable card.
+2. **Biography Enrichment Pipeline** — Researches 30+ sources to build rich, multi-paragraph personal narratives with structured data: family background, education, personal struggles, lesser-known facts, and life circumstance tags. This is the "Life" section on actor pages, shown in an expandable card.
 
 ## Biography Generator
 
@@ -63,7 +63,7 @@ REQUIREMENTS:
 
 ## Biography Enrichment Pipeline
 
-The enrichment pipeline goes beyond the basic 6-line biography. It researches 29 sources to build multi-paragraph personal narratives with structured data fields.
+The enrichment pipeline goes beyond the basic 6-line biography. It researches 30+ sources to build multi-paragraph personal narratives with structured data fields.
 
 ### Three-Stage Content Pipeline
 

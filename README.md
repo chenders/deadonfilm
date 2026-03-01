@@ -27,7 +27,7 @@
 ### The Lives
 
 - AI-generated biographies focused on the person, not the career — childhood, family, struggles, relationships, private moments
-- Multi-source enrichment pipeline researching 29 sources (Wikipedia, Britannica, news archives, books, obituaries) to build rich personal narratives
+- Multi-source enrichment pipeline researching 30+ sources (Wikipedia, Britannica, news archives, books, obituaries) to build rich personal narratives
 - "Lesser-Known Facts" — surprising personal details most biographies never mention, extracted from source material by Claude
 - Life circumstance tags — color-coded badges like Orphaned, Refugee, Military Service, Dropout, Rags to Riches, Polyglot, Addiction Recovery
 - Entity-linked narratives connecting people to each other across the database
@@ -155,7 +155,7 @@ See [Architecture](docs/architecture.md) for environment variables and deploymen
 If you're browsing this codebase to learn from it, here are the parts worth studying:
 
 - **Biography generation** — Claude-powered pipeline that rewrites TMDB/Wikipedia content into personal narratives with strict editorial policy and substantive content gates.
-- **Biography enrichment** — Multi-source research pipeline (29 sources) that builds rich personal narratives, extracts lesser-known facts, and assigns life circumstance tags. Three-stage content pipeline: mechanical pre-clean, Haiku AI extraction, Claude synthesis.
+- **Biography enrichment** — Multi-source research pipeline (30+ sources) that builds rich personal narratives, extracts lesser-known facts, and assigns life circumstance tags. Three-stage content pipeline: mechanical pre-clean, Haiku AI extraction, Claude synthesis.
 - **Actuarial engine** — SSA life table lookups and mortality statistics calculation. The most mathematically interesting part of the codebase.
 - **Death research orchestration** — Multi-provider pipeline dispatching across 80+ sources with result reconciliation, confidence scoring, and cheapest-first cost optimization.
 - **TMDB sync pipeline** — Daily automated detection of newly reported deaths with enrichment triggers.

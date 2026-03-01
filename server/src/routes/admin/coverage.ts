@@ -133,14 +133,16 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
 
     if (req.query.deathEnrichmentVersion) {
       const deathVer = req.query.deathEnrichmentVersion as string
-      if (deathVer === "__null__" || /^\d+\.\d+\.\d+$/.test(deathVer)) {
+      // Allow "__null__", semver (5.0.0), semver with suffix (5.0.0-no-reliability)
+      if (deathVer === "__null__" || /^[\d]+[\d.]*[\w-]*$/.test(deathVer)) {
         filters.deathEnrichmentVersion = deathVer
       }
     }
 
     if (req.query.bioEnrichmentVersion) {
       const bioVer = req.query.bioEnrichmentVersion as string
-      if (bioVer === "__null__" || /^\d+\.\d+\.\d+$/.test(bioVer)) {
+      // Allow "__null__", semver (5.0.0), legacy integers (1, 2)
+      if (bioVer === "__null__" || /^[\d]+[\d.]*[\w-]*$/.test(bioVer)) {
         filters.bioEnrichmentVersion = bioVer
       }
     }

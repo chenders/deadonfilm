@@ -141,7 +141,7 @@ See `.claude/rules/death-enrichment.md` for full details.
 
 ## Biography Enrichment
 
-Personal life narratives from 29 sources, synthesized by Claude:
+Personal life narratives from 30+ sources, synthesized by Claude:
 1. Structured Data — Wikidata, Wikipedia
 2. Reference Sites — Britannica, Biography.com
 3. Books — Google Books, Open Library, IA Books
