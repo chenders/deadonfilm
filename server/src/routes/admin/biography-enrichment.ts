@@ -199,9 +199,9 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
   // Validate concurrency before inserting run record
   if (concurrency !== undefined) {
     const n = Number(concurrency)
-    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) {
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1 || n > 50) {
       res.status(400).json({
-        error: { message: "concurrency must be a positive integer" },
+        error: { message: "concurrency must be an integer between 1 and 50" },
       })
       return
     }

@@ -802,6 +802,48 @@ describe("Admin Enrichment Endpoints", () => {
       expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
     })
 
+    it("should reject invalid concurrency (zero)", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 10,
+          maxTotalCost: 5,
+          concurrency: 0,
+        })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("concurrency must be an integer between 1 and 50")
+      expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
+    })
+
+    it("should reject concurrency exceeding upper bound", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 10,
+          maxTotalCost: 5,
+          concurrency: 100,
+        })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("concurrency must be an integer between 1 and 50")
+      expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
+    })
+
+    it("should reject non-integer concurrency", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 10,
+          maxTotalCost: 5,
+          concurrency: 3.5,
+        })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("concurrency must be an integer between 1 and 50")
+      expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
+    })
+
     it("should handle errors from process manager", async () => {
       vi.mocked(processManager.startEnrichmentRun).mockRejectedValue(
         new Error("Failed to spawn process")

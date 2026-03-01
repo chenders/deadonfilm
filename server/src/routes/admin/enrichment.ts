@@ -440,8 +440,10 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
 
     if (config.concurrency !== undefined) {
       const n = Number(config.concurrency)
-      if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) {
-        res.status(400).json({ error: { message: "concurrency must be a positive integer" } })
+      if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1 || n > 50) {
+        res
+          .status(400)
+          .json({ error: { message: "concurrency must be an integer between 1 and 50" } })
         return
       }
     }

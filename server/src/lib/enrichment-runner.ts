@@ -377,7 +377,38 @@ export class EnrichmentRunner {
             costLimitReached = true
             return { costUsd: error.currentCost }
           }
-          throw error
+          // Log the error and record a failed actor row rather than re-throwing,
+          // because Promise.allSettled would silently swallow the rejection.
+          this.log.error(
+            { actorId: actor.id, actorName: actor.name, err: error },
+            "Actor enrichment failed"
+          )
+          if (runId) {
+            await db
+              .query(
+                `INSERT INTO enrichment_run_actors (
+                  run_id, actor_id, was_enriched, created_death_page,
+                  sources_attempted, cost_usd, log_entries
+                ) VALUES ($1, $2, false, false, '[]'::jsonb, 0, $3)
+                ON CONFLICT (run_id, actor_id) DO NOTHING`,
+                [
+                  runId,
+                  actor.id,
+                  JSON.stringify([
+                    {
+                      timestamp: new Date().toISOString(),
+                      level: "error",
+                      message:
+                        error instanceof Error ? error.message : "Unknown error during enrichment",
+                    },
+                  ]),
+                ]
+              )
+              .catch((dbErr) =>
+                this.log.error({ actorId: actor.id, err: dbErr }, "Failed to record error row")
+              )
+          }
+          return { costUsd: 0 }
         }
 
         // Aggregate source hit rates from actorStats

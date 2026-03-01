@@ -78,23 +78,25 @@ export class SourceRateLimiter {
     if (state.processing || state.queue.length === 0) return
     state.processing = true
 
-    while (state.queue.length > 0) {
-      const item = state.queue.shift()!
-      const now = Date.now()
-      const timeSinceLast = now - state.lastRequestTime
-      const waitTime = Math.max(0, item.minDelayMs - timeSinceLast)
+    try {
+      while (state.queue.length > 0) {
+        const item = state.queue.shift()!
+        const now = Date.now()
+        const timeSinceLast = now - state.lastRequestTime
+        const waitTime = Math.max(0, item.minDelayMs - timeSinceLast)
 
-      if (waitTime > 0) {
-        state.totalWaitMs += waitTime
-        await new Promise<void>((r) => setTimeout(r, waitTime))
+        if (waitTime > 0) {
+          state.totalWaitMs += waitTime
+          await new Promise<void>((r) => setTimeout(r, waitTime))
+        }
+
+        state.lastRequestTime = Date.now()
+        state.totalRequests++
+        item.resolve()
       }
-
-      state.lastRequestTime = Date.now()
-      state.totalRequests++
-      item.resolve()
+    } finally {
+      state.processing = false
     }
-
-    state.processing = false
   }
 
   /** Get rate limiting stats per domain */
