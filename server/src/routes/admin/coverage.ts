@@ -132,12 +132,15 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (req.query.deathEnrichmentVersion) {
-      filters.deathEnrichmentVersion = req.query.deathEnrichmentVersion as string
+      const deathVer = req.query.deathEnrichmentVersion as string
+      if (deathVer === "__null__" || /^\d+\.\d+\.\d+$/.test(deathVer)) {
+        filters.deathEnrichmentVersion = deathVer
+      }
     }
 
     if (req.query.bioEnrichmentVersion) {
       const bioVer = req.query.bioEnrichmentVersion as string
-      if (bioVer === "__null__" || /^[\d.]+$/.test(bioVer)) {
+      if (bioVer === "__null__" || /^\d+\.\d+\.\d+$/.test(bioVer)) {
         filters.bioEnrichmentVersion = bioVer
       }
     }

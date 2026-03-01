@@ -5,7 +5,7 @@
  * via web search (Google CSE with DDG fallback), fetches with archive fallback
  * on block, and cleans the article.
  *
- * Reliability tier: TIER_1_NEWS (0.95) - authoritative publication.
+ * Reliability tier: TRADE_PRESS (0.9) - reputable trade press publication.
  */
 
 import { BaseBiographySource, type BiographyLookupResult } from "../base-source.js"
