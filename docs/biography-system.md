@@ -8,7 +8,7 @@ Two systems work together:
 
 1. **Biography Generator** — Produces concise 6-line summaries from TMDB and Wikipedia via Claude Sonnet. This is the "teaser" biography shown on the actor page.
 
-2. **Biography Enrichment Pipeline** — Researches 30+ sources to build rich, multi-paragraph personal narratives with structured data: family background, education, personal struggles, lesser-known facts, and life circumstance tags. This is the "Life" section on actor pages, shown in an expandable card.
+2. **Biography Enrichment Pipeline** — Researches 37 sources to build rich, multi-paragraph personal narratives with structured data: family background, education, personal struggles, lesser-known facts, and life circumstance tags. This is the "Life" section on actor pages, shown in an expandable card.
 
 ## Biography Generator
 
@@ -63,7 +63,7 @@ REQUIREMENTS:
 
 ## Biography Enrichment Pipeline
 
-The enrichment pipeline goes beyond the basic 6-line biography. It researches 30+ sources to build multi-paragraph personal narratives with structured data fields.
+The enrichment pipeline goes beyond the basic 6-line biography. It researches 37 sources to build multi-paragraph personal narratives with structured data fields.
 
 ### Three-Stage Content Pipeline
 
@@ -99,6 +99,8 @@ The enrichment pipeline goes beyond the basic 6-line biography. It researches 30
 |--------|--------|-------|
 | **Britannica** | DuckDuckGo `site:britannica.com` search | High-quality biographical content |
 | **Biography.com** | DuckDuckGo `site:biography.com` search | Dedicated biography resource |
+| **TCM** | DuckDuckGo `site:tcm.com` search | Classic film actor biographies |
+| **AllMusic** | DuckDuckGo `site:allmusic.com` search | Professional music artist biographies |
 
 #### Phase 2.5: Books/Publications
 | Source | Method | Notes |
@@ -116,7 +118,7 @@ The enrichment pipeline goes beyond the basic 6-line biography. It researches 30
 | Brave Search | Brave Search API | Requires `BRAVE_SEARCH_API_KEY` |
 
 #### Phase 4: News Sources
-Guardian, NYTimes, AP News, Reuters, Washington Post, LA Times, BBC News, NPR, PBS, People, The Independent, The Telegraph, Time, The New Yorker, Rolling Stone, National Geographic
+Guardian, NYTimes, AP News, Reuters, Washington Post, LA Times, BBC News, NPR, PBS, People, The Independent, The Telegraph, Time, The New Yorker, Rolling Stone, National Geographic, Smithsonian Magazine, History.com
 
 #### Phase 5: Obituary Sites
 Legacy.com, Find a Grave

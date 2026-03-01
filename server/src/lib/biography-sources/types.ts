@@ -25,6 +25,8 @@ export enum BiographySourceType {
   // Reference Sites
   BRITANNICA = "britannica",
   BIOGRAPHY_COM = "biography-com",
+  TCM_BIO = "tcm-bio",
+  ALLMUSIC_BIO = "allmusic-bio",
 
   // Web Search (with link following)
   GOOGLE_SEARCH_BIO = "google-search-bio",
@@ -49,6 +51,8 @@ export enum BiographySourceType {
   PBS_BIO = "pbs-bio",
   ROLLING_STONE_BIO = "rolling-stone-bio",
   NATIONAL_GEOGRAPHIC_BIO = "national-geographic-bio",
+  SMITHSONIAN_BIO = "smithsonian-bio",
+  HISTORY_COM_BIO = "history-com-bio",
 
   // Obituary Sites
   LEGACY_BIO = "legacy-bio",

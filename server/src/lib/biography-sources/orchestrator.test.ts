@@ -106,6 +106,12 @@ vi.mock("./sources/britannica.js", () => ({
 vi.mock("./sources/biography-com.js", () => ({
   BiographyComSource: makeMockSourceClass("Biography.com"),
 }))
+vi.mock("./sources/tcm.js", () => ({
+  TCMBiographySource: makeMockSourceClass("TCM"),
+}))
+vi.mock("./sources/allmusic.js", () => ({
+  AllMusicBiographySource: makeMockSourceClass("AllMusic"),
+}))
 vi.mock("./sources/google-search.js", () => ({
   GoogleBiographySearch: makeMockSourceClass("Google Search", { isWebSearch: true }),
 }))
@@ -165,6 +171,12 @@ vi.mock("./sources/rolling-stone.js", () => ({
 }))
 vi.mock("./sources/national-geographic.js", () => ({
   NationalGeographicBiographySource: makeMockSourceClass("National Geographic"),
+}))
+vi.mock("./sources/smithsonian.js", () => ({
+  SmithsonianBiographySource: makeMockSourceClass("Smithsonian"),
+}))
+vi.mock("./sources/history-com.js", () => ({
+  HistoryComBiographySource: makeMockSourceClass("History.com"),
 }))
 vi.mock("./sources/legacy.js", () => ({
   LegacyBiographySource: makeMockSourceClass("Legacy"),
@@ -355,8 +367,8 @@ describe("BiographyEnrichmentOrchestrator", () => {
     it("initializes all source categories by default", () => {
       const orchestrator = new BiographyEnrichmentOrchestrator()
 
-      // All 33 sources should be initialized (all categories enabled except AI)
-      expect(orchestrator.getSourceCount()).toBe(33)
+      // All 37 sources should be initialized (all categories enabled except AI)
+      expect(orchestrator.getSourceCount()).toBe(37)
     })
 
     it("initializes sources in correct priority order", () => {
@@ -369,35 +381,39 @@ describe("BiographyEnrichmentOrchestrator", () => {
       expect(names[1]).toBe("Wikipedia")
       expect(names[2]).toBe("Britannica")
       expect(names[3]).toBe("Biography.com")
-      expect(names[4]).toBe("Google Books")
-      expect(names[5]).toBe("Open Library")
-      expect(names[6]).toBe("IA Books")
-      expect(names[7]).toBe("Google Search")
-      expect(names[8]).toBe("Bing Search")
-      expect(names[9]).toBe("DuckDuckGo")
-      expect(names[10]).toBe("Brave Search")
-      expect(names[11]).toBe("Guardian")
-      expect(names[12]).toBe("NYTimes")
-      expect(names[13]).toBe("AP News")
-      expect(names[14]).toBe("Reuters")
-      expect(names[15]).toBe("Washington Post")
-      expect(names[16]).toBe("Los Angeles Times")
-      expect(names[17]).toBe("BBC News")
-      expect(names[18]).toBe("NPR")
-      expect(names[19]).toBe("PBS")
-      expect(names[20]).toBe("People")
-      expect(names[21]).toBe("The Independent")
-      expect(names[22]).toBe("The Telegraph")
-      expect(names[23]).toBe("Time")
-      expect(names[24]).toBe("The New Yorker")
-      expect(names[25]).toBe("Rolling Stone")
-      expect(names[26]).toBe("National Geographic")
-      expect(names[27]).toBe("Legacy")
-      expect(names[28]).toBe("FindAGrave")
-      expect(names[29]).toBe("Internet Archive")
-      expect(names[30]).toBe("Chronicling America")
-      expect(names[31]).toBe("Trove")
-      expect(names[32]).toBe("Europeana")
+      expect(names[4]).toBe("TCM")
+      expect(names[5]).toBe("AllMusic")
+      expect(names[6]).toBe("Google Books")
+      expect(names[7]).toBe("Open Library")
+      expect(names[8]).toBe("IA Books")
+      expect(names[9]).toBe("Google Search")
+      expect(names[10]).toBe("Bing Search")
+      expect(names[11]).toBe("DuckDuckGo")
+      expect(names[12]).toBe("Brave Search")
+      expect(names[13]).toBe("Guardian")
+      expect(names[14]).toBe("NYTimes")
+      expect(names[15]).toBe("AP News")
+      expect(names[16]).toBe("Reuters")
+      expect(names[17]).toBe("Washington Post")
+      expect(names[18]).toBe("Los Angeles Times")
+      expect(names[19]).toBe("BBC News")
+      expect(names[20]).toBe("NPR")
+      expect(names[21]).toBe("PBS")
+      expect(names[22]).toBe("People")
+      expect(names[23]).toBe("The Independent")
+      expect(names[24]).toBe("The Telegraph")
+      expect(names[25]).toBe("Time")
+      expect(names[26]).toBe("The New Yorker")
+      expect(names[27]).toBe("Rolling Stone")
+      expect(names[28]).toBe("National Geographic")
+      expect(names[29]).toBe("Smithsonian")
+      expect(names[30]).toBe("History.com")
+      expect(names[31]).toBe("Legacy")
+      expect(names[32]).toBe("FindAGrave")
+      expect(names[33]).toBe("Internet Archive")
+      expect(names[34]).toBe("Chronicling America")
+      expect(names[35]).toBe("Trove")
+      expect(names[36]).toBe("Europeana")
     })
 
     it("filters out unavailable sources", () => {
@@ -438,7 +454,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       const orchestrator = new BiographyEnrichmentOrchestrator()
 
-      expect(orchestrator.getSourceCount()).toBe(31)
+      expect(orchestrator.getSourceCount()).toBe(35)
       expect(orchestrator.getSourceNames()).not.toContain("Google Search")
       expect(orchestrator.getSourceNames()).not.toContain("Bing Search")
     })
@@ -457,10 +473,12 @@ describe("BiographyEnrichmentOrchestrator", () => {
         },
       })
 
-      // Only reference sources (2)
-      expect(orchestrator.getSourceCount()).toBe(2)
+      // Only reference sources (4)
+      expect(orchestrator.getSourceCount()).toBe(4)
       expect(orchestrator.getSourceNames()).toContain("Britannica")
       expect(orchestrator.getSourceNames()).toContain("Biography.com")
+      expect(orchestrator.getSourceNames()).toContain("TCM")
+      expect(orchestrator.getSourceNames()).toContain("AllMusic")
       expect(orchestrator.getSourceNames()).not.toContain("Wikidata")
       expect(orchestrator.getSourceNames()).not.toContain("Wikipedia")
     })
@@ -499,8 +517,8 @@ describe("BiographyEnrichmentOrchestrator", () => {
         },
       })
 
-      // Free (2) + News (16) = 18
-      expect(orchestrator.getSourceCount()).toBe(18)
+      // Free (2) + News (18) = 20
+      expect(orchestrator.getSourceCount()).toBe(20)
       expect(orchestrator.getSourceNames()).toContain("Wikidata")
       expect(orchestrator.getSourceNames()).toContain("Guardian")
       expect(orchestrator.getSourceNames()).not.toContain("Britannica")
@@ -1274,7 +1292,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
         },
       })
 
-      expect(orchestrator.getSourceCount()).toBe(4) // 2 free + 2 reference
+      expect(orchestrator.getSourceCount()).toBe(6) // 2 free + 4 reference
     })
 
     it("returns empty arrays when all categories disabled", () => {

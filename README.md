@@ -27,7 +27,7 @@
 ### The Lives
 
 - AI-generated biographies focused on the person, not the career — childhood, family, struggles, relationships, private moments
-- Multi-source enrichment pipeline researching 30+ sources (Wikipedia, Britannica, news archives, books, obituaries) to build rich personal narratives
+- Multi-source enrichment pipeline researching 37 sources (Wikipedia, Britannica, news archives, books, obituaries) to build rich personal narratives
 - "Lesser-Known Facts" — surprising personal details most biographies never mention, extracted from source material by Claude
 - Life circumstance tags — color-coded badges like Orphaned, Refugee, Military Service, Dropout, Rags to Riches, Polyglot, Addiction Recovery
 - Entity-linked narratives connecting people to each other across the database
@@ -54,7 +54,7 @@
 
 ### Biographies
 
-Two systems work together. The **biography generator** produces concise 6-line summaries from TMDB and Wikipedia via Claude Sonnet — strict editorial policy, no superlatives, no hagiography. The **biography enrichment pipeline** goes deeper: it researches 30+ sources (Wikipedia, Britannica, Biography.com, news archives, books, obituary sites, historical archives) to build rich personal narratives with childhood details, family background, personal struggles, and lesser-known facts. Claude synthesizes all source material into structured biography data including life circumstance tags (Orphaned, Military Service, Immigrant, Dropout, etc.) and surprising personal facts.
+Two systems work together. The **biography generator** produces concise 6-line summaries from TMDB and Wikipedia via Claude Sonnet — strict editorial policy, no superlatives, no hagiography. The **biography enrichment pipeline** goes deeper: it researches 37 sources (Wikipedia, Britannica, Biography.com, TCM, AllMusic, news archives, books, obituary sites, historical archives) to build rich personal narratives with childhood details, family background, personal struggles, and lesser-known facts. Claude synthesizes all source material into structured biography data including life circumstance tags (Orphaned, Military Service, Immigrant, Dropout, etc.) and surprising personal facts.
 
 See [Biography System](docs/biography-system.md) for generation details and editorial philosophy.
 
@@ -155,7 +155,7 @@ See [Architecture](docs/architecture.md) for environment variables and deploymen
 If you're browsing this codebase to learn from it, here are the parts worth studying:
 
 - **Biography generation** — Claude-powered pipeline that rewrites TMDB/Wikipedia content into personal narratives with strict editorial policy and substantive content gates.
-- **Biography enrichment** — Multi-source research pipeline (30+ sources) that builds rich personal narratives, extracts lesser-known facts, and assigns life circumstance tags. Three-stage content pipeline: mechanical pre-clean, Haiku AI extraction, Claude synthesis.
+- **Biography enrichment** — Multi-source research pipeline (37 sources) that builds rich personal narratives, extracts lesser-known facts, and assigns life circumstance tags. Three-stage content pipeline: mechanical pre-clean, Haiku AI extraction, Claude synthesis.
 - **Actuarial engine** — SSA life table lookups and mortality statistics calculation. The most mathematically interesting part of the codebase.
 - **Death research orchestration** — Multi-provider pipeline dispatching across 80+ sources with result reconciliation, confidence scoring, and cheapest-first cost optimization.
 - **TMDB sync pipeline** — Daily automated detection of newly reported deaths with enrichment triggers.

@@ -141,12 +141,12 @@ See `.claude/rules/death-enrichment.md` for full details.
 
 ## Biography Enrichment
 
-Personal life narratives from 30+ sources, synthesized by Claude:
+Personal life narratives from 37 sources, synthesized by Claude:
 1. Structured Data — Wikidata, Wikipedia
-2. Reference Sites — Britannica, Biography.com
+2. Reference Sites — Britannica, Biography.com, TCM, AllMusic
 3. Books — Google Books, Open Library, IA Books
 4. Web Search — Google, Bing, DuckDuckGo, Brave
-5. News Sources — Guardian, NYTimes, AP, Reuters, WaPo, LA Times, BBC, NPR, PBS, People, Independent, Telegraph, Time, New Yorker, Rolling Stone, National Geographic
+5. News Sources — Guardian, NYTimes, AP, Reuters, WaPo, LA Times, BBC, NPR, PBS, People, Independent, Telegraph, Time, New Yorker, Rolling Stone, National Geographic, Smithsonian, History.com
 6. Obituary Sites — Legacy.com, Find a Grave
 7. Historical Archives — Internet Archive, Chronicling America, Trove, Europeana
 
