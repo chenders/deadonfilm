@@ -146,7 +146,7 @@ Personal life narratives from 37 sources, synthesized by Claude:
 2. Reference Sites — Britannica, Biography.com, TCM, AllMusic
 3. Books — Google Books, Open Library, IA Books
 4. Web Search — Google, Bing, DuckDuckGo, Brave
-5. News Sources — Guardian, NYTimes, AP, Reuters, WaPo, LA Times, BBC, NPR, PBS, People, Independent, Telegraph, Time, New Yorker, Rolling Stone, National Geographic, Smithsonian, History.com
+5. News Sources — Guardian, NYTimes, AP, Reuters, WaPo, LA Times, BBC, NPR, PBS, People, Independent, Telegraph, Time, New Yorker, Rolling Stone, National Geographic, Smithsonian Magazine, History.com
 6. Obituary Sites — Legacy.com, Find a Grave
 7. Historical Archives — Internet Archive, Chronicling America, Trove, Europeana
 

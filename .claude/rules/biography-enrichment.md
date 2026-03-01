@@ -149,7 +149,7 @@ Internet Archive, Chronicling America, Trove, Europeana
     reference: true,             // Britannica, Biography.com, TCM, AllMusic
     books: true,                 // Google Books, Open Library, IA Books
     webSearch: true,             // Google, Bing, DuckDuckGo, Brave
-    news: true,                  // Guardian, NYT, AP, Reuters, WaPo, LA Times, BBC, NPR, PBS, People, Independent, Telegraph, Time, New Yorker, Rolling Stone, Nat Geo, Smithsonian, History.com
+    news: true,                  // Guardian, NYT, AP, Reuters, WaPo, LA Times, BBC, NPR, PBS, People, Independent, Telegraph, Time, New Yorker, Rolling Stone, Nat Geo, Smithsonian Magazine, History.com
     obituary: true,              // Legacy, FindAGrave
     archives: true,              // Internet Archive, Chronicling America, Trove, Europeana
   },
