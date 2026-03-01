@@ -1,6 +1,6 @@
 # Death Research Pipeline
 
-When an actor's death lacks cause-of-death information, the system dispatches a multi-stage research pipeline across 90+ sources. The pipeline is designed around a simple principle: try the cheapest, most reliable sources first, and stop when confidence is high enough.
+When an actor's death lacks cause-of-death information, the system dispatches a multi-stage research pipeline across 90+ sources. The pipeline gathers data from all available sources, then synthesizes it via Claude into structured output. Sources within each phase run concurrently, and multiple actors are processed in parallel (configurable concurrency, default 5).
 
 ## Pipeline Stages
 
@@ -92,6 +92,24 @@ If structured sources and search haven't reached the confidence threshold, the s
 | Claude | Anthropic | ~$0.01 | Used for final cleanup |
 | Claude Batch | Anthropic | ~$0.005 | 50% discount, async |
 
+## Parallel Execution Model
+
+Sources are organized into sequential **phases**. Sources within each phase run concurrently via `Promise.allSettled()`. Multiple actors are processed in parallel with configurable concurrency (default 5, range 1-20).
+
+**Within-phase**: All sources fire concurrently, respecting per-domain rate limits via a shared `SourceRateLimiter`.
+
+**Between phases**: Early stopping checks whether enough high-quality source families have been collected. Per-actor cost limits are also checked between phases.
+
+A shared `SourceRateLimiter` enforces per-domain request spacing (e.g., 500ms for Wikipedia, 1000ms for most sources, 2000ms for scraped news sites). DuckDuckGo is limited to 2-3 concurrent requests to prevent CAPTCHA triggers.
+
+### Estimated Throughput
+
+| Batch Size | Sequential (legacy) | Parallel (concurrency=5) |
+|-----------|---------------------|-------------------------|
+| 10 actors | ~5-10 min | ~30-60s |
+| 100 actors | ~50-100 min | ~5-10 min |
+| 1000 actors | ~8-16 hrs | ~30-60 min |
+
 ## Confidence Scoring
 
 Each source produces a confidence score (0.0–1.0):
@@ -100,11 +118,11 @@ Each source produces a confidence score (0.0–1.0):
 - **0.5** — Base score from required keywords (died, death, passed away, etc.)
 - **Up to 1.0** — Bonus from circumstance keywords (cancer, heart attack, accident, etc.)
 
-The pipeline stops trying sources when confidence reaches the threshold (default: 0.5).
+Early stopping between phases uses a source family count threshold (similar to biography enrichment's "3+ high-quality families"). Individual source confidence is used for quality filtering, not for stopping.
 
-## Final Cleanup
+## Synthesis
 
-After gathering raw data, Claude consolidates everything into structured output:
+The system always gathers from all available sources, then Claude synthesizes everything into structured output:
 
 - **Cause of death** — Specific medical cause with confidence level
 - **Details** — 2–4 sentence summary adapted to manner of death
@@ -128,8 +146,10 @@ Two strategies for accessing content behind paywalls:
 
 ## Rate Limiting & Caching
 
-- Default rate limit: 1000ms between requests per source
+- Shared `SourceRateLimiter` enforces per-domain request spacing across all concurrent actors
+- Default rate limit: 1000ms between requests per domain
 - Wikidata/Wikipedia: 500ms
+- DuckDuckGo: limited to 2-3 concurrent requests (CAPTCHA prevention)
 - Results are cached per source+actor to prevent redundant lookups across runs
 - Blocked responses (403/429) are cached to avoid re-hitting blocked sources
 
@@ -138,7 +158,8 @@ Two strategies for accessing content behind paywalls:
 ```typescript
 {
   limit: 100,                    // Max actors per batch
-  confidenceThreshold: 0.5,      // Stop trying sources at this confidence
+  concurrency: 5,               // Actors processed in parallel (1-20)
+  confidenceThreshold: 0.5,      // Source quality threshold
   sourceCategories: {
     free: true,                  // Free web sources
     paid: false,                 // Paid API sources
@@ -153,10 +174,6 @@ Two strategies for accessing content behind paywalls:
     maxLinksPerActor: 3,
     aiLinkSelection: false,      // Use AI to pick which links to follow
     aiContentExtraction: false,  // Use AI to extract death info from pages
-  },
-  claudeCleanup: {
-    enabled: false,
-    gatherAllSources: false,     // Collect all sources then synthesize
   },
 }
 ```
@@ -177,7 +194,7 @@ The full data pipeline from raw TMDB data to enriched death records:
 | Table | Purpose |
 |---|---|
 | `enrichment_runs` | Batch-level stats: actors processed, fill rate, cost, source hit rates |
-| `enrichment_run_actors` | Per-actor: sources attempted (JSONB), winning source, confidence, cost |
+| `enrichment_run_actors` | Per-actor: sources attempted (JSONB), confidence, cost |
 | `actor_death_circumstances` | Final enriched data: circumstances, manner, location, notable factors |
 | `actors` | `enriched_at`, `enrichment_source`, `enrichment_version` metadata |
 

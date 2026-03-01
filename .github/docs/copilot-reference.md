@@ -126,14 +126,17 @@ A movie is "obscure" if: no poster, OR (English + popularity <5 + cast <5), OR (
 
 ## Death Enrichment
 
-Sources tried in priority order, stopping at confidence threshold (0.5):
+Gathers data from all available sources across sequential phases, then synthesizes via Claude. Sources within each phase run concurrently. Multiple actors processed in parallel (configurable concurrency, default 5).
+
+Phases:
 1. Structured Data (free) — Wikidata, Wikipedia, BFI
 2. Web Search — Google, Bing, DuckDuckGo, Brave
 3. News Sources — Guardian, NYTimes, AP, Reuters, Washington Post, LA Times, NPR, BBC, etc.
 4. Obituary Sites — Find a Grave, Legacy.com
-5. Historical Archives — Trove, Europeana, Internet Archive
-6. Genealogy — FamilySearch
-7. AI Models (optional, by cost) — Gemini Flash through GPT-4o
+5. Books — Google Books, Open Library, IA Books
+6. Historical Archives — Trove, Europeana, Internet Archive, Chronicling America
+7. Genealogy — FamilySearch
+8. AI Models (optional, by ascending cost) — Gemini Flash through GPT-4o
 
 See `.claude/rules/death-enrichment.md` for full details.
 
@@ -141,7 +144,9 @@ See `.claude/rules/death-enrichment.md` for full details.
 
 ## Biography Enrichment
 
-Personal life narratives from 37 sources, synthesized by Claude:
+Personal life narratives from 37 sources, synthesized by Claude. Same parallel architecture as death enrichment.
+
+Phases:
 1. Structured Data — Wikidata, Wikipedia
 2. Reference Sites — Britannica, Biography.com, TCM, AllMusic
 3. Books — Google Books, Open Library, IA Books
@@ -150,6 +155,6 @@ Personal life narratives from 37 sources, synthesized by Claude:
 6. Obituary Sites — Legacy.com, Find a Grave
 7. Historical Archives — Internet Archive, Chronicling America, Trove, Europeana
 
-Key differences from death enrichment: accumulates ALL raw data, three-stage pipeline, career content filtering, COALESCE upsert.
+Both systems share the same architecture: parallel source phases, parallel actor processing, gather-all accumulation, Claude synthesis. Shared infrastructure in `server/src/lib/shared/concurrency.ts`.
 
 See `.claude/rules/biography-enrichment.md` for full details.

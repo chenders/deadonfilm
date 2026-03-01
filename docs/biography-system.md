@@ -128,12 +128,24 @@ Internet Archive, Chronicling America, Trove, Europeana
 
 ### Orchestrator Flow
 
-1. Initialize sources by category (free → reference → books → web search → news → obituary → archives)
-2. For each actor, try sources sequentially, accumulating ALL successful results
-3. **Early stopping**: After 3+ high-quality sources meeting dual threshold (confidence ≥ 0.6 AND reliability ≥ 0.6)
-4. Send all accumulated raw data to Claude synthesis (Stage 3)
-5. Claude produces structured `BiographyData` JSON
-6. DB writer upserts to `actor_biography_details` with COALESCE (preserves existing non-null values)
+1. Initialize sources organized into sequential **phases** (structured → reference → books → web search → news → obituary → archives)
+2. Process multiple actors concurrently (configurable concurrency, default 5)
+3. For each actor, execute phases sequentially; within each phase, fire all sources concurrently via `Promise.allSettled()`
+4. Accumulate ALL successful results across phases
+5. **Early stopping between phases**: After 3+ high-quality source families meeting dual threshold (confidence ≥ 0.6 AND reliability ≥ 0.6)
+6. Send all accumulated raw data to Claude synthesis (Stage 3)
+7. Claude produces structured `BiographyData` JSON
+8. DB writer upserts to `actor_biography_details` with COALESCE (preserves existing non-null values)
+
+### Parallel Execution
+
+Sources within each phase run concurrently, respecting per-domain rate limits via a shared `SourceRateLimiter`. Multiple actors are processed in parallel with configurable concurrency (default 5, range 1-20, via `--concurrency` CLI flag or admin UI).
+
+| Batch Size | Sequential (legacy) | Parallel (concurrency=5) |
+|-----------|---------------------|-------------------------|
+| 10 actors | ~5-10 min | ~30-60s |
+| 100 actors | ~50-100 min | ~5-10 min |
+| 1000 actors | ~8-16 hrs | ~30-60 min |
 
 ### Output Fields
 

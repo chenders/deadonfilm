@@ -22,11 +22,13 @@ See the death enrichment rules (`.claude/rules/death-enrichment.md`) for the ful
 
 | Aspect | Death Enrichment | Biography Enrichment |
 |--------|-----------------|---------------------|
-| Merge strategy | First-wins per field | Accumulate ALL raw data for Claude synthesis |
-| Stopping | Confidence threshold (0.5) | 3+ high-quality sources (dual threshold) |
+| Merge strategy | Gather-all + Claude synthesis | Gather-all + Claude synthesis |
+| Stopping | Source family count threshold | 3+ high-quality source families (dual threshold) |
 | Content focus | Cause, manner, circumstances | Childhood, family, education, personal life |
-| AI cleanup | Optional Claude cleanup | Always Claude synthesis (Stage 3) |
+| AI cleanup | Always Claude synthesis | Always Claude synthesis (Stage 3) |
 | Monitoring | New Relic + StatusBar | New Relic custom events |
+
+Both systems now share the same architecture: parallel source execution within phases, parallel actor processing, gather-all accumulation, and Claude synthesis.
 
 ## Architecture
 
@@ -127,19 +129,30 @@ Browser stealth uses `fingerprint-injector` (from Apify's fingerprint-suite) for
 ### Phase 6: Historical Archives
 Internet Archive, Chronicling America, Trove, Europeana
 
+## Parallel Execution Model
+
+Sources are organized into sequential **phases**. Sources within each phase run concurrently via `Promise.allSettled()`. Multiple actors are processed in parallel with configurable concurrency (default 5, range 1-20).
+
+A shared `SourceRateLimiter` (`server/src/lib/shared/concurrency.ts`) enforces per-domain request spacing across all concurrent actors. Each source declares a `domain` property. Sources sharing a domain share rate limits.
+
+DuckDuckGo is limited to 2-3 concurrent requests across all sources to prevent CAPTCHA triggers.
+
 ## Orchestrator Flow
 
-1. Initialize sources by category (free → reference → books → web search → news → obituary → archives)
-2. For each actor, try sources sequentially, accumulating ALL successful results
-3. **Early stopping**: After 3+ high-quality sources meeting dual threshold (confidence ≥ 0.6 AND reliability ≥ 0.6)
-4. Send all accumulated raw data to Claude synthesis (Stage 3)
-5. Claude produces structured BiographyData JSON
-6. DB writer upserts to `actor_biography_details` with COALESCE (preserves existing non-null values)
+1. Initialize sources organized into sequential **phases** (structured → reference → books → web search → news → obituary → archives)
+2. Process multiple actors concurrently via `ParallelBatchRunner` (configurable concurrency, default 5)
+3. For each actor, execute phases sequentially; within each phase, fire all sources concurrently via `Promise.allSettled()`
+4. Accumulate ALL successful results across phases
+5. **Early stopping between phases**: After 3+ high-quality source families meeting dual threshold (confidence ≥ 0.6 AND reliability ≥ 0.6)
+6. Send all accumulated raw data to Claude synthesis (Stage 3)
+7. Claude produces structured BiographyData JSON
+8. DB writer upserts to `actor_biography_details` with COALESCE (preserves existing non-null values)
 
 ## Configuration
 
 ```typescript
 {
+  concurrency: 5,                // Actors processed in parallel (1-20)
   confidenceThreshold: 0.6,      // Content confidence threshold for high-quality counting
   reliabilityThreshold: 0.6,     // Source reliability threshold
   useReliabilityThreshold: true, // Enforce reliability threshold
@@ -204,11 +217,14 @@ The biography system is designed to produce **personal narratives**, not career 
 
 ## Key Patterns
 
-- All sources extend `BaseBiographySource` which provides caching, rate limiting, confidence calculation
+- All sources extend `BaseBiographySource` which provides caching, rate limiting (via shared `SourceRateLimiter`), confidence calculation
+- Each source declares a `domain` property for rate limit coordination across concurrent actors
 - Sources requiring API keys override `isAvailable()` to check env vars
 - Web search sources extend `BiographyWebSearchBase` which handles link following, content cleaning, career filtering
 - `isCareerHeavyContent()` filters out pages dominated by filmography/awards
 - `calculateBiographicalConfidence()` scores based on biographical keyword presence
+- Sources within the same phase run concurrently via `Promise.allSettled()`
+- `ParallelBatchRunner` from `server/src/lib/shared/concurrency.ts` handles actor-level concurrency
 - DB writer uses COALESCE so re-enrichment preserves existing non-null values
 - Empty arrays are converted to null before SQL for COALESCE to work correctly
 
@@ -224,6 +240,7 @@ The biography system is designed to produce **personal narratives**, not career 
 ```bash
 cd server && npm run enrich:biographies -- \
   --limit 10 \
+  --concurrency 5 \
   --actor-id 12345 \
   --golden-test \
   --dry-run \
