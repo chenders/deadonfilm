@@ -131,10 +131,10 @@ describe("writeBiographyToProduction", () => {
     // With no archive: calls are SELECT, INSERT upsert, UPDATE actors
     const updateCall = mockQuery.mock.calls[2]
     expect(updateCall[0]).toContain("biography = $1")
-    expect(updateCall[0]).toContain("biography_version = '5.0.0'")
+    expect(updateCall[0]).toContain("biography_version = $2")
     expect(updateCall[0]).toContain("biography_source_type = 'enriched'")
     expect(updateCall[0]).toContain("updated_at = NOW()")
-    expect(updateCall[1]).toEqual(["Full narrative text", 42])
+    expect(updateCall[1]).toEqual(["Full narrative text", "5.0.0", 42])
   })
 
   it("skips actors table update when narrative is null", async () => {

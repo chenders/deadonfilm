@@ -10,6 +10,7 @@ import newrelic from "newrelic"
 import type { Pool } from "pg"
 import type { BiographyData, BiographySourceEntry } from "./biography-sources/types.js"
 import { invalidateActorCache } from "./cache.js"
+import { BIO_ENRICHMENT_VERSION } from "./enrichment-version.js"
 
 /**
  * Writes biography enrichment data directly to production tables.
@@ -17,7 +18,7 @@ import { invalidateActorCache } from "./cache.js"
  * Steps:
  * 1. Archive old biography to biography_legacy (one-time, only if not already archived)
  * 2. Upsert actor_biography_details with COALESCE strategy
- * 3. Update actors table (biography = narrative, set biography_version to '5.0.0')
+ * 3. Update actors table (biography = narrative, set biography_version)
  * 4. Invalidate actor cache
  */
 export async function writeBiographyToProduction(
@@ -90,11 +91,11 @@ export async function writeBiographyToProduction(
       await db.query(
         `UPDATE actors SET
           biography = $1,
-          biography_version = '5.0.0',
+          biography_version = $2,
           biography_source_type = 'enriched',
           updated_at = NOW()
-        WHERE id = $2`,
-        [data.narrative, actorId]
+        WHERE id = $3`,
+        [data.narrative, BIO_ENRICHMENT_VERSION, actorId]
       )
     }
 

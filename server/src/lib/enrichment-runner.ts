@@ -35,6 +35,7 @@ import { isViolentDeath } from "./death-sources/claude-cleanup.js"
 import { linkMultipleFields, hasEntityLinks } from "./entity-linker/index.js"
 import { RunLogger } from "./run-logger.js"
 import { logger } from "./logger.js"
+import { DEATH_ENRICHMENT_VERSION } from "./enrichment-version.js"
 
 /**
  * Configuration for an enrichment run
@@ -593,7 +594,9 @@ export class EnrichmentRunner {
               : null,
             entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
             enrichmentSource: "multi-source-enrichment",
-            enrichmentVersion: useReliabilityThreshold ? "5.0.0" : "5.0.0-no-reliability",
+            enrichmentVersion: useReliabilityThreshold
+              ? DEATH_ENRICHMENT_VERSION
+              : `${DEATH_ENRICHMENT_VERSION}-no-reliability`,
           }
 
           // Record per-actor results for all runs with a runId

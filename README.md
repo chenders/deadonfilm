@@ -54,7 +54,7 @@
 
 ### Biographies
 
-Two systems work together. The **biography generator** produces concise 6-line summaries from TMDB and Wikipedia via Claude Sonnet — strict editorial policy, no superlatives, no hagiography. The **biography enrichment pipeline** goes deeper: it researches 29 sources (Wikipedia, Britannica, Biography.com, news archives, books, obituary sites, historical archives) to build rich personal narratives with childhood details, family background, personal struggles, and lesser-known facts. Claude synthesizes all source material into structured biography data including life circumstance tags (Orphaned, Military Service, Immigrant, Dropout, etc.) and surprising personal facts.
+Two systems work together. The **biography generator** produces concise 6-line summaries from TMDB and Wikipedia via Claude Sonnet — strict editorial policy, no superlatives, no hagiography. The **biography enrichment pipeline** goes deeper: it researches 30+ sources (Wikipedia, Britannica, Biography.com, news archives, books, obituary sites, historical archives) to build rich personal narratives with childhood details, family background, personal struggles, and lesser-known facts. Claude synthesizes all source material into structured biography data including life circumstance tags (Orphaned, Military Service, Immigrant, Dropout, etc.) and surprising personal facts.
 
 See [Biography System](docs/biography-system.md) for generation details and editorial philosophy.
 

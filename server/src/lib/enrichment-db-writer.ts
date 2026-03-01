@@ -10,6 +10,7 @@
 import type { Pool } from "pg"
 import type { StoredEntityLinks } from "./entity-linker/index.js"
 import { invalidateActorCache } from "./cache.js"
+import { DEATH_ENRICHMENT_VERSION } from "./enrichment-version.js"
 
 export interface EnrichmentData {
   actorId: number
@@ -145,7 +146,7 @@ export async function writeToProduction(
       circumstances.rawResponse ? JSON.stringify(circumstances.rawResponse) : null,
       circumstances.entityLinks ? JSON.stringify(circumstances.entityLinks) : null,
       circumstances.enrichmentSource || "multi-source-enrichment",
-      circumstances.enrichmentVersion || "5.0.0",
+      circumstances.enrichmentVersion || DEATH_ENRICHMENT_VERSION,
     ]
   )
 

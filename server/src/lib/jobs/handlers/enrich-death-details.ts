@@ -25,6 +25,7 @@ import {
 } from "../../claude-batch/index.js"
 import { BaseJobHandler } from "./base.js"
 import { JobType, QueueName, type JobResult, type EnrichDeathDetailsPayload } from "../types.js"
+import { DEATH_ENRICHMENT_VERSION } from "../../enrichment-version.js"
 
 /**
  * Result returned from enrichment
@@ -271,7 +272,7 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
             }
           : null,
         enrichmentSource: "single-actor-enrichment",
-        enrichmentVersion: "5.0.0",
+        enrichmentVersion: DEATH_ENRICHMENT_VERSION,
       }
 
       // 9. Write to production

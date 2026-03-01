@@ -1172,6 +1172,7 @@ router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Pro
     const { linkMultipleFields, hasEntityLinks } = await import("../../lib/entity-linker/index.js")
     const { MIN_CIRCUMSTANCES_LENGTH, MIN_RUMORED_CIRCUMSTANCES_LENGTH } =
       await import("../../lib/claude-batch/constants.js")
+    const { DEATH_ENRICHMENT_VERSION } = await import("../../lib/enrichment-version.js")
 
     const actorForEnrichment = {
       id: actor.id,
@@ -1318,7 +1319,7 @@ router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Pro
         : null,
       entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
       enrichmentSource: "admin-inline-enrichment",
-      enrichmentVersion: "5.0.0",
+      enrichmentVersion: DEATH_ENRICHMENT_VERSION,
     }
 
     await writeToProduction(pool, enrichmentData, circumstancesData)
