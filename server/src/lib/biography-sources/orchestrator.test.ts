@@ -37,6 +37,7 @@ function makeMockSourceClass(sourceName: string, options?: { isWebSearch?: boole
         error: "No data",
       }),
       setConfig: vi.fn(),
+      setRateLimiter: vi.fn(),
     }
 
     // For instanceof checks in orchestrator
@@ -79,6 +80,7 @@ function resetConstructorMock(
         error: "No data",
       }),
       setConfig: vi.fn(),
+      setRateLimiter: vi.fn(),
     }
 
     if (options?.isWebSearch) {
@@ -429,6 +431,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           isAvailable: vi.fn().mockReturnValue(false),
           lookup: vi.fn(),
           setConfig: vi.fn(),
+          setRateLimiter: vi.fn(),
         }
         Object.setPrototypeOf(instance, BiographyWebSearchBase.prototype)
         mockInstances.set("Google Search", instance)
@@ -446,6 +449,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           isAvailable: vi.fn().mockReturnValue(false),
           lookup: vi.fn(),
           setConfig: vi.fn(),
+          setRateLimiter: vi.fn(),
         }
         Object.setPrototypeOf(instance, BiographyWebSearchBase.prototype)
         mockInstances.set("Bing Search", instance)
@@ -748,17 +752,19 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       const result = await orchestrator.enrichActor(testActor)
 
-      // After 3 distinct high-quality sources, remaining sources should NOT be called
-      // (mock types are unique per source, so each counts as its own family)
-      const biographyComMock = getMock("Biography.com")
+      // With phase-based execution, early stopping is checked BETWEEN phases.
+      // STRUCTURED_DATA (Wikidata, Wikipedia) and REFERENCE (Britannica, Biography.com)
+      // run all sources within each phase concurrently. After REFERENCE phase completes,
+      // the threshold is met, so later phases (WEB_SEARCH, NEWS) should NOT run.
       const googleMock = getMock("Google Search")
       const guardianMock = getMock("Guardian")
 
-      expect(biographyComMock.lookup).not.toHaveBeenCalled()
       expect(googleMock.lookup).not.toHaveBeenCalled()
       expect(guardianMock.lookup).not.toHaveBeenCalled()
 
-      expect(result.rawSources).toHaveLength(3)
+      // Wikidata, Wikipedia from STRUCTURED_DATA + all 4 REFERENCE sources ran concurrently
+      // but only those that succeed contribute to rawSources
+      expect(result.rawSources!.length).toBeGreaterThanOrEqual(3)
     })
 
     it("groups Wikidata and Wikipedia as one source family for early stopping", async () => {
@@ -777,7 +783,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
       ;(wikipediaMock.lookup as ReturnType<typeof vi.fn>).mockResolvedValue(
         createSuccessfulLookup({ confidence: 0.8, reliabilityScore: 0.95 })
       )
-      // Britannica = 2nd distinct family → triggers early stop
+      // Britannica = 2nd distinct family → triggers early stop after REFERENCE phase
       const britannicaMock = getMock("Britannica")
       ;(britannicaMock.lookup as ReturnType<typeof vi.fn>).mockResolvedValue(
         createSuccessfulLookup({ confidence: 0.8, reliabilityScore: 0.95 })
@@ -787,12 +793,15 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       const result = await orchestrator.enrichActor(testActor)
 
-      // Wikidata + Wikipedia = 1 family, Britannica = 2nd → stop
-      const biographyComMock = getMock("Biography.com")
-      expect(biographyComMock.lookup).not.toHaveBeenCalled()
+      // With phase-based execution, REFERENCE phase sources (Britannica, Biography.com, etc.)
+      // all run concurrently within the phase. Early stopping is checked AFTER the phase.
+      // So Biography.com runs (it's in the REFERENCE phase with Britannica), but later
+      // phases (WEB_SEARCH, NEWS) should NOT run.
+      const googleMock = getMock("Google Search")
+      expect(googleMock.lookup).not.toHaveBeenCalled()
 
-      // All 3 sources were collected (Wikidata, Wikipedia, Britannica)
-      expect(result.rawSources).toHaveLength(3)
+      // Wikidata, Wikipedia from STRUCTURED_DATA + REFERENCE sources ran
+      expect(result.rawSources!.length).toBeGreaterThanOrEqual(3)
     })
 
     it("always tries book sources even when early stop threshold is met", async () => {
@@ -856,6 +865,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
                 createSuccessfulLookup({ confidence: 0.8, reliabilityScore: 0.3 })
               ),
             setConfig: vi.fn(),
+            setRateLimiter: vi.fn(),
           }
           mockInstances.set(name, instance)
           return instance
@@ -901,9 +911,12 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       const result = await orchestrator.enrichActor(testActor)
 
-      // Wikipedia should NOT be called because cost limit hit after Wikidata
-      const wikipediaMock = getMock("Wikipedia")
-      expect(wikipediaMock.lookup).not.toHaveBeenCalled()
+      // With phase-based execution, Wikidata and Wikipedia run concurrently in the
+      // STRUCTURED_DATA phase. Cost limit is checked BETWEEN phases, so both run.
+      // But the REFERENCE phase should NOT run because cost limit is exceeded after
+      // the STRUCTURED_DATA phase completes.
+      const britannicaMock = getMock("Britannica")
+      expect(britannicaMock.lookup).not.toHaveBeenCalled()
 
       expect(result.stats.totalCostUsd).toBeGreaterThanOrEqual(0.5)
     })
@@ -1198,7 +1211,9 @@ describe("BiographyEnrichmentOrchestrator", () => {
     })
 
     it("respects batch total cost limit", async () => {
+      // Use concurrency=1 to ensure sequential processing for deterministic cost limiting
       const orchestrator = new BiographyEnrichmentOrchestrator({
+        concurrency: 1,
         costLimits: {
           maxCostPerActor: 10.0,
           maxTotalCost: 10.0,
