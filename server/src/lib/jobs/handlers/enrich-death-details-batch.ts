@@ -48,8 +48,8 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
       async (progress) => {
         // Update BullMQ job progress (always — lightweight in-memory update)
         await job.updateProgress({
-          currentActorIndex: progress.currentActorIndex,
-          currentActorName: progress.currentActorName,
+          actorsCompleted: progress.actorsCompleted,
+          actorsInFlight: progress.actorsInFlight,
           actorsQueried: progress.actorsQueried,
           actorsProcessed: progress.actorsProcessed,
           actorsEnriched: progress.actorsEnriched,
@@ -57,17 +57,8 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
           totalCostUsd: progress.totalCostUsd,
         })
 
-        // "processing" phase = actor just started, only update name/index (lightweight)
-        // "completed" phase = actor finished, update all counters (full DB write)
-        if (progress.phase === "processing") {
-          await this.updateCurrentActor(
-            runId,
-            progress.currentActorIndex,
-            progress.currentActorName
-          )
-        } else {
-          await this.updateRunProgress(runId, progress)
-        }
+        // Update all counters in DB on each completion
+        await this.updateRunProgress(runId, progress)
       },
       abortController.signal
     )
@@ -104,37 +95,15 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
   }
 
   /**
-   * Lightweight update: only set current actor name/index (no counter writes).
-   * Used for "processing" phase to avoid doubling DB writes per actor.
-   */
-  private async updateCurrentActor(
-    runId: number,
-    actorIndex: number,
-    actorName: string
-  ): Promise<void> {
-    const db = getPool()
-
-    try {
-      await db.query(
-        `UPDATE enrichment_runs
-         SET current_actor_index = $1,
-             current_actor_name = $2
-         WHERE id = $3`,
-        [actorIndex, actorName, runId]
-      )
-    } catch (error) {
-      logger.error({ runId, error }, "Failed to update current actor")
-    }
-  }
-
-  /**
-   * Update progress in the enrichment_runs table
+   * Update progress in the enrichment_runs table.
+   * With parallel processing, current_actor_index tracks completed count
+   * and current_actor_name shows in-flight count for monitoring.
    */
   private async updateRunProgress(
     runId: number,
     progress: {
-      currentActorIndex: number
-      currentActorName: string
+      actorsCompleted: number
+      actorsInFlight: number
       actorsQueried: number
       actorsProcessed: number
       actorsEnriched: number
@@ -156,8 +125,8 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
              actors_with_death_page = $7
          WHERE id = $8`,
         [
-          progress.currentActorIndex,
-          progress.currentActorName,
+          progress.actorsCompleted,
+          `${progress.actorsInFlight} in flight`,
           progress.actorsQueried,
           progress.actorsProcessed,
           progress.actorsEnriched,

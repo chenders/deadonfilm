@@ -30,6 +30,7 @@ export interface EnrichmentRunConfig {
   maxTotalCost?: number
   claudeCleanup?: boolean
   gatherAllSources?: boolean
+  concurrency?: number
   followLinks?: boolean
   aiLinkSelection?: boolean
   aiContentExtraction?: boolean
@@ -113,6 +114,7 @@ export async function startEnrichmentRun(config: EnrichmentRunConfig): Promise<n
         maxTotalCost: config.maxTotalCost,
         claudeCleanup: config.claudeCleanup ?? true,
         gatherAllSources: config.gatherAllSources ?? true,
+        concurrency: config.concurrency,
         followLinks: config.followLinks ?? true,
         aiLinkSelection: config.aiLinkSelection ?? true,
         aiContentExtraction: config.aiContentExtraction ?? true,

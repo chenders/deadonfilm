@@ -199,6 +199,12 @@ const program = new Command()
     "Min high-quality source families before early stopping (default 5, 0 = disable early stopping)",
     parseNonNegativeInt
   )
+  .option(
+    "--concurrency <n>",
+    "Number of actors to process concurrently (default: 5)",
+    parsePositiveInt,
+    5
+  )
   .option("--staging", "Write to staging table for admin review")
   .option("--ignore-cache", "Ignore cached responses")
   .option(
@@ -233,6 +239,7 @@ interface CliOptions {
   disableArchives?: boolean
   disableBooks?: boolean
   earlyStopSources?: number
+  concurrency: number
   staging?: boolean
   ignoreCache?: boolean
   sortBy: "popularity" | "interestingness"
@@ -253,6 +260,7 @@ async function run(options: CliOptions): Promise<void> {
       // Build enrichment config from CLI options
       const config: Partial<BiographyEnrichmentConfig> = {
         limit: options.limit,
+        concurrency: options.concurrency,
         confidenceThreshold: options.confidence,
         costLimits: {
           maxCostPerActor: options.maxCostPerActor,
@@ -319,6 +327,7 @@ async function run(options: CliOptions): Promise<void> {
       console.log(`  Web search:           ${options.disableWebSearch ? "DISABLED" : "enabled"}`)
       console.log(`  News sources:         ${options.disableNews ? "DISABLED" : "enabled"}`)
       console.log(`  Archive sources:      ${options.disableArchives ? "DISABLED" : "enabled"}`)
+      console.log(`  Concurrency:          ${options.concurrency} actors`)
       console.log(`  Write target:         ${options.staging ? "STAGING" : "PRODUCTION"}`)
       console.log(`  Dry run:              ${options.dryRun ? "YES" : "no"}`)
       if (options.goldenTest) {

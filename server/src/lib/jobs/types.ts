@@ -184,6 +184,7 @@ export const enrichDeathDetailsBatchPayloadSchema = z.object({
   maxTotalCost: z.number().optional(),
   claudeCleanup: z.boolean().default(true),
   gatherAllSources: z.boolean().default(true),
+  concurrency: z.number().int().positive().optional(),
   followLinks: z.boolean().default(true),
   aiLinkSelection: z.boolean().default(true),
   aiContentExtraction: z.boolean().default(true),
@@ -299,6 +300,7 @@ export const enrichBiographiesBatchPayloadSchema = z.object({
   maxTotalCost: z.number().optional(),
   earlyStopSourceCount: z.number().int().min(0).optional(), // 0 = disable early stopping (try all sources)
   allowRegeneration: z.boolean().default(false),
+  concurrency: z.number().int().positive().optional(),
   sortBy: z.enum(["popularity", "interestingness"]).default("popularity"),
   useStaging: z.boolean().default(false),
   sourceCategories: z

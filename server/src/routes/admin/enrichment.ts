@@ -393,7 +393,7 @@ interface StartEnrichmentRequest {
   free?: boolean
   paid?: boolean
   ai?: boolean
-  gatherAllSources?: boolean
+  concurrency?: number
   // Advanced options
   claudeCleanup?: boolean
   followLinks?: boolean
@@ -475,7 +475,8 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
       ai: config.ai ?? false,
       // Enrichment settings from UI
       claudeCleanup: config.claudeCleanup ?? true,
-      gatherAllSources: config.gatherAllSources ?? true,
+      gatherAllSources: true,
+      concurrency: config.concurrency,
       followLinks: config.followLinks ?? true,
       aiLinkSelection: config.aiLinkSelection ?? true,
       aiContentExtraction: config.aiContentExtraction ?? true,

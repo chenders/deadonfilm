@@ -165,7 +165,7 @@ interface EnrichOptions {
   maxCostPerActor?: number
   maxTotalCost?: number
   claudeCleanup: boolean
-  gatherAllSources: boolean
+  concurrency: number
   followLinks: boolean
   aiLinkSelection: boolean
   aiContentExtraction: boolean
@@ -369,7 +369,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     maxCostPerActor,
     maxTotalCost,
     claudeCleanup,
-    gatherAllSources,
+    concurrency,
     followLinks,
     aiLinkSelection,
     aiContentExtraction,
@@ -747,9 +747,11 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     console.log(`\nClaude Cleanup:`)
     console.log(`  Enabled: ${claudeCleanup ? "yes (Opus 4.5)" : "disabled"}`)
     if (claudeCleanup) {
-      console.log(`  Gather all sources: ${gatherAllSources ? "yes" : "no"}`)
+      console.log(`  Gather all sources: yes (always on)`)
       console.log(`  Estimated cost per actor: ~$${ESTIMATED_CLAUDE_COST_PER_ACTOR}`)
     }
+
+    console.log(`\nConcurrency: ${concurrency} actors`)
 
     console.log(`\nCost Limits:`)
     if (maxCostPerActor !== undefined) {
@@ -803,7 +805,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       console.log(`Ready to enrich ${actors.length} actors`)
       console.log(`  Sources: ${sources || "none"}`)
       if (claudeCleanup) {
-        console.log(`  Claude cleanup: enabled${gatherAllSources ? " (gather all)" : ""}`)
+        console.log(`  Claude cleanup: enabled (gather all)`)
       }
       console.log(`  Max cost: ${costStr}`)
       console.log(`${"─".repeat(SEPARATOR_WIDTH)}`)
@@ -840,7 +842,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         ? {
             enabled: true,
             model: "claude-opus-4-5-20251101",
-            gatherAllSources: gatherAllSources,
+            gatherAllSources: true,
           }
         : undefined,
       useReliabilityThreshold: !disableReliabilityThreshold,
@@ -1282,7 +1284,13 @@ const program = new Command()
   )
   // Claude cleanup options (enabled by default)
   .option("--disable-claude-cleanup", "Disable Claude Opus 4.5 cleanup")
-  .option("--disable-gather-all-sources", "Disable gathering data from ALL sources before cleanup")
+  // Concurrency
+  .option(
+    "--concurrency <n>",
+    "Number of actors to process concurrently (default: 5)",
+    parsePositiveInt,
+    5
+  )
   // Link following options (enabled by default)
   .option("--disable-follow-links", "Disable following links from search results")
   .option("--disable-ai-link-selection", "Disable AI-powered link selection")
@@ -1363,7 +1371,7 @@ const program = new Command()
       maxCostPerActor: options.maxCostPerActor,
       maxTotalCost: options.maxTotalCost,
       claudeCleanup: !options.disableClaudeCleanup,
-      gatherAllSources: !options.disableGatherAllSources,
+      concurrency: options.concurrency,
       followLinks: !options.disableFollowLinks,
       aiLinkSelection: !options.disableAiLinkSelection,
       aiContentExtraction: !options.disableAiContentExtraction,
