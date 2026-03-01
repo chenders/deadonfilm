@@ -773,8 +773,9 @@ export class DeathEnrichmentOrchestrator {
                     resolvedSources: additionalResolvedSources,
                   }
                 }
-              } catch {
-                // Silently continue with source name on error
+              } catch (error) {
+                const errorMsg = error instanceof Error ? error.message : "Unknown error"
+                this.statusBar.log(`    Additional result URL resolution failed: ${errorMsg}`)
               }
             }
           }

@@ -288,7 +288,7 @@ router.get("/runs/:id/logs", async (req: Request, res: Response): Promise<void> 
     // Get total count
     const countQuery = `SELECT COUNT(*) FROM error_logs ${whereClause}`
     const countResult = await pool.query(countQuery, params)
-    const total = parseInt(countResult.rows[0].count)
+    const total = parseInt(countResult.rows[0]?.count ?? "0", 10)
 
     // Get paginated results
     const query = `

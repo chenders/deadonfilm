@@ -122,6 +122,7 @@ export interface StartBioEnrichmentRequest {
   maxCostPerActor?: number
   maxTotalCost?: number
   allowRegeneration?: boolean
+  sortBy?: "popularity" | "interestingness"
   sourceCategories?: {
     free?: boolean
     reference?: boolean
@@ -255,7 +256,10 @@ export function useBioEnrichmentRunProgress(runId: number | undefined, enabled?:
     queryKey: ["bio-enrichment-run-progress", runId],
     queryFn: () => fetchJson(`${BASE_URL}/runs/${runId}/progress`),
     enabled: !!runId && enabled !== false,
-    refetchInterval: 3000,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      return status === "running" || status === "pending" ? 3000 : false
+    },
   })
 }
 

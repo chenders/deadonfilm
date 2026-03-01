@@ -54,18 +54,18 @@ describe("SourceRateLimiter", () => {
 })
 
 describe("BatchCostTracker", () => {
-  it("accumulates cost across actors", () => {
+  it("accumulates cost", () => {
     const tracker = new BatchCostTracker(10.0)
-    tracker.addActorCost(1, 0.05)
-    tracker.addActorCost(2, 0.03)
+    tracker.addCost(0.05)
+    tracker.addCost(0.03)
     expect(tracker.getTotalCost()).toBeCloseTo(0.08)
     expect(tracker.isLimitExceeded()).toBe(false)
   })
 
   it("detects when limit is exceeded", () => {
     const tracker = new BatchCostTracker(0.1)
-    tracker.addActorCost(1, 0.05)
-    tracker.addActorCost(2, 0.06)
+    tracker.addCost(0.05)
+    tracker.addCost(0.06)
     expect(tracker.isLimitExceeded()).toBe(true)
   })
 
@@ -81,7 +81,7 @@ describe("BatchCostTracker", () => {
 
   it("handles no-limit case (Infinity)", () => {
     const tracker = new BatchCostTracker(Infinity)
-    tracker.addActorCost(1, 100)
+    tracker.addCost(100)
     expect(tracker.isLimitExceeded()).toBe(false)
   })
 })

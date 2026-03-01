@@ -15,7 +15,6 @@ import newrelic from "newrelic"
  *   --disable-free               Disable free sources
  *   --disable-paid               Disable paid sources
  *   --disable-claude-cleanup     Disable Claude Opus 4.5 cleanup
- *   --disable-gather-all-sources Disable gathering all sources before cleanup
  *   --disable-follow-links       Disable following links from search results
  *   --disable-ai-link-selection  Disable AI-powered link selection
  *   --disable-ai-content-extraction Disable AI-powered content extraction

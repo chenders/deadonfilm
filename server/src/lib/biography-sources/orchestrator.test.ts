@@ -654,7 +654,10 @@ describe("BiographyEnrichmentOrchestrator", () => {
       expect(wikidataMock.lookup).toHaveBeenCalledWith(testActor)
       expect(wikipediaMock.lookup).toHaveBeenCalledWith(testActor)
 
-      // Wikidata should be called first
+      // Both sources are in the same STRUCTURED_DATA phase and run concurrently.
+      // Promise.allSettled preserves input-array order, so Wikidata (first in array)
+      // is initiated before Wikipedia. This assertion verifies array ordering, not a
+      // sequential execution guarantee — intra-phase ordering is an implementation detail.
       const wikidataOrder = (wikidataMock.lookup as ReturnType<typeof vi.fn>).mock
         .invocationCallOrder[0]
       const wikipediaOrder = (wikipediaMock.lookup as ReturnType<typeof vi.fn>).mock

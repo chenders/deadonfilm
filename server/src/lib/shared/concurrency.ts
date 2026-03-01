@@ -122,8 +122,8 @@ export class BatchCostTracker {
 
   constructor(private readonly maxTotalCost: number) {}
 
-  /** Add cost for a completed actor. Returns whether the limit is now exceeded. */
-  addActorCost(_actorId: number, cost: number): boolean {
+  /** Add cost for a completed item. Returns whether the limit is now exceeded. */
+  addCost(cost: number): boolean {
     this.totalCost += cost
     return this.totalCost >= this.maxTotalCost
   }
@@ -198,7 +198,7 @@ export class ParallelBatchRunner<T, R> {
 
           // Track cost
           if (costTracker && getCost) {
-            const exceeded = costTracker.addActorCost(index, getCost(result))
+            const exceeded = costTracker.addCost(getCost(result))
             if (exceeded) costLimitHit = true
           }
 

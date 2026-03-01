@@ -74,7 +74,7 @@ vi.mock("./death-sources/orchestrator.js", () => {
         errors: [],
       }))
     },
-    CostExceededError: class CostExceededError extends Error {},
+    CostLimitExceededError: class CostLimitExceededError extends Error {},
   }
 })
 

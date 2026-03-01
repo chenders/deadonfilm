@@ -196,6 +196,17 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
     sortBy,
   } = req.body
 
+  // Validate concurrency before inserting run record
+  if (concurrency !== undefined) {
+    const n = Number(concurrency)
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) {
+      res.status(400).json({
+        error: { message: "concurrency must be a positive integer" },
+      })
+      return
+    }
+  }
+
   // Validate earlyStopSourceCount before inserting run record
   if (earlyStopSourceCount !== undefined) {
     const n = Number(earlyStopSourceCount)

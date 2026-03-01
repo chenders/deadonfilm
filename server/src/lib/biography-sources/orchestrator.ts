@@ -87,16 +87,6 @@ import { OpenLibraryBiographySource } from "./sources/open-library.js"
 import { IABooksBiographySource } from "./sources/ia-books.js"
 
 /**
- * Book source types — these are always tried regardless of early stopping.
- * Books provide unique archival content not found in web sources.
- */
-const BOOK_SOURCE_TYPES = new Set<BiographySourceType>([
-  BiographySourceType.GOOGLE_BOOKS_BIO,
-  BiographySourceType.OPEN_LIBRARY_BIO,
-  BiographySourceType.IA_BOOKS_BIO,
-])
-
-/**
  * Source families that share the same upstream data. Sources within the same
  * family count as a single high-quality source for early-stopping purposes.
  * This prevents e.g. Wikidata + Wikipedia (both Wikimedia Foundation) from
@@ -353,8 +343,11 @@ export class BiographyEnrichmentOrchestrator {
     const rawSources: RawBiographySourceData[] = []
     const highQualityFamilies = new Set<string>()
 
-    // Track whether the BOOKS phase has been completed for early stopping logic
-    let booksPhaseCompleted = false
+    // Track whether the BOOKS phase has been completed for early stopping logic.
+    // If no BOOKS phase is configured (books category disabled), treat as already completed
+    // so early stopping isn't permanently blocked.
+    const hasBooksPhase = this.phases.some((p) => p.phase === SourcePhase.BOOKS)
+    let booksPhaseCompleted = !hasBooksPhase
 
     // Add New Relic attributes for this actor
     for (const [key, value] of Object.entries({
@@ -528,7 +521,11 @@ export class BiographyEnrichmentOrchestrator {
 
       // Aggregate results from settled promises
       for (const settled of results) {
-        if (settled.status !== "fulfilled") continue
+        if (settled.status !== "fulfilled") {
+          // Defensive: count rejected promises (shouldn't happen with broad inner catch)
+          sourcesAttempted++
+          continue
+        }
         const result = settled.value
 
         sourcesAttempted++
