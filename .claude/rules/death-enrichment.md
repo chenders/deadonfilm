@@ -16,6 +16,29 @@ Enriches actor death records with cause, manner, location, and circumstances fro
 
 Sources shared between both systems: Guardian, NYTimes, AP News, BBC News, Reuters, People, Washington Post, Legacy, Find a Grave, Google Books, Open Library, IA Books, Internet Archive, Chronicling America, Trove, Europeana, and all web search sources (Google, Bing, DuckDuckGo, Brave).
 
+## Reliability Tiers
+
+Source reliability is based on **Wikipedia's Reliable Sources Perennial list (RSP)** — a community-maintained assessment of source trustworthiness for encyclopedic use. Our `ReliabilityTier` enum in `server/src/lib/death-sources/types.ts` maps these assessments to numeric scores (0.0–1.0).
+
+**Reliability vs confidence**: These are independent axes. Reliability measures *publisher trustworthiness* (is Reuters a credible outlet?). Confidence measures *content relevance* (does this specific page contain death information?). A Reuters page about weather has high reliability but zero confidence for death enrichment.
+
+| Tier | Score | RSP Equivalent | Examples |
+|------|-------|----------------|----------|
+| STRUCTURED_DATA | 1.0 | N/A | Wikidata |
+| TIER_1_NEWS | 0.95 | "Generally reliable" | AP, NYT, BBC, Guardian, Reuters, WaPo |
+| TRADE_PRESS | 0.9 | "Generally reliable" (domain) | Variety, Deadline, THR, BFI |
+| ARCHIVAL | 0.9 | Primary sources | Trove, Europeana, Chronicling America |
+| SECONDARY_COMPILATION | 0.85 | Wikipedia's self-assessment | Wikipedia |
+| SEARCH_AGGREGATOR | 0.7 | Depends on linked sources | Google, Bing, DDG, Brave, NewsAPI |
+| ARCHIVE_MIRROR | 0.7 | Mirrors | Internet Archive |
+| MARGINAL_EDITORIAL | 0.65 | "Use with caution" | People Magazine |
+| MARGINAL_MIXED | 0.6 | Mixed editorial + UGC | Legacy.com, FamilySearch |
+| AI_MODEL | 0.55 | No RSP equivalent | Claude, GPT, Gemini |
+| UNRELIABLE_FAST | 0.5 | "Generally unreliable" | TMZ |
+| UNRELIABLE_UGC | 0.35 | User-generated content | Find a Grave (IMDb removed) |
+
+When adding a new source, consult [Wikipedia's RSP list](https://en.wikipedia.org/wiki/Wikipedia:Reliable_sources/Perennial_sources) to determine the appropriate tier. The RSP page rates sources as "generally reliable", "no consensus", "generally unreliable", or "deprecated" — map to the closest tier above.
+
 ## Architecture
 
 | Component | Path | Purpose |
@@ -47,7 +70,6 @@ Sources are tried in this order:
 |--------|--------|:---------------------:|-------|
 | **Wikidata** | SPARQL query by name + birth/death year | YES | P509 (cause), P1196 (manner), P20 (place) |
 | **Wikipedia** | `wtf_wikipedia` parser, extract Death/Health sections | YES | AI section selection optional; clean plaintext output |
-| **IMDb** | Scrape `/name/{id}/bio` page | YES | Uses known IMDb ID or suggestion API search |
 | BFI Sight & Sound | Annual memoriam list URL by death year | LOW | Only covers 2015+ deaths |
 
 ### Phase 2: Web Search (with link following)
@@ -95,6 +117,7 @@ Gemini Flash (~$0.0001) → Groq (~$0.0002) → GPT-4o Mini (~$0.0003) → DeepS
 ## Known Issues & Disabled Sources
 
 ### Removed from orchestrator
+- **IMDb** — user-generated content, rated "unreliable" by Wikipedia RSP; scrapes bio pages but poor fact-checking
 - **AlloCine, Douban, Soompi** — 0% success rate
 - **FilmiBeat** — consistently returns 403
 - **Television Academy, IBDB** — return `circumstances: null` by design (career DBs, not obituary DBs)

@@ -42,7 +42,6 @@ import { FindAGraveSource } from "./sources/findagrave.js"
 import { LegacySource } from "./sources/legacy.js"
 import { BFISightSoundSource } from "./sources/bfi-sight-sound.js"
 import { WikipediaSource } from "./sources/wikipedia.js"
-import { IMDbSource } from "./sources/imdb.js"
 import { VarietySource } from "./sources/variety.js"
 import { DeadlineSource } from "./sources/deadline.js"
 import { NewsAPISource } from "./sources/newsapi.js"
@@ -242,7 +241,6 @@ export class DeathEnrichmentOrchestrator {
       // Phase 1: Structured data
       new WikidataSource(),
       new WikipediaSource(), // Wikipedia Death section extraction
-      new IMDbSource(), // IMDb bio pages (scraped)
       new BFISightSoundSource(), // International film obituaries (2015+ only)
 
       // Phase 2: Web Search (with link following)
