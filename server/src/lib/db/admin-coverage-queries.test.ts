@@ -244,7 +244,7 @@ describe("Admin Coverage Queries", () => {
       const calls = vi.mocked(mockPool.query).mock.calls
       expect(calls[0][0]).toContain("birthday >= $")
       expect(calls[0][0]).toContain("age_at_death >= $")
-      expect(calls[0][0]).toContain("popularity >= $")
+      expect(calls[0][0]).toContain("dof_popularity >= $")
       expect(calls[0][1]).toContain(10)
       expect(calls[0][1]).toContain("1920-01-01")
       expect(calls[0][1]).toContain(60)
