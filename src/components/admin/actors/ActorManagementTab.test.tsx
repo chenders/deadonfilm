@@ -1238,4 +1238,104 @@ describe("ActorManagementTab", () => {
       expect(creditElements.length).toBeGreaterThan(0)
     })
   })
+
+  describe("Birth Date Filters", () => {
+    beforeEach(() => {
+      vi.mocked(useActorsForCoverage).mockReturnValue({
+        data: { items: mockActors, total: 3, totalPages: 1 },
+        isLoading: false,
+        error: null,
+      } as never)
+    })
+
+    it("renders born after and born before date inputs", () => {
+      renderComponent()
+
+      expect(screen.getByLabelText("Born After")).toBeInTheDocument()
+      expect(screen.getByLabelText("Born Before")).toBeInTheDocument()
+    })
+
+    it("parses birth date filters from URL params", () => {
+      renderComponent(
+        "/admin/actors?tab=management&birthDateStart=1920-01-01&birthDateEnd=1950-12-31"
+      )
+
+      const calls = vi.mocked(useActorsForCoverage).mock.calls
+      const latestFilters = calls[calls.length - 1]?.[2]
+      expect(latestFilters?.birthDateStart).toBe("1920-01-01")
+      expect(latestFilters?.birthDateEnd).toBe("1950-12-31")
+    })
+  })
+
+  describe("Age at Death Filters", () => {
+    beforeEach(() => {
+      vi.mocked(useActorsForCoverage).mockReturnValue({
+        data: { items: mockActors, total: 3, totalPages: 1 },
+        isLoading: false,
+        error: null,
+      } as never)
+    })
+
+    it("renders min and max age inputs", () => {
+      renderComponent()
+
+      const minAge = screen.getByLabelText("Min Age at Death")
+      const maxAge = screen.getByLabelText("Max Age at Death")
+      expect(minAge).toBeInTheDocument()
+      expect(maxAge).toBeInTheDocument()
+      expect(minAge).toHaveAttribute("type", "number")
+      expect(maxAge).toHaveAttribute("type", "number")
+      expect(minAge).toHaveAttribute("min", "0")
+      expect(maxAge).toHaveAttribute("max", "130")
+    })
+
+    it("parses valid age filters from URL params", () => {
+      renderComponent("/admin/actors?tab=management&minAge=20&maxAge=40")
+
+      const calls = vi.mocked(useActorsForCoverage).mock.calls
+      const latestFilters = calls[calls.length - 1]?.[2]
+      expect(latestFilters?.minAge).toBe(20)
+      expect(latestFilters?.maxAge).toBe(40)
+    })
+
+    it("ignores invalid age URL params", () => {
+      renderComponent("/admin/actors?tab=management&minAge=abc&maxAge=-5")
+
+      const calls = vi.mocked(useActorsForCoverage).mock.calls
+      const latestFilters = calls[calls.length - 1]?.[2]
+      expect(latestFilters?.minAge).toBeUndefined()
+      expect(latestFilters?.maxAge).toBeUndefined()
+    })
+
+    it("ignores out-of-range age URL params", () => {
+      renderComponent("/admin/actors?tab=management&minAge=200&maxAge=999")
+
+      const calls = vi.mocked(useActorsForCoverage).mock.calls
+      const latestFilters = calls[calls.length - 1]?.[2]
+      expect(latestFilters?.minAge).toBeUndefined()
+      expect(latestFilters?.maxAge).toBeUndefined()
+    })
+
+    it("updates age filter on input change", () => {
+      renderComponent()
+
+      const minAgeInput = screen.getByLabelText("Min Age at Death")
+      fireEvent.change(minAgeInput, { target: { value: "30" } })
+
+      const calls = vi.mocked(useActorsForCoverage).mock.calls
+      const latestFilters = calls[calls.length - 1]?.[2]
+      expect(latestFilters?.minAge).toBe(30)
+    })
+
+    it("clears age filter when input is emptied", () => {
+      renderComponent("/admin/actors?tab=management&minAge=50")
+
+      const minAgeInput = screen.getByLabelText("Min Age at Death")
+      fireEvent.change(minAgeInput, { target: { value: "" } })
+
+      const calls = vi.mocked(useActorsForCoverage).mock.calls
+      const latestFilters = calls[calls.length - 1]?.[2]
+      expect(latestFilters?.minAge).toBeUndefined()
+    })
+  })
 })

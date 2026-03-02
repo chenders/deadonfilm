@@ -231,6 +231,36 @@ describe("Coverage API Routes", () => {
 
       vi.mocked(mockPool.query).mockReset()
     })
+
+    it("ignores invalid birth date format", async () => {
+      const coverageModule = await import("./coverage.js")
+      const router = coverageModule.default
+
+      const actorsRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/actors" && layer.route?.methods.get
+      )
+
+      const req = {
+        query: { birthDateStart: "not-a-date", birthDateEnd: "2024-13-99" },
+      } as any
+
+      const { getPool } = await import("../../lib/db/pool.js")
+      vi.mocked(getPool).mockReturnValue(mockPool)
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      const jsonFn = vi.fn()
+      const res = { json: jsonFn, status: vi.fn(() => ({ json: vi.fn() })) } as any
+
+      await actorsRoute!.route!.stack[0].handle(req, res, vi.fn())
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      const lastCall = calls[calls.length - 1]
+      // Invalid dates should not appear in the query
+      expect(lastCall[0]).not.toContain("birthday >= $")
+      expect(lastCall[0]).not.toContain("birthday <= $")
+
+      vi.mocked(mockPool.query).mockReset()
+    })
   })
 
   describe("GET /admin/api/coverage/actors - deathManner filter", () => {

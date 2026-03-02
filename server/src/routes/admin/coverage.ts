@@ -10,6 +10,11 @@
 
 import { Request, Response, Router } from "express"
 import { getPool } from "../../lib/db/pool.js"
+
+/** Validate that a string is a plausible YYYY-MM-DD date. */
+function isValidDateParam(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !isNaN(Date.parse(value))
+}
 import { logger } from "../../lib/logger.js"
 import {
   getCoverageStats,
@@ -112,11 +117,17 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (req.query.birthDateStart) {
-      filters.birthDateStart = req.query.birthDateStart as string
+      const val = req.query.birthDateStart as string
+      if (isValidDateParam(val)) {
+        filters.birthDateStart = val
+      }
     }
 
     if (req.query.birthDateEnd) {
-      filters.birthDateEnd = req.query.birthDateEnd as string
+      const val = req.query.birthDateEnd as string
+      if (isValidDateParam(val)) {
+        filters.birthDateEnd = val
+      }
     }
 
     if (req.query.minAge) {
