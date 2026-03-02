@@ -590,7 +590,7 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
          LIMIT 2
        ) sub
      ) tf ON true
-     WHERE ($3 = true OR is_obscure = false)
+     WHERE ($3 = true OR actors.is_obscure = false)
        ${searchClause}
      ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}, actors.name, actors.id
      LIMIT $1 OFFSET $2`,
