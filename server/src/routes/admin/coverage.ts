@@ -22,6 +22,11 @@ import {
   ActorCoverageFilters,
 } from "../../lib/db/admin-coverage-queries.js"
 
+/** Validate that a string is a plausible YYYY-MM-DD date. */
+function isValidDateParam(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !isNaN(Date.parse(value))
+}
+
 const router = Router()
 
 // ============================================================================
@@ -109,6 +114,34 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
 
     if (req.query.deathDateEnd) {
       filters.deathDateEnd = req.query.deathDateEnd as string
+    }
+
+    if (req.query.birthDateStart) {
+      const val = req.query.birthDateStart as string
+      if (isValidDateParam(val)) {
+        filters.birthDateStart = val
+      }
+    }
+
+    if (req.query.birthDateEnd) {
+      const val = req.query.birthDateEnd as string
+      if (isValidDateParam(val)) {
+        filters.birthDateEnd = val
+      }
+    }
+
+    if (req.query.minAge) {
+      const minAge = Number(req.query.minAge as string)
+      if (Number.isInteger(minAge) && minAge >= 0 && minAge <= 130) {
+        filters.minAge = minAge
+      }
+    }
+
+    if (req.query.maxAge) {
+      const maxAge = Number(req.query.maxAge as string)
+      if (Number.isInteger(maxAge) && maxAge >= 0 && maxAge <= 130) {
+        filters.maxAge = maxAge
+      }
     }
 
     if (req.query.searchName) {

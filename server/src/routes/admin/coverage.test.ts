@@ -109,6 +109,160 @@ describe("Coverage API Routes", () => {
     })
   })
 
+  describe("GET /admin/api/coverage/actors - birth date and age filters", () => {
+    it("passes birthDateStart and birthDateEnd to query", async () => {
+      const coverageModule = await import("./coverage.js")
+      const router = coverageModule.default
+
+      const actorsRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/actors" && layer.route?.methods.get
+      )
+
+      const req = {
+        query: { birthDateStart: "1920-01-01", birthDateEnd: "1950-12-31" },
+      } as any
+
+      const { getPool } = await import("../../lib/db/pool.js")
+      vi.mocked(getPool).mockReturnValue(mockPool)
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      const jsonFn = vi.fn()
+      const res = { json: jsonFn, status: vi.fn(() => ({ json: vi.fn() })) } as any
+
+      await actorsRoute!.route!.stack[0].handle(req, res, vi.fn())
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      const lastCall = calls[calls.length - 1]
+      expect(lastCall[0]).toContain("birthday >= $")
+      expect(lastCall[0]).toContain("birthday <= $")
+      expect(lastCall[1]).toContain("1920-01-01")
+      expect(lastCall[1]).toContain("1950-12-31")
+
+      vi.mocked(mockPool.query).mockReset()
+    })
+
+    it("passes minAge and maxAge to query", async () => {
+      const coverageModule = await import("./coverage.js")
+      const router = coverageModule.default
+
+      const actorsRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/actors" && layer.route?.methods.get
+      )
+
+      const req = {
+        query: { minAge: "20", maxAge: "40" },
+      } as any
+
+      const { getPool } = await import("../../lib/db/pool.js")
+      vi.mocked(getPool).mockReturnValue(mockPool)
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      const jsonFn = vi.fn()
+      const res = { json: jsonFn, status: vi.fn(() => ({ json: vi.fn() })) } as any
+
+      await actorsRoute!.route!.stack[0].handle(req, res, vi.fn())
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      const lastCall = calls[calls.length - 1]
+      expect(lastCall[0]).toContain("age_at_death >= $")
+      expect(lastCall[0]).toContain("age_at_death <= $")
+      expect(lastCall[1]).toContain(20)
+      expect(lastCall[1]).toContain(40)
+
+      vi.mocked(mockPool.query).mockReset()
+    })
+
+    it("ignores negative age values", async () => {
+      const coverageModule = await import("./coverage.js")
+      const router = coverageModule.default
+
+      const actorsRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/actors" && layer.route?.methods.get
+      )
+
+      const req = {
+        query: { minAge: "-5", maxAge: "-1" },
+      } as any
+
+      const { getPool } = await import("../../lib/db/pool.js")
+      vi.mocked(getPool).mockReturnValue(mockPool)
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      const jsonFn = vi.fn()
+      const res = { json: jsonFn, status: vi.fn(() => ({ json: vi.fn() })) } as any
+
+      await actorsRoute!.route!.stack[0].handle(req, res, vi.fn())
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      const lastCall = calls[calls.length - 1]
+      // Negative ages should not appear in the query params
+      expect(lastCall[1]).not.toContain(-5)
+      expect(lastCall[1]).not.toContain(-1)
+
+      vi.mocked(mockPool.query).mockReset()
+    })
+
+    it("ignores non-numeric age values", async () => {
+      const coverageModule = await import("./coverage.js")
+      const router = coverageModule.default
+
+      const actorsRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/actors" && layer.route?.methods.get
+      )
+
+      const req = {
+        query: { minAge: "abc", maxAge: "xyz" },
+      } as any
+
+      const { getPool } = await import("../../lib/db/pool.js")
+      vi.mocked(getPool).mockReturnValue(mockPool)
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      const jsonFn = vi.fn()
+      const res = { json: jsonFn, status: vi.fn(() => ({ json: vi.fn() })) } as any
+
+      await actorsRoute!.route!.stack[0].handle(req, res, vi.fn())
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      const lastCall = calls[calls.length - 1]
+      // Non-numeric ages should not appear in the query
+      expect(lastCall[0]).not.toContain("age_at_death >= $")
+      expect(lastCall[0]).not.toContain("age_at_death <= $")
+
+      vi.mocked(mockPool.query).mockReset()
+    })
+
+    it("ignores invalid birth date format", async () => {
+      const coverageModule = await import("./coverage.js")
+      const router = coverageModule.default
+
+      const actorsRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/actors" && layer.route?.methods.get
+      )
+
+      const req = {
+        query: { birthDateStart: "not-a-date", birthDateEnd: "2024-13-99" },
+      } as any
+
+      const { getPool } = await import("../../lib/db/pool.js")
+      vi.mocked(getPool).mockReturnValue(mockPool)
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      const jsonFn = vi.fn()
+      const res = { json: jsonFn, status: vi.fn(() => ({ json: vi.fn() })) } as any
+
+      await actorsRoute!.route!.stack[0].handle(req, res, vi.fn())
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      const lastCall = calls[calls.length - 1]
+      // Invalid dates should not appear in the query
+      expect(lastCall[0]).not.toContain("birthday >= $")
+      expect(lastCall[0]).not.toContain("birthday <= $")
+
+      vi.mocked(mockPool.query).mockReset()
+    })
+  })
+
   describe("GET /admin/api/coverage/actors - deathManner filter", () => {
     it("accepts valid deathManner values", async () => {
       const coverageModule = await import("./coverage.js")

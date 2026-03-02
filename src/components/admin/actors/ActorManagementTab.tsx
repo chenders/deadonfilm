@@ -30,6 +30,14 @@ const DEATH_MANNER_OPTIONS = [
   { value: "pending", label: "Pending" },
 ]
 
+/** Parse an age URL param into a validated integer (0-130), or undefined if invalid. */
+function parseAgeParam(value: string | null): number | undefined {
+  if (!value) return undefined
+  const n = Number(value)
+  if (!Number.isInteger(n) || n < 0 || n > 130) return undefined
+  return n
+}
+
 function formatTopCredits(credits: ActorTopCredit[]): string {
   return credits.map((c) => c.title + (c.year ? ` (${c.year})` : "")).join(", ")
 }
@@ -80,6 +88,10 @@ export default function ActorManagementTab() {
       : undefined,
     deathDateStart: searchParams.get("deathDateStart") || undefined,
     deathDateEnd: searchParams.get("deathDateEnd") || undefined,
+    birthDateStart: searchParams.get("birthDateStart") || undefined,
+    birthDateEnd: searchParams.get("birthDateEnd") || undefined,
+    minAge: parseAgeParam(searchParams.get("minAge")),
+    maxAge: parseAgeParam(searchParams.get("maxAge")),
     searchName: searchParams.get("searchName") || undefined,
     causeOfDeath: searchParams.get("causeOfDeath") || undefined,
     deathManner: searchParams.get("deathManner") || undefined,
@@ -126,6 +138,18 @@ export default function ActorManagementTab() {
     }
     if (updatedFilters.deathDateEnd) {
       params.set("deathDateEnd", updatedFilters.deathDateEnd)
+    }
+    if (updatedFilters.birthDateStart) {
+      params.set("birthDateStart", updatedFilters.birthDateStart)
+    }
+    if (updatedFilters.birthDateEnd) {
+      params.set("birthDateEnd", updatedFilters.birthDateEnd)
+    }
+    if (typeof updatedFilters.minAge === "number" && Number.isFinite(updatedFilters.minAge)) {
+      params.set("minAge", updatedFilters.minAge.toString())
+    }
+    if (typeof updatedFilters.maxAge === "number" && Number.isFinite(updatedFilters.maxAge)) {
+      params.set("maxAge", updatedFilters.maxAge.toString())
     }
     if (updatedFilters.searchName) {
       params.set("searchName", updatedFilters.searchName)
@@ -440,6 +464,72 @@ export default function ActorManagementTab() {
             onChange={(value) => handleFilterChange({ deathDateEnd: value || undefined })}
             helpText=""
           />
+
+          {/* Born After */}
+          <DateInput
+            id="birthDateStart"
+            label="Born After"
+            value={filters.birthDateStart || ""}
+            onChange={(value) => handleFilterChange({ birthDateStart: value || undefined })}
+            helpText=""
+          />
+
+          {/* Born Before */}
+          <DateInput
+            id="birthDateEnd"
+            label="Born Before"
+            value={filters.birthDateEnd || ""}
+            onChange={(value) => handleFilterChange({ birthDateEnd: value || undefined })}
+            helpText=""
+          />
+
+          {/* Min Age at Death */}
+          <div>
+            <label htmlFor="minAge" className="mb-1 block text-sm text-admin-text-muted">
+              Min Age at Death
+            </label>
+            <input
+              id="minAge"
+              type="number"
+              min="0"
+              max="130"
+              value={filters.minAge ?? ""}
+              onChange={(e) => {
+                const val = e.currentTarget.valueAsNumber
+                handleFilterChange({
+                  minAge: Number.isFinite(val)
+                    ? Math.max(0, Math.min(130, Math.round(val)))
+                    : undefined,
+                })
+              }}
+              className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
+              placeholder="0"
+            />
+          </div>
+
+          {/* Max Age at Death */}
+          <div>
+            <label htmlFor="maxAge" className="mb-1 block text-sm text-admin-text-muted">
+              Max Age at Death
+            </label>
+            <input
+              id="maxAge"
+              type="number"
+              min="0"
+              max="130"
+              value={filters.maxAge ?? ""}
+              onChange={(e) => {
+                const val = e.currentTarget.valueAsNumber
+                handleFilterChange({
+                  maxAge: Number.isFinite(val)
+                    ? Math.max(0, Math.min(130, Math.round(val)))
+                    : undefined,
+                })
+              }}
+              className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
+              placeholder="130"
+            />
+          </div>
 
           {/* 7. Cause of Death */}
           <div className="relative">
