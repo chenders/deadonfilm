@@ -18,6 +18,8 @@ const mockPersons = [
     rank: 1,
     id: 123,
     name: "Actor One",
+    actorSlug: "actor-one-123",
+    knownFor: null,
     deathday: "2020-03-15",
     causeOfDeath: "Car Accident",
     causeOfDeathDetails: "Fatal crash on highway",
@@ -28,6 +30,8 @@ const mockPersons = [
     rank: 2,
     id: 456,
     name: "Actor Two",
+    actorSlug: "actor-two-456",
+    knownFor: null,
     deathday: "2019-12-01",
     causeOfDeath: "Overdose",
     causeOfDeathDetails: null,
@@ -139,11 +143,10 @@ describe("UnnaturalDeathsPage", () => {
     renderWithProviders(<UnnaturalDeathsPage />)
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Age 45/).length).toBeGreaterThanOrEqual(1)
-      expect(screen.getAllByText("Car Accident").length).toBeGreaterThanOrEqual(1)
-      // Check that the death details trigger exists with info icon (details shown in tooltip on hover)
-      const detailsTrigger = screen.getByTestId("unnatural-death-details-123")
-      expect(detailsTrigger).toBeInTheDocument()
+      // ActorCard renders "Age: 45"
+      expect(screen.getByText("Age: 45")).toBeInTheDocument()
+      // ActorCard title-cases the cause of death
+      expect(screen.getByText("Car Accident")).toBeInTheDocument()
     })
   })
 

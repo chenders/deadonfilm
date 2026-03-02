@@ -20,6 +20,9 @@ interface ActorCardProps {
   knownFor?: Array<{ name: string; year: number | null; type: string }> | null
   deathManner?: string | null
 
+  /** Optional rank number displayed to the left of the card */
+  rank?: number
+
   showBirthDate?: boolean
   useCauseOfDeathBadge?: boolean
   nameColor?: "accent" | "brown"
@@ -52,6 +55,7 @@ export default function ActorCard({
   causeOfDeathDetails,
   fallbackProfileUrl,
   knownFor,
+  rank,
   showBirthDate = false,
   useCauseOfDeathBadge = false,
   nameColor = "accent",
@@ -76,11 +80,11 @@ export default function ActorCard({
     </h3>
   )
 
-  return (
+  const card = (
     <Link
       to={`/actor/${slug}`}
       data-testid={testId}
-      className="flex h-full items-start gap-4 rounded-lg border border-transparent bg-beige p-3 text-left transition-colors hover:border-brown-light/40"
+      className="flex h-full min-w-0 flex-1 items-start gap-4 rounded-lg border border-transparent bg-beige p-3 text-left transition-colors hover:border-brown-light/40"
     >
       {profileUrlSm ? (
         <img
@@ -146,4 +150,17 @@ export default function ActorCard({
       </div>
     </Link>
   )
+
+  if (rank != null) {
+    return (
+      <div className="flex items-start gap-2">
+        <span className="mt-3 w-8 flex-shrink-0 text-center font-display text-lg text-brown-medium">
+          {rank}
+        </span>
+        {card}
+      </div>
+    )
+  }
+
+  return card
 }

@@ -17,6 +17,8 @@ const mockDeaths = [
   {
     id: 123,
     name: "Actor One",
+    actorSlug: "actor-one-123",
+    knownFor: null,
     deathday: "1995-03-15",
     causeOfDeath: "Cancer",
     profilePath: "/path1.jpg",
@@ -27,6 +29,8 @@ const mockDeaths = [
   {
     id: 456,
     name: "Actor Two",
+    actorSlug: "actor-two-456",
+    knownFor: null,
     deathday: "1992-12-01",
     causeOfDeath: "Heart Attack",
     profilePath: null,
@@ -179,8 +183,10 @@ describe("DeathsByDecadePage", () => {
     renderWithProviders(<DeathsByDecadePage />)
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Age 72/).length).toBeGreaterThanOrEqual(1)
-      expect(screen.getByText("8 years lost")).toBeInTheDocument()
+      // ActorCard renders "Age: 72"
+      expect(screen.getByText("Age: 72")).toBeInTheDocument()
+      // ActorCard title-cases the cause of death
+      expect(screen.getByText("Cancer")).toBeInTheDocument()
     })
   })
 

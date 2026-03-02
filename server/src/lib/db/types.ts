@@ -426,7 +426,14 @@ export interface CauseCategory {
   slug: string
 }
 
+/** Top film entry returned by LATERAL JOIN in death discovery queries */
+export interface TopFilmEntry {
+  title: string
+  year: number | null
+}
+
 export interface DeathByCauseRecord {
+  id: number
   tmdb_id: number
   name: string
   deathday: string
@@ -435,6 +442,7 @@ export interface DeathByCauseRecord {
   cause_of_death_details: string | null
   age_at_death: number | null
   years_lost: number | null
+  top_films: TopFilmEntry[] | null
 }
 
 export interface DeathsByCauseOptions {
@@ -474,6 +482,7 @@ export interface DecadeCategory {
 }
 
 export interface DeathByDecadeRecord {
+  id: number
   tmdb_id: number
   name: string
   deathday: string
@@ -481,6 +490,7 @@ export interface DeathByDecadeRecord {
   cause_of_death: string | null
   age_at_death: number | null
   years_lost: number | null
+  top_films: TopFilmEntry[] | null
 }
 
 export interface DeathsByDecadeOptions {

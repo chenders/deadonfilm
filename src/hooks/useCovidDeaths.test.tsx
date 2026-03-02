@@ -18,6 +18,8 @@ describe("useCovidDeaths", () => {
         id: 1,
         rank: 1,
         name: "Actor One",
+        actorSlug: "actor-one-1",
+        knownFor: null,
         deathday: "2021-03-15",
         causeOfDeath: "COVID-19",
         causeOfDeathDetails: "Complications from COVID-19",

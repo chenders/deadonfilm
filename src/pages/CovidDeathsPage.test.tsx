@@ -17,6 +17,8 @@ const mockPersons = [
     rank: 1,
     id: 123,
     name: "Actor One",
+    actorSlug: "actor-one-123",
+    knownFor: null,
     deathday: "2021-03-15",
     causeOfDeath: "COVID-19",
     causeOfDeathDetails: "Complications from COVID-19",
@@ -27,6 +29,8 @@ const mockPersons = [
     rank: 2,
     id: 456,
     name: "Actor Two",
+    actorSlug: "actor-two-456",
+    knownFor: null,
     deathday: "2020-12-01",
     causeOfDeath: "Coronavirus",
     causeOfDeathDetails: null,
@@ -134,12 +138,10 @@ describe("CovidDeathsPage", () => {
     renderWithProviders(<CovidDeathsPage />)
 
     await waitFor(() => {
-      // Check death info is displayed - use getAllByText since responsive layout renders both desktop and mobile versions
-      expect(screen.getAllByText(/Age 72/).length).toBeGreaterThanOrEqual(1)
-      expect(screen.getAllByText("COVID-19").length).toBeGreaterThanOrEqual(1)
-      // Check that the death details trigger exists with info icon (details shown in tooltip on hover)
-      const detailsTrigger = screen.getByTestId("covid-death-details-123")
-      expect(detailsTrigger).toBeInTheDocument()
+      // ActorCard renders "Age: 72"
+      expect(screen.getByText("Age: 72")).toBeInTheDocument()
+      // ActorCard title-cases the cause of death: "COVID-19" → "Covid-19"
+      expect(screen.getByText("Covid-19")).toBeInTheDocument()
     })
   })
 

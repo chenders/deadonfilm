@@ -7,9 +7,18 @@ import {
   getDeathsByDecade,
   getAllDeaths,
 } from "../lib/db.js"
+import { createActorSlug } from "../lib/slug-utils.js"
 import { sendWithETag } from "../lib/etag.js"
 import newrelic from "newrelic"
 import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
+
+/** Maps DB top_films to API knownFor format */
+function mapTopFilms(
+  topFilms: Array<{ title: string; year: number | null }> | null
+): Array<{ name: string; year: number | null; type: string }> | null {
+  if (!topFilms || topFilms.length === 0) return null
+  return topFilms.map((f) => ({ name: f.title, year: f.year, type: "movie" }))
+}
 
 export async function getCauseCategoriesHandler(req: Request, res: Response) {
   try {
@@ -79,6 +88,8 @@ export async function getDeathsByCauseHandler(req: Request, res: Response) {
         causeOfDeathDetails: string | null
         ageAtDeath: number | null
         yearsLost: number | null
+        knownFor: Array<{ name: string; year: number | null; type: string }> | null
+        actorSlug: string
       }>
       pagination: {
         page: number
@@ -111,6 +122,8 @@ export async function getDeathsByCauseHandler(req: Request, res: Response) {
         causeOfDeathDetails: d.cause_of_death_details,
         ageAtDeath: d.age_at_death,
         yearsLost: d.years_lost,
+        knownFor: mapTopFilms(d.top_films),
+        actorSlug: createActorSlug(d.name, d.id),
       })),
       pagination: {
         page,
@@ -210,6 +223,8 @@ export async function getDeathsByDecadeHandler(req: Request, res: Response) {
         causeOfDeath: string | null
         ageAtDeath: number | null
         yearsLost: number | null
+        knownFor: Array<{ name: string; year: number | null; type: string }> | null
+        actorSlug: string
       }>
       pagination: {
         page: number
@@ -241,6 +256,8 @@ export async function getDeathsByDecadeHandler(req: Request, res: Response) {
         causeOfDeath: d.cause_of_death,
         ageAtDeath: d.age_at_death,
         yearsLost: d.years_lost,
+        knownFor: mapTopFilms(d.top_films),
+        actorSlug: createActorSlug(d.name, d.id),
       })),
       pagination: {
         page,
@@ -303,6 +320,8 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
         causeOfDeath: string | null
         causeOfDeathDetails: string | null
         ageAtDeath: number | null
+        knownFor: Array<{ name: string; year: number | null; type: string }> | null
+        actorSlug: string
       }>
       pagination: {
         page: number
@@ -338,6 +357,8 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
         causeOfDeath: p.cause_of_death,
         causeOfDeathDetails: p.cause_of_death_details,
         ageAtDeath: p.age_at_death,
+        knownFor: mapTopFilms(p.top_films),
+        actorSlug: createActorSlug(p.name, p.id),
       })),
       pagination: {
         page,

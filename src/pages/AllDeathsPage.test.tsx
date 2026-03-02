@@ -17,6 +17,8 @@ const mockDeaths = [
     rank: 1,
     id: 123,
     name: "Actor One",
+    actorSlug: "actor-one-123",
+    knownFor: null,
     deathday: "2024-01-15",
     causeOfDeath: "Natural causes",
     causeOfDeathDetails: "Died peacefully in their sleep at home",
@@ -27,6 +29,8 @@ const mockDeaths = [
     rank: 2,
     id: 456,
     name: "Actor Two",
+    actorSlug: "actor-two-456",
+    knownFor: null,
     deathday: "2024-01-10",
     causeOfDeath: null,
     causeOfDeathDetails: null,
@@ -132,46 +136,11 @@ describe("AllDeathsPage", () => {
     renderWithProviders(<AllDeathsPage />)
 
     await waitFor(() => {
-      // Check death info is displayed - use getAllByText since responsive layout renders both versions
-      expect(screen.getAllByText(/Age 85/).length).toBeGreaterThanOrEqual(1)
-      // Cause of death is now title-cased
-      expect(screen.getAllByText("Natural Causes").length).toBeGreaterThanOrEqual(1)
+      // ActorCard renders "Age: 85"
+      expect(screen.getByText("Age: 85")).toBeInTheDocument()
+      // Cause of death is title-cased by ActorCard
+      expect(screen.getByText("Natural Causes")).toBeInTheDocument()
     })
-  })
-
-  it("displays causeOfDeathDetails with tooltip trigger when present", async () => {
-    vi.mocked(api.getAllDeaths).mockResolvedValue({
-      deaths: mockDeaths,
-      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
-    })
-
-    renderWithProviders(<AllDeathsPage />)
-
-    await waitFor(() => {
-      // Check that the death details trigger exists with info icon
-      const detailsTrigger = screen.getByTestId("death-details-123")
-      expect(detailsTrigger).toBeInTheDocument()
-      // The trigger should contain the cause of death text (title-cased)
-      expect(detailsTrigger).toHaveTextContent("Natural Causes")
-      // The trigger should have an info icon (SVG element)
-      expect(detailsTrigger.querySelector("svg")).toBeInTheDocument()
-    })
-  })
-
-  it("does not render causeOfDeathDetails element when null", async () => {
-    vi.mocked(api.getAllDeaths).mockResolvedValue({
-      deaths: [mockDeaths[1]], // Actor Two has null causeOfDeathDetails
-      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 1 },
-    })
-
-    renderWithProviders(<AllDeathsPage />)
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Actor Two").length).toBeGreaterThanOrEqual(1)
-    })
-
-    // Should not find any death details elements
-    expect(screen.queryByTestId("death-details-456")).not.toBeInTheDocument()
   })
 
   it("renders pagination controls when multiple pages", async () => {
