@@ -6,21 +6,25 @@ const mockCovidDeathsResponse = {
       id: 12345,
       rank: 1,
       name: "Test Actor One",
+      actorSlug: "test-actor-one-12345",
       profilePath: "/test-profile-1.jpg",
       deathday: "2021-03-15",
       ageAtDeath: 72,
       causeOfDeath: "COVID-19",
       causeOfDeathDetails: "Complications from COVID-19",
+      knownFor: [{ name: "Test Movie", year: 2020, type: "movie" }],
     },
     {
       id: 67890,
       rank: 2,
       name: "Test Actor Two",
+      actorSlug: "test-actor-two-67890",
       profilePath: null,
       deathday: "2020-12-20",
       ageAtDeath: 65,
       causeOfDeath: "COVID-19",
       causeOfDeathDetails: null,
+      knownFor: null,
     },
   ],
   pagination: {
@@ -81,10 +85,10 @@ test.describe("COVID-19 Deaths Page", () => {
 
     const firstRow = page.locator('[data-testid^="covid-death-row-"]').first()
 
-    // On desktop, we should see the full horizontal layout with all columns
-    // Check that the desktop layout is visible (has md:flex class)
-    const desktopLayout = firstRow.locator(".md\\:flex").first()
-    await expect(desktopLayout).toBeVisible()
+    // Verify the ActorCard renders with actor name and death info
+    await expect(firstRow).toBeVisible()
+    await expect(firstRow.getByText("Test Actor One")).toBeVisible()
+    await expect(firstRow.getByText(/Died/)).toBeVisible()
 
     // Take screenshot of just the first row for visual comparison
     await firstRow.screenshot({
@@ -102,10 +106,10 @@ test.describe("COVID-19 Deaths Page", () => {
 
     const firstRow = page.locator('[data-testid^="covid-death-row-"]').first()
 
-    // On mobile, we should see the stacked mobile layout
-    // Check that the mobile layout is visible (has md:hidden class)
-    const mobileLayout = firstRow.locator(".md\\:hidden").first()
-    await expect(mobileLayout).toBeVisible()
+    // Verify the ActorCard renders with actor name and death info on mobile
+    await expect(firstRow).toBeVisible()
+    await expect(firstRow.getByText("Test Actor One")).toBeVisible()
+    await expect(firstRow.getByText(/Died/)).toBeVisible()
 
     // Take screenshot of just the first row for visual comparison
     await firstRow.screenshot({
