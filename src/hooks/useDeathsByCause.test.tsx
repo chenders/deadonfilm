@@ -19,6 +19,8 @@ describe("useDeathsByCause", () => {
       {
         id: 1,
         name: "Actor One",
+        actorSlug: "actor-one-1",
+        knownFor: null,
         deathday: "2020-05-15",
         causeOfDeath: "Heart Attack",
         causeOfDeathDetails: "Cardiac arrest",

@@ -20,6 +20,8 @@ describe("useDeathsByDecade", () => {
       {
         id: 1,
         name: "Actor One",
+        actorSlug: "actor-one-1",
+        knownFor: null,
         deathday: "1995-05-15",
         causeOfDeath: "Cancer",
         profilePath: "/path.jpg",

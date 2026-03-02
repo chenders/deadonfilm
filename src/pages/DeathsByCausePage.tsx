@@ -2,95 +2,9 @@ import { useParams, useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import PaginationHead from "@/components/seo/PaginationHead"
 import { useDeathsByCause } from "@/hooks/useDeathsByCause"
-import { createActorSlug } from "@/utils/slugify"
-import { getProfileUrl } from "@/services/api"
-import { formatDate } from "@/utils/formatDate"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
-import { PersonIcon } from "@/components/icons"
-import type { DeathByCause } from "@/types"
-
-function ActorRow({ person, rank }: { person: DeathByCause; rank: number }) {
-  const slug = createActorSlug(person.name, person.id)
-  const profileUrl = getProfileUrl(person.profilePath, "w185")
-
-  return (
-    <Link
-      to={`/actor/${slug}`}
-      data-testid={`death-row-${person.id}`}
-      className="block rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
-    >
-      {/* Desktop layout */}
-      <div className="hidden items-center gap-4 md:flex">
-        <span className="w-8 text-center font-display text-lg text-brown-medium">{rank}</span>
-
-        {profileUrl ? (
-          <img
-            src={profileUrl}
-            alt={person.name}
-            className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-            <PersonIcon size={24} className="text-brown-medium" />
-          </div>
-        )}
-
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-lg text-brown-dark">{person.name}</h3>
-          <p className="text-sm text-text-muted">
-            Died {formatDate(person.deathday)}
-            {person.ageAtDeath && ` · Age ${person.ageAtDeath}`}
-          </p>
-        </div>
-
-        <div className="flex-shrink-0 text-right">
-          {person.causeOfDeathDetails && (
-            <p
-              className="max-w-xs truncate text-sm text-text-muted"
-              title={person.causeOfDeathDetails}
-            >
-              {person.causeOfDeathDetails}
-            </p>
-          )}
-          {person.yearsLost !== null && person.yearsLost > 0 && (
-            <p className="text-xs text-accent">{Math.round(person.yearsLost)} years lost</p>
-          )}
-        </div>
-      </div>
-
-      {/* Mobile layout */}
-      <div className="flex items-start gap-3 md:hidden">
-        <span className="mt-1 w-6 text-center font-display text-base text-brown-medium">
-          {rank}
-        </span>
-
-        {profileUrl ? (
-          <img
-            src={profileUrl}
-            alt={person.name}
-            className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-            <PersonIcon size={20} className="text-brown-medium" />
-          </div>
-        )}
-
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-base text-brown-dark">{person.name}</h3>
-          <p className="text-xs text-text-muted">
-            Died {formatDate(person.deathday)}
-            {person.ageAtDeath && ` · Age ${person.ageAtDeath}`}
-          </p>
-          {person.yearsLost !== null && person.yearsLost > 0 && (
-            <p className="text-xs text-accent">{Math.round(person.yearsLost)} years lost</p>
-          )}
-        </div>
-      </div>
-    </Link>
-  )
-}
+import ActorCard from "@/components/common/ActorCard"
 
 export default function DeathsByCausePage() {
   const { cause } = useParams<{ cause: string }>()
@@ -153,7 +67,7 @@ export default function DeathsByCausePage() {
         includeLinks={!includeObscure}
       />
 
-      <div data-testid="deaths-by-cause-page" className="mx-auto max-w-3xl">
+      <div data-testid="deaths-by-cause-page" className="mx-auto max-w-5xl">
         <div className="mb-6 text-center">
           <Link
             to="/deaths"
@@ -190,9 +104,28 @@ export default function DeathsByCausePage() {
           </div>
         ) : (
           <>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {data.deaths.map((person, index) => (
-                <ActorRow key={person.id} person={person} rank={baseOffset + index + 1} />
+                <ActorCard
+                  key={person.id}
+                  name={person.name}
+                  slug={person.actorSlug}
+                  profilePath={person.profilePath}
+                  deathday={person.deathday}
+                  ageAtDeath={person.ageAtDeath}
+                  causeOfDeath={person.causeOfDeath}
+                  causeOfDeathDetails={person.causeOfDeathDetails}
+                  knownFor={person.knownFor}
+                  rank={baseOffset + index + 1}
+                  useCauseOfDeathBadge
+                  testId={`death-row-${person.id}`}
+                >
+                  {typeof person.yearsLost === "number" && person.yearsLost > 0 && (
+                    <span className="mt-1 block text-xs text-text-muted">
+                      {Math.round(person.yearsLost).toLocaleString()} years lost
+                    </span>
+                  )}
+                </ActorCard>
               ))}
             </div>
 

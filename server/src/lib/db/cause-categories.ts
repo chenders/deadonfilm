@@ -124,15 +124,28 @@ export async function getDeathsByCause(
      WHERE LOWER(cause_of_death) = LOWER($1) AND ($2 = true OR is_obscure = false)`,
     [cause, includeObscure]
   )
-  const totalCount = parseInt(countResult.rows[0].count, 10)
+  const totalCount = parseInt(countResult.rows[0]?.count ?? "0", 10)
 
-  // Get paginated results
+  // Get paginated results with top films via lateral join
   const result = await db.query<DeathByCauseRecord>(
-    `SELECT tmdb_id, name, deathday::text, profile_path, cause_of_death,
-            cause_of_death_details, age_at_death, years_lost
-     FROM actors
-     WHERE LOWER(cause_of_death) = LOWER($1) AND ($4 = true OR is_obscure = false)
-     ORDER BY deathday DESC NULLS LAST, name
+    `SELECT a.id, a.tmdb_id, a.name, a.deathday::text, a.profile_path, a.cause_of_death,
+            a.cause_of_death_details, a.age_at_death, a.years_lost,
+            tf.films as top_films
+     FROM actors a
+     LEFT JOIN LATERAL (
+       SELECT json_agg(sub.film ORDER BY sub.pop DESC NULLS LAST) as films
+       FROM (
+         SELECT json_build_object('title', m.title, 'year', m.release_year) as film,
+                m.tmdb_popularity as pop
+         FROM actor_movie_appearances ama
+         JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
+         WHERE ama.actor_id = a.id
+         ORDER BY m.tmdb_popularity DESC NULLS LAST
+         LIMIT 2
+       ) sub
+     ) tf ON true
+     WHERE LOWER(a.cause_of_death) = LOWER($1) AND ($4 = true OR a.is_obscure = false)
+     ORDER BY a.deathday DESC NULLS LAST, a.name
      LIMIT $2 OFFSET $3`,
     [cause, limit, offset, includeObscure]
   )

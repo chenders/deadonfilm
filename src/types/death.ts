@@ -82,11 +82,13 @@ export interface CovidDeath {
   rank: number
   id: number
   name: string
-  deathday: string
+  deathday: string | null
   causeOfDeath: string | null
   causeOfDeathDetails: string | null
   profilePath: string | null
   ageAtDeath: number | null
+  knownFor: Array<{ name: string; year: number | null; type: string }> | null
+  actorSlug: string
 }
 
 export interface CovidDeathsResponse {
@@ -107,11 +109,13 @@ export interface UnnaturalDeath {
   rank: number
   id: number
   name: string
-  deathday: string
+  deathday: string | null
   causeOfDeath: string | null
   causeOfDeathDetails: string | null
   profilePath: string | null
   ageAtDeath: number | null
+  knownFor: Array<{ name: string; year: number | null; type: string }> | null
+  actorSlug: string
 }
 
 export interface UnnaturalDeathsResponse {
@@ -147,11 +151,13 @@ export interface AllDeath {
   rank: number
   id: number
   name: string
-  deathday: string
+  deathday: string | null
   profilePath: string | null
   causeOfDeath: string | null
   causeOfDeathDetails: string | null
   ageAtDeath: number | null
+  knownFor: Array<{ name: string; year: number | null; type: string }> | null
+  actorSlug: string
 }
 
 export interface AllDeathsResponse {
@@ -169,6 +175,8 @@ export interface DeathByCause {
   causeOfDeathDetails: string | null
   ageAtDeath: number | null
   yearsLost: number | null
+  knownFor: Array<{ name: string; year: number | null; type: string }> | null
+  actorSlug: string
 }
 
 export interface DeathsByCauseResponse {
@@ -187,6 +195,8 @@ export interface DeathByDecade {
   causeOfDeath: string | null
   ageAtDeath: number | null
   yearsLost: number | null
+  knownFor: Array<{ name: string; year: number | null; type: string }> | null
+  actorSlug: string
 }
 
 export interface DeathsByDecadeResponse {

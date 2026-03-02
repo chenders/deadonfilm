@@ -1,113 +1,15 @@
-import { useSearchParams, Link } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import PaginationHead from "@/components/seo/PaginationHead"
 import { useAllDeaths } from "@/hooks/useAllDeaths"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
 import { createActorSlug } from "@/utils/slugify"
-import { getProfileUrl } from "@/services/api"
-import { formatDate } from "@/utils/formatDate"
-import { toTitleCase } from "@/utils/formatText"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
-import HoverTooltip from "@/components/common/HoverTooltip"
 import SortControl from "@/components/common/SortControl"
+import ActorCard from "@/components/common/ActorCard"
 import JsonLd from "@/components/seo/JsonLd"
 import { buildCollectionPageSchema } from "@/utils/schema"
-import { PersonIcon, InfoIcon } from "@/components/icons"
-import type { AllDeath } from "@/types"
-
-function ActorRow({ person }: { person: AllDeath }) {
-  const slug = createActorSlug(person.name, person.id)
-  const profileUrl = getProfileUrl(person.profilePath, "w185")
-
-  return (
-    <Link
-      to={`/actor/${slug}`}
-      data-testid={`death-row-${person.id}`}
-      className="block rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
-    >
-      {/* Desktop layout */}
-      <div className="hidden items-center gap-4 md:flex">
-        <span className="w-8 text-center font-display text-lg text-brown-medium">
-          {person.rank}
-        </span>
-
-        {profileUrl ? (
-          <img
-            src={profileUrl}
-            alt={person.name}
-            className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-            <PersonIcon size={24} className="text-brown-medium" />
-          </div>
-        )}
-
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-lg text-brown-dark">{person.name}</h3>
-          <p className="text-sm text-text-muted">
-            Died {formatDate(person.deathday)}
-            {person.ageAtDeath && ` · Age ${person.ageAtDeath}`}
-          </p>
-        </div>
-
-        {person.causeOfDeath && (
-          <div className="flex-shrink-0 text-right">
-            <p className="text-sm text-brown-dark">
-              {person.causeOfDeathDetails ? (
-                <HoverTooltip content={person.causeOfDeathDetails}>
-                  <span
-                    className="underline decoration-dotted"
-                    data-testid={`death-details-${person.id}`}
-                  >
-                    {toTitleCase(person.causeOfDeath)}
-                    <InfoIcon
-                      size={14}
-                      className="ml-1 inline-block align-text-bottom text-brown-medium"
-                    />
-                  </span>
-                </HoverTooltip>
-              ) : (
-                toTitleCase(person.causeOfDeath)
-              )}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Mobile layout */}
-      <div className="flex items-start gap-3 md:hidden">
-        <span className="mt-1 w-6 text-center font-display text-base text-brown-medium">
-          {person.rank}
-        </span>
-
-        {profileUrl ? (
-          <img
-            src={profileUrl}
-            alt={person.name}
-            className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-            <PersonIcon size={20} className="text-brown-medium" />
-          </div>
-        )}
-
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-base text-brown-dark">{person.name}</h3>
-          <p className="text-xs text-text-muted">
-            Died {formatDate(person.deathday)}
-            {person.ageAtDeath && ` · Age ${person.ageAtDeath}`}
-          </p>
-          {person.causeOfDeath && (
-            <p className="mt-1 text-xs text-brown-dark">{toTitleCase(person.causeOfDeath)}</p>
-          )}
-        </div>
-      </div>
-    </Link>
-  )
-}
 
 export default function AllDeathsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -226,7 +128,7 @@ export default function AllDeathsPage() {
         />
       )}
 
-      <div data-testid="all-deaths-page" className="mx-auto max-w-3xl">
+      <div data-testid="all-deaths-page" className="mx-auto max-w-5xl">
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">All Deaths</h1>
           <p className="mt-2 text-sm text-text-primary">
@@ -293,9 +195,22 @@ export default function AllDeathsPage() {
           </div>
         ) : (
           <>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {data.deaths.map((person) => (
-                <ActorRow key={person.id} person={person} />
+                <ActorCard
+                  key={person.id}
+                  name={person.name}
+                  slug={person.actorSlug}
+                  profilePath={person.profilePath}
+                  deathday={person.deathday}
+                  ageAtDeath={person.ageAtDeath}
+                  causeOfDeath={person.causeOfDeath}
+                  causeOfDeathDetails={person.causeOfDeathDetails}
+                  knownFor={person.knownFor}
+                  rank={person.rank}
+                  useCauseOfDeathBadge
+                  testId={`death-row-${person.id}`}
+                />
               ))}
             </div>
 

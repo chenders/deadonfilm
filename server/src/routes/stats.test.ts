@@ -290,6 +290,7 @@ describe("getCovidDeathsHandler", () => {
       biography_has_content: null,
       actor_awards_data: null,
       actor_awards_updated_at: null,
+      top_films: null,
     },
     {
       id: 2,
@@ -327,6 +328,7 @@ describe("getCovidDeathsHandler", () => {
       biography_has_content: null,
       actor_awards_data: null,
       actor_awards_updated_at: null,
+      top_films: null,
     },
   ]
 
@@ -370,6 +372,8 @@ describe("getCovidDeathsHandler", () => {
           causeOfDeathDetails: "Complications from COVID-19",
           profilePath: "/path1.jpg",
           ageAtDeath: 71,
+          knownFor: null,
+          actorSlug: "actor-one-1",
         },
         {
           rank: 2,
@@ -380,6 +384,8 @@ describe("getCovidDeathsHandler", () => {
           causeOfDeathDetails: null,
           profilePath: null,
           ageAtDeath: 75,
+          knownFor: null,
+          actorSlug: "actor-two-2",
         },
       ],
       pagination: {
@@ -564,6 +570,7 @@ describe("getUnnaturalDeathsHandler", () => {
       biography_has_content: null,
       actor_awards_data: null,
       actor_awards_updated_at: null,
+      top_films: null,
     },
     {
       id: 2,
@@ -601,6 +608,7 @@ describe("getUnnaturalDeathsHandler", () => {
       biography_has_content: null,
       actor_awards_data: null,
       actor_awards_updated_at: null,
+      top_films: null,
     },
   ]
 
@@ -659,6 +667,8 @@ describe("getUnnaturalDeathsHandler", () => {
           causeOfDeathDetails: "Took own life",
           profilePath: "/path1.jpg",
           ageAtDeath: 60,
+          knownFor: null,
+          actorSlug: "actor-one-1",
         },
         {
           rank: 2,
@@ -669,6 +679,8 @@ describe("getUnnaturalDeathsHandler", () => {
           causeOfDeathDetails: "Car crash",
           profilePath: null,
           ageAtDeath: 49,
+          knownFor: null,
+          actorSlug: "actor-two-2",
         },
       ],
       pagination: {

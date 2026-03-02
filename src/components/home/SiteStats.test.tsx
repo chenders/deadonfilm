@@ -213,9 +213,9 @@ describe("SiteStats", () => {
       expect(screen.getByText("causes known")).toBeInTheDocument()
     })
 
-    // Find the causes known stat wrapper (HoverTooltip renders a <button>)
+    // Find the causes known stat wrapper (HoverTooltip renders a <span role="button">)
     const causesKnownLabel = screen.getByText("causes known")
-    const tooltipTrigger = causesKnownLabel.closest("button")
+    const tooltipTrigger = causesKnownLabel.closest("[role='button']")
     expect(tooltipTrigger).toBeInTheDocument()
 
     fireEvent.mouseEnter(tooltipTrigger!)

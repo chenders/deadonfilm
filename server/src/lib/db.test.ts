@@ -523,7 +523,7 @@ describe("Sync State Functions", () => {
       await getCovidDeaths()
 
       const query = mockQuery.mock.calls[0][0] as string
-      expect(query).toContain("ORDER BY deathday DESC")
+      expect(query).toContain("ORDER BY a.deathday DESC")
     })
 
     it("uses default limit and offset when not provided", async () => {

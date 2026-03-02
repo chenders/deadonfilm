@@ -95,6 +95,7 @@ describe("getDeathsByCauseHandler", () => {
 
   const mockDeaths = [
     {
+      id: 1,
       tmdb_id: 1,
       name: "Actor One",
       deathday: "2021-03-15",
@@ -103,8 +104,10 @@ describe("getDeathsByCauseHandler", () => {
       cause_of_death_details: "Lung cancer",
       age_at_death: 72,
       years_lost: 6,
+      top_films: null,
     },
     {
+      id: 2,
       tmdb_id: 2,
       name: "Actor Two",
       deathday: "2020-12-01",
@@ -113,6 +116,7 @@ describe("getDeathsByCauseHandler", () => {
       cause_of_death_details: null,
       age_at_death: 65,
       years_lost: 13,
+      top_films: null,
     },
   ]
 
@@ -163,6 +167,8 @@ describe("getDeathsByCauseHandler", () => {
           causeOfDeathDetails: "Lung cancer",
           ageAtDeath: 72,
           yearsLost: 6,
+          knownFor: null,
+          actorSlug: "actor-one-1",
         },
         {
           id: 2,
@@ -173,6 +179,8 @@ describe("getDeathsByCauseHandler", () => {
           causeOfDeathDetails: null,
           ageAtDeath: 65,
           yearsLost: 13,
+          knownFor: null,
+          actorSlug: "actor-two-2",
         },
       ],
       pagination: {
@@ -363,6 +371,7 @@ describe("getDeathsByDecadeHandler", () => {
 
   const mockDeaths = [
     {
+      id: 1,
       tmdb_id: 1,
       name: "Actor One",
       deathday: "2021-03-15",
@@ -370,8 +379,10 @@ describe("getDeathsByDecadeHandler", () => {
       cause_of_death: "Cancer",
       age_at_death: 72,
       years_lost: 6,
+      top_films: null,
     },
     {
+      id: 2,
       tmdb_id: 2,
       name: "Actor Two",
       deathday: "2020-12-01",
@@ -379,6 +390,7 @@ describe("getDeathsByDecadeHandler", () => {
       cause_of_death: "Heart Attack",
       age_at_death: 65,
       years_lost: 13,
+      top_films: null,
     },
   ]
 
@@ -426,6 +438,8 @@ describe("getDeathsByDecadeHandler", () => {
           causeOfDeath: "Cancer",
           ageAtDeath: 72,
           yearsLost: 6,
+          knownFor: null,
+          actorSlug: "actor-one-1",
         },
         {
           id: 2,
@@ -435,6 +449,8 @@ describe("getDeathsByDecadeHandler", () => {
           causeOfDeath: "Heart Attack",
           ageAtDeath: 65,
           yearsLost: 13,
+          knownFor: null,
+          actorSlug: "actor-two-2",
         },
       ],
       pagination: {
@@ -598,6 +614,7 @@ describe("getAllDeathsHandler", () => {
       biography_has_content: null,
       actor_awards_data: null,
       actor_awards_updated_at: null,
+      top_films: null,
     },
     {
       id: 2,
@@ -635,6 +652,7 @@ describe("getAllDeathsHandler", () => {
       biography_has_content: null,
       actor_awards_data: null,
       actor_awards_updated_at: null,
+      top_films: null,
     },
   ]
 
@@ -682,6 +700,8 @@ describe("getAllDeathsHandler", () => {
           causeOfDeath: "Natural causes",
           causeOfDeathDetails: "Died peacefully in sleep",
           ageAtDeath: 85,
+          knownFor: null,
+          actorSlug: "actor-one-1",
         },
         {
           rank: 2,
@@ -692,6 +712,8 @@ describe("getAllDeathsHandler", () => {
           causeOfDeath: null,
           causeOfDeathDetails: null,
           ageAtDeath: 72,
+          knownFor: null,
+          actorSlug: "actor-two-2",
         },
       ],
       pagination: {
@@ -896,6 +918,7 @@ describe("recordCustomEvent tracking", () => {
 
   const mockDeaths = [
     {
+      id: 1,
       tmdb_id: 1,
       name: "Actor One",
       deathday: "2021-03-15",
@@ -904,6 +927,7 @@ describe("recordCustomEvent tracking", () => {
       cause_of_death_details: "Lung cancer",
       age_at_death: 72,
       years_lost: 6,
+      top_films: null,
     },
   ]
 

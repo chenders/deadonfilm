@@ -16,6 +16,8 @@ const mockDeaths = [
   {
     id: 123,
     name: "Actor One",
+    actorSlug: "actor-one-123",
+    knownFor: null,
     deathday: "2020-03-15",
     causeOfDeath: "Heart Attack",
     causeOfDeathDetails: "Cardiac arrest",
@@ -26,6 +28,8 @@ const mockDeaths = [
   {
     id: 456,
     name: "Actor Two",
+    actorSlug: "actor-two-456",
+    knownFor: null,
     deathday: "2019-12-01",
     causeOfDeath: "Heart Attack",
     causeOfDeathDetails: null,
@@ -107,7 +111,7 @@ describe("DeathsByCausePage", () => {
     renderWithProviders(<DeathsByCausePage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Heart Attack")).toBeInTheDocument()
+      expect(screen.getByRole("heading", { name: "Heart Attack" })).toBeInTheDocument()
       expect(screen.getByText(/100 actors died from this cause/)).toBeInTheDocument()
     })
   })
@@ -132,9 +136,11 @@ describe("DeathsByCausePage", () => {
     renderWithProviders(<DeathsByCausePage />)
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Age 72/).length).toBeGreaterThanOrEqual(1)
-      // Years lost should be visible in both mobile and desktop views
-      expect(screen.getAllByText("8 years lost").length).toBeGreaterThanOrEqual(1)
+      // ActorCard renders "Age: 72"
+      expect(screen.getByText("Age: 72")).toBeInTheDocument()
+      // Verify actor names are rendered
+      expect(screen.getByText("Actor One")).toBeInTheDocument()
+      expect(screen.getByText("Actor Two")).toBeInTheDocument()
     })
   })
 

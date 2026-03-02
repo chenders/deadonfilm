@@ -18,6 +18,7 @@ import type {
   UnnaturalDeathsOptions,
   UnnaturalDeathCategory,
   AllDeathsOptions,
+  TopFilmEntry,
 } from "./types.js"
 
 // ============================================================================
@@ -41,16 +42,28 @@ export async function getDeathsByDecade(
      AND ($3 = true OR is_obscure = false)`,
     [decade, decadeEnd, includeObscure]
   )
-  const totalCount = parseInt(countResult.rows[0].count, 10)
+  const totalCount = parseInt(countResult.rows[0]?.count ?? "0", 10)
 
-  // Get paginated results
+  // Get paginated results with top films via lateral join
   const result = await db.query<DeathByDecadeRecord>(
-    `SELECT tmdb_id, name, deathday::text, profile_path, cause_of_death,
-            age_at_death, years_lost
-     FROM actors
-     WHERE EXTRACT(YEAR FROM deathday) BETWEEN $1 AND $2
-     AND ($5 = true OR is_obscure = false)
-     ORDER BY deathday DESC NULLS LAST, name
+    `SELECT a.id, a.tmdb_id, a.name, a.deathday::text, a.profile_path, a.cause_of_death,
+            a.age_at_death, a.years_lost, tf.films as top_films
+     FROM actors a
+     LEFT JOIN LATERAL (
+       SELECT json_agg(sub.film ORDER BY sub.pop DESC NULLS LAST) as films
+       FROM (
+         SELECT json_build_object('title', m.title, 'year', m.release_year) as film,
+                m.tmdb_popularity as pop
+         FROM actor_movie_appearances ama
+         JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
+         WHERE ama.actor_id = a.id
+         ORDER BY m.tmdb_popularity DESC NULLS LAST
+         LIMIT 2
+       ) sub
+     ) tf ON true
+     WHERE EXTRACT(YEAR FROM a.deathday) BETWEEN $1 AND $2
+     AND ($5 = true OR a.is_obscure = false)
+     ORDER BY a.deathday DESC NULLS LAST, a.name
      LIMIT $3 OFFSET $4`,
     [decade, decadeEnd, limit, offset, includeObscure]
   )
@@ -218,23 +231,38 @@ export async function getForeverYoungMoviesPaginated(
 
 // Get deceased persons who died from COVID-19 or related causes
 export async function getCovidDeaths(options: CovidDeathOptions = {}): Promise<{
-  persons: ActorRecord[]
+  persons: (ActorRecord & { top_films: TopFilmEntry[] | null })[]
   totalCount: number
 }> {
   const { limit = 50, offset = 0, includeObscure = false } = options
   const db = getPool()
 
-  const result = await db.query<ActorRecord & { total_count: string }>(
-    `SELECT COUNT(*) OVER () as total_count, *
-     FROM actors
-     WHERE (cause_of_death ILIKE '%covid%'
-        OR cause_of_death ILIKE '%coronavirus%'
-        OR cause_of_death ILIKE '%sars-cov-2%'
-        OR cause_of_death_details ILIKE '%covid%'
-        OR cause_of_death_details ILIKE '%coronavirus%'
-        OR cause_of_death_details ILIKE '%sars-cov-2%')
-     AND ($3 = true OR is_obscure = false)
-     ORDER BY deathday DESC
+  const result = await db.query<
+    ActorRecord & { total_count: string; top_films: TopFilmEntry[] | null }
+  >(
+    `SELECT COUNT(*) OVER () as total_count, a.*,
+            tf.films as top_films
+     FROM actors a
+     LEFT JOIN LATERAL (
+       SELECT json_agg(sub.film ORDER BY sub.pop DESC NULLS LAST) as films
+       FROM (
+         SELECT json_build_object('title', m.title, 'year', m.release_year) as film,
+                m.tmdb_popularity as pop
+         FROM actor_movie_appearances ama
+         JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
+         WHERE ama.actor_id = a.id
+         ORDER BY m.tmdb_popularity DESC NULLS LAST
+         LIMIT 2
+       ) sub
+     ) tf ON true
+     WHERE (a.cause_of_death ILIKE '%covid%'
+        OR a.cause_of_death ILIKE '%coronavirus%'
+        OR a.cause_of_death ILIKE '%sars-cov-2%'
+        OR a.cause_of_death_details ILIKE '%covid%'
+        OR a.cause_of_death_details ILIKE '%coronavirus%'
+        OR a.cause_of_death_details ILIKE '%sars-cov-2%')
+     AND ($3 = true OR a.is_obscure = false)
+     ORDER BY a.deathday DESC
      LIMIT $1 OFFSET $2`,
     [limit, offset, includeObscure]
   )
@@ -374,7 +402,7 @@ function getSuicidePatterns(): string {
 
 // Get deceased persons who died from unnatural causes
 export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): Promise<{
-  persons: ActorRecord[]
+  persons: (ActorRecord & { top_films: TopFilmEntry[] | null })[]
   totalCount: number
   categoryCounts: Record<UnnaturalDeathCategory, number>
 }> {
@@ -426,12 +454,27 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
   // (e.g., "suicide by gunshot wound" matches homicide pattern but should be excluded)
   const suicideExclusion = shouldHideSuicides ? `AND NOT (${getSuicidePatterns()})` : ""
 
-  // Get persons matching the filter
-  const result = await db.query<ActorRecord & { total_count: string }>(
-    `SELECT COUNT(*) OVER () as total_count, actors.*
+  // Get persons matching the filter with top films
+  const result = await db.query<
+    ActorRecord & { total_count: string; top_films: TopFilmEntry[] | null }
+  >(
+    `SELECT COUNT(*) OVER () as total_count, actors.*,
+            tf.films as top_films
      FROM actors
      LEFT JOIN cause_of_death_normalizations n ON actors.cause_of_death = n.original_cause
      LEFT JOIN cause_manner_mappings cmm ON COALESCE(n.normalized_cause, actors.cause_of_death) = cmm.normalized_cause
+     LEFT JOIN LATERAL (
+       SELECT json_agg(sub.film ORDER BY sub.pop DESC NULLS LAST) as films
+       FROM (
+         SELECT json_build_object('title', m.title, 'year', m.release_year) as film,
+                m.tmdb_popularity as pop
+         FROM actor_movie_appearances ama
+         JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
+         WHERE ama.actor_id = actors.id
+         ORDER BY m.tmdb_popularity DESC NULLS LAST
+         LIMIT 2
+       ) sub
+     ) tf ON true
      WHERE (${whereCondition}) ${suicideExclusion} AND ($3 = true OR actors.is_obscure = false)
      ORDER BY actors.deathday DESC
      LIMIT $1 OFFSET $2`,
@@ -491,7 +534,7 @@ const ALL_DEATHS_SORT_MAP: Record<string, string> = {
 // Get all deceased persons, paginated (for "All Deaths" page)
 // Requires actors to have appeared in 2+ movies OR 10+ TV episodes
 export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
-  persons: ActorRecord[]
+  persons: (ActorRecord & { top_films: TopFilmEntry[] | null })[]
   totalCount: number
 }> {
   const { limit = 50, offset = 0, includeObscure = false, search, sort, dir } = options
@@ -515,7 +558,9 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
     searchClause = `AND ${searchConditions.join(" AND ")}`
   }
 
-  const result = await db.query<ActorRecord & { total_count: string }>(
+  const result = await db.query<
+    ActorRecord & { total_count: string; top_films: TopFilmEntry[] | null }
+  >(
     `WITH actor_appearances AS (
        SELECT
          a.id,
@@ -529,10 +574,23 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
        HAVING COUNT(DISTINCT ama.movie_tmdb_id) >= 2
           OR COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10
      )
-     SELECT COUNT(*) OVER () as total_count, actors.*
+     SELECT COUNT(*) OVER () as total_count, actors.*,
+            tf.films as top_films
      FROM actors
      JOIN actor_appearances aa ON aa.id = actors.id
-     WHERE ($3 = true OR is_obscure = false)
+     LEFT JOIN LATERAL (
+       SELECT json_agg(sub.film ORDER BY sub.pop DESC NULLS LAST) as films
+       FROM (
+         SELECT json_build_object('title', m.title, 'year', m.release_year) as film,
+                m.tmdb_popularity as pop
+         FROM actor_movie_appearances ama
+         JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
+         WHERE ama.actor_id = actors.id
+         ORDER BY m.tmdb_popularity DESC NULLS LAST
+         LIMIT 2
+       ) sub
+     ) tf ON true
+     WHERE ($3 = true OR actors.is_obscure = false)
        ${searchClause}
      ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}, actors.name, actors.id
      LIMIT $1 OFFSET $2`,

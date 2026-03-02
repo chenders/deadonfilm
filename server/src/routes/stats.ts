@@ -12,7 +12,9 @@ import {
   UNNATURAL_DEATH_CATEGORIES,
   type UnnaturalDeathCategory,
 } from "../lib/db.js"
+import { createActorSlug } from "../lib/slug-utils.js"
 import { sendWithETag } from "../lib/etag.js"
+import { mapTopFilms } from "../lib/map-top-films.js"
 import newrelic from "newrelic"
 import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
 
@@ -93,13 +95,15 @@ export async function getCovidDeathsHandler(req: Request, res: Response) {
     type CovidDeathsResponse = {
       persons: Array<{
         rank: number
-        id: number | null
+        id: number
         name: string
         deathday: string | null
         causeOfDeath: string | null
         causeOfDeathDetails: string | null
         profilePath: string | null
         ageAtDeath: number | null
+        knownFor: Array<{ name: string; year: number | null; type: string }> | null
+        actorSlug: string
       }>
       pagination: {
         page: number
@@ -123,13 +127,15 @@ export async function getCovidDeathsHandler(req: Request, res: Response) {
     const response: CovidDeathsResponse = {
       persons: persons.map((p, i) => ({
         rank: offset + i + 1,
-        id: p.tmdb_id,
+        id: p.id,
         name: p.name,
         deathday: p.deathday,
         causeOfDeath: p.cause_of_death,
         causeOfDeathDetails: p.cause_of_death_details,
         profilePath: p.profile_path,
         ageAtDeath: p.age_at_death,
+        knownFor: mapTopFilms(p.top_films),
+        actorSlug: createActorSlug(p.name, p.id),
       })),
       pagination: {
         page,
@@ -423,13 +429,15 @@ export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
     type UnnaturalDeathsResponse = {
       persons: Array<{
         rank: number
-        id: number | null
+        id: number
         name: string
         deathday: string | null
         causeOfDeath: string | null
         causeOfDeathDetails: string | null
         profilePath: string | null
         ageAtDeath: number | null
+        knownFor: Array<{ name: string; year: number | null; type: string }> | null
+        actorSlug: string
       }>
       pagination: {
         page: number
@@ -465,13 +473,15 @@ export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
     const response: UnnaturalDeathsResponse = {
       persons: persons.map((p, i) => ({
         rank: offset + i + 1,
-        id: p.tmdb_id,
+        id: p.id,
         name: p.name,
         deathday: p.deathday,
         causeOfDeath: p.cause_of_death,
         causeOfDeathDetails: p.cause_of_death_details,
         profilePath: p.profile_path,
         ageAtDeath: p.age_at_death,
+        knownFor: mapTopFilms(p.top_films),
+        actorSlug: createActorSlug(p.name, p.id),
       })),
       pagination: {
         page,
