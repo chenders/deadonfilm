@@ -95,7 +95,7 @@ export async function getCovidDeathsHandler(req: Request, res: Response) {
     type CovidDeathsResponse = {
       persons: Array<{
         rank: number
-        id: number | null
+        id: number
         name: string
         deathday: string | null
         causeOfDeath: string | null
@@ -429,7 +429,7 @@ export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
     type UnnaturalDeathsResponse = {
       persons: Array<{
         rank: number
-        id: number | null
+        id: number
         name: string
         deathday: string | null
         causeOfDeath: string | null

@@ -107,7 +107,7 @@ export async function getDeathsByCauseHandler(req: Request, res: Response) {
       cause,
       slug,
       deaths: deaths.map((d) => ({
-        id: d.tmdb_id,
+        id: d.id,
         name: d.name,
         deathday: d.deathday,
         profilePath: d.profile_path,
@@ -242,7 +242,7 @@ export async function getDeathsByDecadeHandler(req: Request, res: Response) {
       decade,
       decadeLabel: `${decade}s`,
       deaths: deaths.map((d) => ({
-        id: d.tmdb_id,
+        id: d.id,
         name: d.name,
         deathday: d.deathday,
         profilePath: d.profile_path,

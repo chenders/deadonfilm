@@ -464,9 +464,10 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
      LEFT JOIN cause_of_death_normalizations n ON actors.cause_of_death = n.original_cause
      LEFT JOIN cause_manner_mappings cmm ON COALESCE(n.normalized_cause, actors.cause_of_death) = cmm.normalized_cause
      LEFT JOIN LATERAL (
-       SELECT json_agg(sub.film) as films
+       SELECT json_agg(sub.film ORDER BY sub.pop DESC NULLS LAST) as films
        FROM (
-         SELECT json_build_object('title', m.title, 'year', m.release_year) as film
+         SELECT json_build_object('title', m.title, 'year', m.release_year) as film,
+                m.tmdb_popularity as pop
          FROM actor_movie_appearances ama
          JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
          WHERE ama.actor_id = actors.id
@@ -578,9 +579,10 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
      FROM actors
      JOIN actor_appearances aa ON aa.id = actors.id
      LEFT JOIN LATERAL (
-       SELECT json_agg(sub.film) as films
+       SELECT json_agg(sub.film ORDER BY sub.pop DESC NULLS LAST) as films
        FROM (
-         SELECT json_build_object('title', m.title, 'year', m.release_year) as film
+         SELECT json_build_object('title', m.title, 'year', m.release_year) as film,
+                m.tmdb_popularity as pop
          FROM actor_movie_appearances ama
          JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
          WHERE ama.actor_id = actors.id
