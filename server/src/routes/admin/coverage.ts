@@ -10,11 +10,6 @@
 
 import { Request, Response, Router } from "express"
 import { getPool } from "../../lib/db/pool.js"
-
-/** Validate that a string is a plausible YYYY-MM-DD date. */
-function isValidDateParam(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !isNaN(Date.parse(value))
-}
 import { logger } from "../../lib/logger.js"
 import {
   getCoverageStats,
@@ -26,6 +21,11 @@ import {
   getActorPreview,
   ActorCoverageFilters,
 } from "../../lib/db/admin-coverage-queries.js"
+
+/** Validate that a string is a plausible YYYY-MM-DD date. */
+function isValidDateParam(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !isNaN(Date.parse(value))
+}
 
 const router = Router()
 
@@ -131,15 +131,15 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (req.query.minAge) {
-      const minAge = parseInt(req.query.minAge as string, 10)
-      if (Number.isFinite(minAge) && minAge >= 0 && minAge <= 130) {
+      const minAge = Number(req.query.minAge as string)
+      if (Number.isInteger(minAge) && minAge >= 0 && minAge <= 130) {
         filters.minAge = minAge
       }
     }
 
     if (req.query.maxAge) {
-      const maxAge = parseInt(req.query.maxAge as string, 10)
-      if (Number.isFinite(maxAge) && maxAge >= 0 && maxAge <= 130) {
+      const maxAge = Number(req.query.maxAge as string)
+      if (Number.isInteger(maxAge) && maxAge >= 0 && maxAge <= 130) {
         filters.maxAge = maxAge
       }
     }

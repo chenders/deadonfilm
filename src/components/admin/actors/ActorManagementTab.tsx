@@ -33,8 +33,8 @@ const DEATH_MANNER_OPTIONS = [
 /** Parse an age URL param into a validated integer (0-130), or undefined if invalid. */
 function parseAgeParam(value: string | null): number | undefined {
   if (!value) return undefined
-  const n = parseInt(value, 10)
-  if (!Number.isFinite(n) || n < 0 || n > 130) return undefined
+  const n = Number(value)
+  if (!Number.isInteger(n) || n < 0 || n > 130) return undefined
   return n
 }
 
