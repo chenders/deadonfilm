@@ -138,8 +138,8 @@ describe("AllDeathsPage", () => {
     await waitFor(() => {
       // ActorCard renders "Age: 85"
       expect(screen.getByText("Age: 85")).toBeInTheDocument()
-      // Cause of death is title-cased by ActorCard
-      expect(screen.getByText("Natural Causes")).toBeInTheDocument()
+      // Cause of death rendered via CauseOfDeathBadge (not title-cased)
+      expect(screen.getByText("Natural causes")).toBeInTheDocument()
     })
   })
 

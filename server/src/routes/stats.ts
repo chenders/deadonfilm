@@ -14,16 +14,9 @@ import {
 } from "../lib/db.js"
 import { createActorSlug } from "../lib/slug-utils.js"
 import { sendWithETag } from "../lib/etag.js"
+import { mapTopFilms } from "../lib/map-top-films.js"
 import newrelic from "newrelic"
 import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
-
-/** Maps DB top_films to API knownFor format */
-function mapTopFilms(
-  topFilms: Array<{ title: string; year: number | null }> | null
-): Array<{ name: string; year: number | null; type: string }> | null {
-  if (!topFilms || topFilms.length === 0) return null
-  return topFilms.map((f) => ({ name: f.title, year: f.year, type: "movie" }))
-}
 
 export async function getStats(req: Request, res: Response) {
   try {
@@ -134,7 +127,7 @@ export async function getCovidDeathsHandler(req: Request, res: Response) {
     const response: CovidDeathsResponse = {
       persons: persons.map((p, i) => ({
         rank: offset + i + 1,
-        id: p.tmdb_id,
+        id: p.id,
         name: p.name,
         deathday: p.deathday,
         causeOfDeath: p.cause_of_death,
@@ -480,7 +473,7 @@ export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
     const response: UnnaturalDeathsResponse = {
       persons: persons.map((p, i) => ({
         rank: offset + i + 1,
-        id: p.tmdb_id,
+        id: p.id,
         name: p.name,
         deathday: p.deathday,
         causeOfDeath: p.cause_of_death,

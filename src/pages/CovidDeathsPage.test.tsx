@@ -140,8 +140,8 @@ describe("CovidDeathsPage", () => {
     await waitFor(() => {
       // ActorCard renders "Age: 72"
       expect(screen.getByText("Age: 72")).toBeInTheDocument()
-      // ActorCard title-cases the cause of death: "COVID-19" → "Covid-19"
-      expect(screen.getByText("Covid-19")).toBeInTheDocument()
+      // CauseOfDeathBadge renders cause as-is (not title-cased)
+      expect(screen.getByText("COVID-19")).toBeInTheDocument()
     })
   })
 

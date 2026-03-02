@@ -146,8 +146,15 @@ export default function DeathsByDecadePage() {
                   causeOfDeath={person.causeOfDeath}
                   knownFor={person.knownFor}
                   rank={baseOffset + index + 1}
+                  useCauseOfDeathBadge
                   testId={`death-row-${person.id}`}
-                />
+                >
+                  {typeof person.yearsLost === "number" && person.yearsLost > 0 && (
+                    <span className="mt-1 block text-xs text-text-muted">
+                      {person.yearsLost.toLocaleString()} years lost
+                    </span>
+                  )}
+                </ActorCard>
               ))}
             </div>
 

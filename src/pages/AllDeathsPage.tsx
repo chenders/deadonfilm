@@ -208,6 +208,7 @@ export default function AllDeathsPage() {
                   causeOfDeathDetails={person.causeOfDeathDetails}
                   knownFor={person.knownFor}
                   rank={person.rank}
+                  useCauseOfDeathBadge
                   testId={`death-row-${person.id}`}
                 />
               ))}

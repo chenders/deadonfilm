@@ -145,7 +145,7 @@ describe("UnnaturalDeathsPage", () => {
     await waitFor(() => {
       // ActorCard renders "Age: 45"
       expect(screen.getByText("Age: 45")).toBeInTheDocument()
-      // ActorCard title-cases the cause of death
+      // CauseOfDeathBadge renders cause as-is
       expect(screen.getByText("Car Accident")).toBeInTheDocument()
     })
   })

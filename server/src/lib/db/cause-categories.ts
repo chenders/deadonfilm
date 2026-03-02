@@ -133,9 +133,10 @@ export async function getDeathsByCause(
             tf.films as top_films
      FROM actors a
      LEFT JOIN LATERAL (
-       SELECT json_agg(sub.film) as films
+       SELECT json_agg(sub.film ORDER BY sub.pop DESC NULLS LAST) as films
        FROM (
-         SELECT json_build_object('title', m.title, 'year', m.release_year) as film
+         SELECT json_build_object('title', m.title, 'year', m.release_year) as film,
+                m.tmdb_popularity as pop
          FROM actor_movie_appearances ama
          JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
          WHERE ama.actor_id = a.id
