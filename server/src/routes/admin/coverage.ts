@@ -10,6 +10,11 @@
 
 import { Request, Response, Router } from "express"
 import { getPool } from "../../lib/db/pool.js"
+
+/** Validate that a string is a plausible YYYY-MM-DD date. */
+function isValidDateParam(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !isNaN(Date.parse(value))
+}
 import { logger } from "../../lib/logger.js"
 import {
   getCoverageStats,
