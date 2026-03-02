@@ -193,6 +193,63 @@ describe("Admin Coverage Queries", () => {
       expect(result.totalPages).toBe(0)
     })
 
+    it("applies birth date range filters", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getActorsForCoverage(
+        mockPool,
+        { birthDateStart: "1920-01-01", birthDateEnd: "1950-12-31" },
+        1,
+        50
+      )
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      expect(calls[0][0]).toContain("birthday >= $1")
+      expect(calls[0][0]).toContain("birthday <= $2")
+      expect(calls[0][1]).toEqual(["1920-01-01", "1950-12-31", 0, 1, 50, 0]) // includes isAsc=0, isDesc=1
+    })
+
+    it("applies age at death range filters", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getActorsForCoverage(mockPool, { minAge: 20, maxAge: 40 }, 1, 50)
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      expect(calls[0][0]).toContain("age_at_death >= $1")
+      expect(calls[0][0]).toContain("age_at_death <= $2")
+      expect(calls[0][1]).toEqual([20, 40, 0, 1, 50, 0]) // minAge, maxAge, isAsc=0, isDesc=1, limit, offset
+    })
+
+    it("applies only minAge filter when maxAge is not set", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getActorsForCoverage(mockPool, { minAge: 50 }, 1, 50)
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      expect(calls[0][0]).toContain("age_at_death >= $1")
+      expect(calls[0][0]).not.toContain("age_at_death <=")
+      expect(calls[0][1]).toEqual([50, 0, 1, 50, 0])
+    })
+
+    it("applies birth date and age filters together with other filters", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getActorsForCoverage(
+        mockPool,
+        { birthDateStart: "1920-01-01", minAge: 60, minPopularity: 10 },
+        1,
+        50
+      )
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      expect(calls[0][0]).toContain("birthday >= $")
+      expect(calls[0][0]).toContain("age_at_death >= $")
+      expect(calls[0][0]).toContain("popularity >= $")
+      expect(calls[0][1]).toContain(10)
+      expect(calls[0][1]).toContain("1920-01-01")
+      expect(calls[0][1]).toContain(60)
+    })
+
     it("applies causeOfDeath filter", async () => {
       vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
 

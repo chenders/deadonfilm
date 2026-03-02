@@ -75,6 +75,10 @@ export interface ActorCoverageFilters {
   maxPopularity?: number
   deathDateStart?: string
   deathDateEnd?: string
+  birthDateStart?: string
+  birthDateEnd?: string
+  minAge?: number
+  maxAge?: number
   searchName?: string
   causeOfDeath?: string
   deathManner?: string
@@ -202,6 +206,26 @@ export async function getActorsForCoverage(
   if (filters.deathDateEnd) {
     whereClauses.push(`deathday <= $${paramIndex++}`)
     params.push(filters.deathDateEnd)
+  }
+
+  if (filters.birthDateStart) {
+    whereClauses.push(`birthday >= $${paramIndex++}`)
+    params.push(filters.birthDateStart)
+  }
+
+  if (filters.birthDateEnd) {
+    whereClauses.push(`birthday <= $${paramIndex++}`)
+    params.push(filters.birthDateEnd)
+  }
+
+  if (filters.minAge !== undefined) {
+    whereClauses.push(`age_at_death >= $${paramIndex++}`)
+    params.push(filters.minAge)
+  }
+
+  if (filters.maxAge !== undefined) {
+    whereClauses.push(`age_at_death <= $${paramIndex++}`)
+    params.push(filters.maxAge)
   }
 
   if (filters.searchName) {

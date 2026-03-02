@@ -111,6 +111,28 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
       filters.deathDateEnd = req.query.deathDateEnd as string
     }
 
+    if (req.query.birthDateStart) {
+      filters.birthDateStart = req.query.birthDateStart as string
+    }
+
+    if (req.query.birthDateEnd) {
+      filters.birthDateEnd = req.query.birthDateEnd as string
+    }
+
+    if (req.query.minAge) {
+      const minAge = parseInt(req.query.minAge as string, 10)
+      if (!isNaN(minAge) && minAge >= 0) {
+        filters.minAge = minAge
+      }
+    }
+
+    if (req.query.maxAge) {
+      const maxAge = parseInt(req.query.maxAge as string, 10)
+      if (!isNaN(maxAge) && maxAge >= 0) {
+        filters.maxAge = maxAge
+      }
+    }
+
     if (req.query.searchName) {
       filters.searchName = req.query.searchName as string
     }
