@@ -187,6 +187,9 @@ describe("DeathsByDecadePage", () => {
       expect(screen.getByText("Age: 72")).toBeInTheDocument()
       // CauseOfDeathBadge renders cause as-is
       expect(screen.getByText("Cancer")).toBeInTheDocument()
+      // Verify yearsLost is rendered via ActorCard children slot
+      expect(screen.getByText("8 years lost")).toBeInTheDocument()
+      expect(screen.getByText("12 years lost")).toBeInTheDocument()
     })
   })
 

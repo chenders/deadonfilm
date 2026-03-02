@@ -141,6 +141,9 @@ describe("DeathsByCausePage", () => {
       // Verify actor names are rendered
       expect(screen.getByText("Actor One")).toBeInTheDocument()
       expect(screen.getByText("Actor Two")).toBeInTheDocument()
+      // Verify yearsLost is rendered via ActorCard children slot
+      expect(screen.getByText("8 years lost")).toBeInTheDocument()
+      expect(screen.getByText("12 years lost")).toBeInTheDocument()
     })
   })
 

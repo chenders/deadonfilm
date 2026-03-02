@@ -121,7 +121,7 @@ export async function getDeathsByCause(
   const countResult = await db.query<{ count: string }>(
     `SELECT COUNT(*) as count
      FROM actors
-     WHERE LOWER(cause_of_death) = LOWER($1) AND ($2 = true OR is_obscure = false)`,
+     WHERE LOWER(cause_of_death) = LOWER($1) AND deathday IS NOT NULL AND ($2 = true OR is_obscure = false)`,
     [cause, includeObscure]
   )
   const totalCount = parseInt(countResult.rows[0]?.count ?? "0", 10)
@@ -144,7 +144,7 @@ export async function getDeathsByCause(
          LIMIT 2
        ) sub
      ) tf ON true
-     WHERE LOWER(a.cause_of_death) = LOWER($1) AND ($4 = true OR a.is_obscure = false)
+     WHERE LOWER(a.cause_of_death) = LOWER($1) AND a.deathday IS NOT NULL AND ($4 = true OR a.is_obscure = false)
      ORDER BY a.deathday DESC NULLS LAST, a.name
      LIMIT $2 OFFSET $3`,
     [cause, limit, offset, includeObscure]
