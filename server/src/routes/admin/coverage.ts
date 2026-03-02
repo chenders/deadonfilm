@@ -121,14 +121,14 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
 
     if (req.query.minAge) {
       const minAge = parseInt(req.query.minAge as string, 10)
-      if (!isNaN(minAge) && minAge >= 0) {
+      if (Number.isFinite(minAge) && minAge >= 0 && minAge <= 130) {
         filters.minAge = minAge
       }
     }
 
     if (req.query.maxAge) {
       const maxAge = parseInt(req.query.maxAge as string, 10)
-      if (!isNaN(maxAge) && maxAge >= 0) {
+      if (Number.isFinite(maxAge) && maxAge >= 0 && maxAge <= 130) {
         filters.maxAge = maxAge
       }
     }

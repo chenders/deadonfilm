@@ -167,11 +167,11 @@ async function fetchActorsForCoverage(
   if (filters.birthDateEnd) {
     params.append("birthDateEnd", filters.birthDateEnd)
   }
-  if (filters.minAge !== undefined) {
-    params.append("minAge", filters.minAge.toString())
+  if (Number.isFinite(filters.minAge)) {
+    params.append("minAge", String(filters.minAge))
   }
-  if (filters.maxAge !== undefined) {
-    params.append("maxAge", filters.maxAge.toString())
+  if (Number.isFinite(filters.maxAge)) {
+    params.append("maxAge", String(filters.maxAge))
   }
   if (filters.searchName) {
     params.append("searchName", filters.searchName)

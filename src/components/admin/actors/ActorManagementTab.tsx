@@ -30,6 +30,14 @@ const DEATH_MANNER_OPTIONS = [
   { value: "pending", label: "Pending" },
 ]
 
+/** Parse an age URL param into a validated integer (0-130), or undefined if invalid. */
+function parseAgeParam(value: string | null): number | undefined {
+  if (!value) return undefined
+  const n = parseInt(value, 10)
+  if (!Number.isFinite(n) || n < 0 || n > 130) return undefined
+  return n
+}
+
 function formatTopCredits(credits: ActorTopCredit[]): string {
   return credits.map((c) => c.title + (c.year ? ` (${c.year})` : "")).join(", ")
 }
@@ -82,8 +90,8 @@ export default function ActorManagementTab() {
     deathDateEnd: searchParams.get("deathDateEnd") || undefined,
     birthDateStart: searchParams.get("birthDateStart") || undefined,
     birthDateEnd: searchParams.get("birthDateEnd") || undefined,
-    minAge: searchParams.get("minAge") ? parseInt(searchParams.get("minAge")!, 10) : undefined,
-    maxAge: searchParams.get("maxAge") ? parseInt(searchParams.get("maxAge")!, 10) : undefined,
+    minAge: parseAgeParam(searchParams.get("minAge")),
+    maxAge: parseAgeParam(searchParams.get("maxAge")),
     searchName: searchParams.get("searchName") || undefined,
     causeOfDeath: searchParams.get("causeOfDeath") || undefined,
     deathManner: searchParams.get("deathManner") || undefined,
@@ -137,10 +145,10 @@ export default function ActorManagementTab() {
     if (updatedFilters.birthDateEnd) {
       params.set("birthDateEnd", updatedFilters.birthDateEnd)
     }
-    if (updatedFilters.minAge !== undefined) {
+    if (typeof updatedFilters.minAge === "number" && Number.isFinite(updatedFilters.minAge)) {
       params.set("minAge", updatedFilters.minAge.toString())
     }
-    if (updatedFilters.maxAge !== undefined) {
+    if (typeof updatedFilters.maxAge === "number" && Number.isFinite(updatedFilters.maxAge)) {
       params.set("maxAge", updatedFilters.maxAge.toString())
     }
     if (updatedFilters.searchName) {
@@ -486,11 +494,14 @@ export default function ActorManagementTab() {
               min="0"
               max="130"
               value={filters.minAge ?? ""}
-              onChange={(e) =>
+              onChange={(e) => {
+                const val = e.currentTarget.valueAsNumber
                 handleFilterChange({
-                  minAge: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  minAge: Number.isFinite(val)
+                    ? Math.max(0, Math.min(130, Math.round(val)))
+                    : undefined,
                 })
-              }
+              }}
               className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
               placeholder="0"
             />
@@ -507,11 +518,14 @@ export default function ActorManagementTab() {
               min="0"
               max="130"
               value={filters.maxAge ?? ""}
-              onChange={(e) =>
+              onChange={(e) => {
+                const val = e.currentTarget.valueAsNumber
                 handleFilterChange({
-                  maxAge: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                  maxAge: Number.isFinite(val)
+                    ? Math.max(0, Math.min(130, Math.round(val)))
+                    : undefined,
                 })
-              }
+              }}
               className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
               placeholder="130"
             />
