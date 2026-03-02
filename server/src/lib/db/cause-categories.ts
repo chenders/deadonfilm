@@ -124,7 +124,7 @@ export async function getDeathsByCause(
      WHERE LOWER(cause_of_death) = LOWER($1) AND ($2 = true OR is_obscure = false)`,
     [cause, includeObscure]
   )
-  const totalCount = parseInt(countResult.rows[0].count, 10)
+  const totalCount = parseInt(countResult.rows[0]?.count ?? "0", 10)
 
   // Get paginated results with top films via lateral join
   const result = await db.query<DeathByCauseRecord>(

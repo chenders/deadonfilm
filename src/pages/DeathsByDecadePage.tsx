@@ -151,7 +151,7 @@ export default function DeathsByDecadePage() {
                 >
                   {typeof person.yearsLost === "number" && person.yearsLost > 0 && (
                     <span className="mt-1 block text-xs text-text-muted">
-                      {person.yearsLost.toLocaleString()} years lost
+                      {Math.round(person.yearsLost).toLocaleString()} years lost
                     </span>
                   )}
                 </ActorCard>

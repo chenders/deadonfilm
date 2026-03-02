@@ -232,7 +232,7 @@ describe("HoverTooltip", () => {
 
     const trigger = screen.getByRole("button")
     expect(trigger).toBeInTheDocument()
-    expect(trigger).toHaveAttribute("type", "button")
+    expect(trigger).toHaveAttribute("tabindex", "0")
   })
 
   it("calls onOpen callback when tooltip is shown via hover", async () => {

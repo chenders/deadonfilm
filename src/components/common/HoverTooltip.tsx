@@ -121,7 +121,7 @@ export default function HoverTooltip({
 }: HoverTooltipProps) {
   const [showTooltip, setShowTooltip] = useState(false)
   const tooltipId = useId()
-  const triggerRef = useRef<HTMLButtonElement>(null)
+  const triggerRef = useRef<HTMLSpanElement>(null)
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasCalledOnOpen = useRef(false)
 
@@ -210,9 +210,10 @@ export default function HoverTooltip({
   }
 
   return (
-    <button
+    <span
       ref={triggerRef}
-      type="button"
+      role="button"
+      tabIndex={0}
       aria-describedby={showTooltip ? tooltipId : undefined}
       className={`inline-flex min-h-6 cursor-help items-center ${className}`}
       onMouseEnter={handleMouseEnter}
@@ -230,6 +231,6 @@ export default function HoverTooltip({
         testId={testId}
         tooltipId={tooltipId}
       />
-    </button>
+    </span>
   )
 }

@@ -82,7 +82,7 @@ export interface CovidDeath {
   rank: number
   id: number
   name: string
-  deathday: string
+  deathday: string | null
   causeOfDeath: string | null
   causeOfDeathDetails: string | null
   profilePath: string | null
@@ -109,7 +109,7 @@ export interface UnnaturalDeath {
   rank: number
   id: number
   name: string
-  deathday: string
+  deathday: string | null
   causeOfDeath: string | null
   causeOfDeathDetails: string | null
   profilePath: string | null
@@ -151,7 +151,7 @@ export interface AllDeath {
   rank: number
   id: number
   name: string
-  deathday: string
+  deathday: string | null
   profilePath: string | null
   causeOfDeath: string | null
   causeOfDeathDetails: string | null

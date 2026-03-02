@@ -42,7 +42,7 @@ export async function getDeathsByDecade(
      AND ($3 = true OR is_obscure = false)`,
     [decade, decadeEnd, includeObscure]
   )
-  const totalCount = parseInt(countResult.rows[0].count, 10)
+  const totalCount = parseInt(countResult.rows[0]?.count ?? "0", 10)
 
   // Get paginated results with top films via lateral join
   const result = await db.query<DeathByDecadeRecord>(
