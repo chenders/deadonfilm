@@ -101,19 +101,31 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (req.query.minPopularity) {
-      filters.minPopularity = parseFloat(req.query.minPopularity as string)
+      const val = parseFloat(req.query.minPopularity as string)
+      if (Number.isFinite(val)) {
+        filters.minPopularity = val
+      }
     }
 
     if (req.query.maxPopularity) {
-      filters.maxPopularity = parseFloat(req.query.maxPopularity as string)
+      const val = parseFloat(req.query.maxPopularity as string)
+      if (Number.isFinite(val)) {
+        filters.maxPopularity = val
+      }
     }
 
     if (req.query.deathDateStart) {
-      filters.deathDateStart = req.query.deathDateStart as string
+      const val = req.query.deathDateStart as string
+      if (isValidDateParam(val)) {
+        filters.deathDateStart = val
+      }
     }
 
     if (req.query.deathDateEnd) {
-      filters.deathDateEnd = req.query.deathDateEnd as string
+      const val = req.query.deathDateEnd as string
+      if (isValidDateParam(val)) {
+        filters.deathDateEnd = val
+      }
     }
 
     if (req.query.birthDateStart) {
