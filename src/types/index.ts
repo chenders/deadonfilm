@@ -25,7 +25,6 @@ export type {
   SearchResponse,
   MovieResponse,
   DeathInfoResponse,
-  RandomMovieResponse,
   FeaturedMovie,
   FeaturedMovieResponse,
   PopularMovie,
