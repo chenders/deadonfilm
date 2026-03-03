@@ -162,17 +162,17 @@ describe("buildCollectionPageSchema", () => {
     ]
 
     const result = buildCollectionPageSchema(
-      "Forever Young",
-      "Movies featuring actors who died young",
-      "https://deadonfilm.com/forever-young",
+      "Notable Deaths",
+      "Actors with detailed death circumstances",
+      "https://deadonfilm.com/deaths/notable",
       items
     )
 
     expect(result["@context"]).toBe("https://schema.org")
     expect(result["@type"]).toBe("CollectionPage")
-    expect(result.name).toBe("Forever Young")
-    expect(result.description).toBe("Movies featuring actors who died young")
-    expect(result.url).toBe("https://deadonfilm.com/forever-young")
+    expect(result.name).toBe("Notable Deaths")
+    expect(result.description).toBe("Actors with detailed death circumstances")
+    expect(result.url).toBe("https://deadonfilm.com/deaths/notable")
 
     const mainEntity = result.mainEntity as Record<string, unknown>
     expect(mainEntity["@type"]).toBe("ItemList")

@@ -549,22 +549,6 @@ function slugMatches(urlSlug: string, expectedSlug: string): boolean {
   return urlName.toLowerCase() === expectedName.toLowerCase()
 }
 
-// Get deceased actors who died on a specific month/day (for "On This Day" feature)
-// Only returns actors with a profile photo
-export async function getDeceasedByMonthDay(month: number, day: number): Promise<ActorRecord[]> {
-  const db = getPool()
-  const result = await db.query<ActorRecord>(
-    `SELECT * FROM actors
-     WHERE deathday IS NOT NULL
-       AND EXTRACT(MONTH FROM deathday) = $1
-       AND EXTRACT(DAY FROM deathday) = $2
-       AND profile_path IS NOT NULL
-     ORDER BY deathday DESC`,
-    [month, day]
-  )
-  return result.rows
-}
-
 // ============================================================================
 // Actor filmography functions
 // ============================================================================

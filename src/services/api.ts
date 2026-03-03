@@ -1,12 +1,9 @@
 import type {
   SearchResponse,
   MovieResponse,
-  OnThisDayResponse,
   DeathInfoResponse,
-  RandomMovieResponse,
   SiteStatsResponse,
   RecentDeathsResponse,
-  ForeverYoungResponse,
   ActorProfileResponse,
   CovidDeathsResponse,
   UnnaturalDeathsResponse,
@@ -82,19 +79,11 @@ export async function getMovie(movieId: number): Promise<MovieResponse> {
   return fetchJson(`/movie/${movieId}`)
 }
 
-export async function getOnThisDay(): Promise<OnThisDayResponse> {
-  return fetchJson("/on-this-day")
-}
-
 export async function getDeathInfo(
   movieId: number,
   personIds: number[]
 ): Promise<DeathInfoResponse> {
   return fetchJson(`/movie/${movieId}/death-info?personIds=${personIds.join(",")}`)
-}
-
-export async function getDiscoverMovie(): Promise<RandomMovieResponse> {
-  return fetchJson("/discover/forever-young")
 }
 
 export async function getSiteStats(): Promise<SiteStatsResponse> {
@@ -103,18 +92,6 @@ export async function getSiteStats(): Promise<SiteStatsResponse> {
 
 export async function getRecentDeaths(limit: number = 5): Promise<RecentDeathsResponse> {
   return fetchJson(`/recent-deaths?limit=${limit}`)
-}
-
-export async function getForeverYoungMovies(
-  page: number = 1,
-  sort?: string,
-  dir?: string
-): Promise<ForeverYoungResponse> {
-  const params = new URLSearchParams()
-  params.set("page", String(page))
-  if (sort) params.set("sort", sort)
-  if (dir) params.set("dir", dir)
-  return fetchJson(`/forever-young?${params.toString()}`)
 }
 
 // TMDB image URL helpers

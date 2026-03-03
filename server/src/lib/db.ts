@@ -42,7 +42,6 @@ export {
   updateDeathInfoByActorId,
   getActorById,
   getActorByEitherIdWithSlug,
-  getDeceasedByMonthDay,
   getActorFilmography,
   getActorShowFilmography,
   getDeceasedActorsFromTopMovies,
@@ -98,8 +97,6 @@ export type { ShowActorAppearanceRecord } from "./db/types.js"
 export {
   getDeathsByDecade,
   getRecentDeaths,
-  getForeverYoungMovies,
-  getForeverYoungMoviesPaginated,
   getCovidDeaths,
   UNNATURAL_DEATH_CATEGORIES,
   getUnnaturalDeaths,
@@ -110,9 +107,6 @@ export {
 export type {
   DeathByDecadeRecord,
   DeathsByDecadeOptions,
-  ForeverYoungMovie,
-  ForeverYoungMovieRecord,
-  ForeverYoungOptions,
   CovidDeathOptions,
   UnnaturalDeathsOptions,
   UnnaturalDeathCategory,

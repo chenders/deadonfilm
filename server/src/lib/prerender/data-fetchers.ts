@@ -89,12 +89,6 @@ export async function fetchPageData(match: MatchResult): Promise<PrerenderPageDa
         ),
         robots: "noindex, follow",
       }
-    case "forever-young":
-      return getStaticPageData(
-        "Forever Young — Movies Where No Cast Members Have Died",
-        "Discover movies with a perfect survival record — every cast member is still alive.",
-        "/forever-young"
-      )
     case "in-detail":
       return getStaticPageData(
         "In Detail — Actors With Thoroughly Researched Death Information",

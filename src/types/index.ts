@@ -36,7 +36,6 @@ export type {
 
 // Death types
 export type {
-  OnThisDayResponse,
   RecentDeathsResponse,
   CovidDeath,
   CovidDeathsResponse,
@@ -92,8 +91,6 @@ export type {
 
 // Discovery types
 export type {
-  ForeverYoungMovie,
-  ForeverYoungResponse,
   SiteStatsResponse,
   TriviaFact,
   TriviaResponse,

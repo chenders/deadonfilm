@@ -1,28 +1,6 @@
-// Discovery and category types
-
 import type { PaginationInfo } from "./common"
 
-// Forever Young types - movies featuring actors who died tragically young
-export interface ForeverYoungMovie {
-  rank: number
-  id: number
-  title: string
-  releaseYear: number | null
-  posterPath: string | null
-  actor: {
-    id: number
-    name: string
-    profilePath: string | null
-    yearsLost: number
-    causeOfDeath: string | null
-    causeOfDeathDetails: string | null
-  }
-}
-
-export interface ForeverYoungResponse {
-  movies: ForeverYoungMovie[]
-  pagination: PaginationInfo
-}
+// Discovery and category types
 
 // Site Stats types
 export interface SiteStatsResponse {

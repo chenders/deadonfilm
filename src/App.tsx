@@ -21,7 +21,6 @@ const ShowPage = lazyWithRetry(() => import("./pages/ShowPage"))
 const SeasonPage = lazyWithRetry(() => import("./pages/SeasonPage"))
 const EpisodePage = lazyWithRetry(() => import("./pages/EpisodePage"))
 const ActorPage = lazyWithRetry(() => import("./pages/ActorPage"))
-const ForeverYoungPage = lazyWithRetry(() => import("./pages/ForeverYoungPage"))
 const InDetailPage = lazyWithRetry(() => import("./pages/InDetailPage"))
 const CovidDeathsPage = lazyWithRetry(() => import("./pages/CovidDeathsPage"))
 const UnnaturalDeathsPage = lazyWithRetry(() => import("./pages/UnnaturalDeathsPage"))
@@ -410,7 +409,6 @@ function App() {
                             path="/actor/:slug/death"
                             element={<Navigate to=".." relative="path" replace />}
                           />
-                          <Route path="/forever-young" element={<ForeverYoungPage />} />
                           <Route path="/in-detail" element={<InDetailPage />} />
                           <Route path="/covid-deaths" element={<CovidDeathsPage />} />
                           <Route path="/unnatural-deaths" element={<UnnaturalDeathsPage />} />

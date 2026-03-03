@@ -12,9 +12,7 @@ import { invalidatePrerenderCache, invalidateSSRCache } from "./lib/cache.js"
 import { skipRateLimitForAdmin } from "./middleware/rate-limit-utils.js"
 import { searchMovies } from "./routes/search.js"
 import { getMovie } from "./routes/movie.js"
-import { getOnThisDay } from "./routes/on-this-day.js"
 import { getDeathInfoRoute } from "./routes/death-info.js"
-import { getDiscoverMovie, getForeverYoungMoviesHandler } from "./routes/discover.js"
 import {
   getStats,
   getRecentDeathsHandler,
@@ -273,9 +271,6 @@ app.use("/api", apiLimiter)
 app.get("/api/search", searchMovies)
 app.get("/api/movie/:id", getMovie)
 app.get("/api/movie/:id/death-info", getDeathInfoRoute)
-app.get("/api/on-this-day", getOnThisDay)
-app.get("/api/discover/:type", getDiscoverMovie)
-app.get("/api/forever-young", getForeverYoungMoviesHandler)
 app.get("/api/stats", getStats)
 app.get("/api/recent-deaths", getRecentDeathsHandler)
 app.get("/api/covid-deaths", getCovidDeathsHandler)

@@ -164,7 +164,6 @@ describe("generateStaticSitemap", () => {
     expect(xml).not.toContain("https://deadonfilm.com/death-watch")
     expect(xml).toContain("https://deadonfilm.com/covid-deaths")
     expect(xml).toContain("https://deadonfilm.com/unnatural-deaths")
-    expect(xml).toContain("https://deadonfilm.com/forever-young")
     expect(xml).toContain("https://deadonfilm.com/in-detail")
     expect(xml).toContain("https://deadonfilm.com/deaths")
     expect(xml).toContain("https://deadonfilm.com/movies/genres")
