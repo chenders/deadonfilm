@@ -23,6 +23,7 @@ import type { Browser, BrowserContext, Page } from "playwright-core"
 import type { BrowserFetchConfig, FetchedPage } from "./types.js"
 import { DEFAULT_BROWSER_FETCH_CONFIG } from "./types.js"
 import { htmlToText } from "./html-utils.js"
+import { withTimeout } from "../shared/concurrency.js"
 import {
   getBrowserAuthConfig,
   hasCredentialsForSite,
@@ -43,8 +44,10 @@ import type {
   AuthenticatedContextResult,
 } from "./browser-auth/index.js"
 
-// Content extraction thresholds
+// Content extraction thresholds and limits
 const JS_RENDER_WAIT_MS = 2000
+/** Maximum time for CAPTCHA detection + solving before giving up */
+const CAPTCHA_TIMEOUT_MS = 60_000
 const MIN_ARTICLE_CONTENT_LENGTH = 500
 const MIN_TEXT_CONTENT_LENGTH = 100
 const SOFT_BLOCK_PAGE_SIZE_THRESHOLD = 50000
@@ -57,6 +60,15 @@ let browserInitPromise: Promise<Browser> | null = null
 let idleTimeoutHandle: ReturnType<typeof setTimeout> | null = null
 let lastActivityTime = Date.now()
 let cleanupHandlersRegistered = false
+
+/** Maximum age (ms) for a browser context before it's force-closed as leaked. */
+const MAX_CONTEXT_AGE_MS = 5 * 60 * 1000 // 5 minutes
+/** Interval for scanning for stale contexts. */
+const CONTEXT_CLEANUP_INTERVAL_MS = 60 * 1000 // 1 minute
+let contextCleanupHandle: ReturnType<typeof setInterval> | null = null
+
+/** Track context creation times to detect leaks. */
+const contextCreationTimes = new WeakMap<BrowserContext, number>()
 
 // Configuration (can be overridden via setBrowserConfig)
 let activeConfig: BrowserFetchConfig = { ...DEFAULT_BROWSER_FETCH_CONFIG }
@@ -243,6 +255,26 @@ export function isBlockedResponse(status: number, body?: string): boolean {
 }
 
 /**
+ * Force-close browser contexts that have been open longer than MAX_CONTEXT_AGE_MS.
+ * Safety net for leaked contexts that prevent browser shutdown and saturate the worker.
+ */
+async function cleanupStaleContexts(): Promise<void> {
+  if (!browserInstance?.isConnected()) return
+
+  const now = Date.now()
+  for (const ctx of browserInstance.contexts()) {
+    const createdAt = contextCreationTimes.get(ctx)
+    if (createdAt && now - createdAt > MAX_CONTEXT_AGE_MS) {
+      const ageSeconds = Math.round((now - createdAt) / 1000)
+      console.warn(
+        `Force-closing leaked browser context (age: ${ageSeconds}s, max: ${MAX_CONTEXT_AGE_MS / 1000}s)`
+      )
+      await ctx.close().catch(() => {})
+    }
+  }
+}
+
+/**
  * Reset the idle timeout.
  */
 function resetIdleTimeout(): void {
@@ -311,6 +343,13 @@ async function getBrowser(): Promise<Browser> {
       }
     })
 
+    // Start periodic stale context cleanup
+    if (!contextCleanupHandle) {
+      contextCleanupHandle = setInterval(cleanupStaleContexts, CONTEXT_CLEANUP_INTERVAL_MS)
+      // Don't keep the process alive just for cleanup
+      if (contextCleanupHandle.unref) contextCleanupHandle.unref()
+    }
+
     resetIdleTimeout()
     return browserInstance
   })()
@@ -326,6 +365,11 @@ export async function shutdownBrowser(): Promise<void> {
   if (idleTimeoutHandle) {
     clearTimeout(idleTimeoutHandle)
     idleTimeoutHandle = null
+  }
+
+  if (contextCleanupHandle) {
+    clearInterval(contextCleanupHandle)
+    contextCleanupHandle = null
   }
 
   if (browserInstance) {
@@ -352,6 +396,7 @@ export async function getBrowserPage(): Promise<{
 }> {
   const browser = await getBrowser()
   const context = await createStealthContext(browser)
+  contextCreationTimes.set(context, Date.now())
   const page = await context.newPage()
 
   // Set common headers
@@ -504,6 +549,7 @@ export async function getAuthenticatedContext(
 
   // Create a new context with fingerprint-injected stealth
   const context = await createStealthContext(browser)
+  contextCreationTimes.set(context, Date.now())
 
   // If auth is not enabled or no credentials, return basic context
   if (!authConfig.enabled || !site || !hasCredentialsForSite(site)) {
@@ -673,6 +719,7 @@ export async function browserFetchPage(
     } else {
       // Create a stealth context even for non-authenticated requests
       context = await createStealthContext(browser)
+      contextCreationTimes.set(context, Date.now())
       page = await context.newPage()
     }
 
@@ -692,25 +739,34 @@ export async function browserFetchPage(
     // Wait a bit for JavaScript to render
     await page.waitForTimeout(JS_RENDER_WAIT_MS)
 
-    // Check for CAPTCHA
-    const captchaResult = await detectCaptcha(page)
-    if (captchaResult.detected) {
-      const authConfig = getBrowserAuthConfig()
-      if (authConfig.captchaSolver) {
-        console.log(`CAPTCHA detected: ${captchaResult.type}, attempting to solve...`)
-        const solveResult = await solveCaptcha(page, captchaResult, authConfig.captchaSolver)
-        authCostUsd += solveResult.costUsd
+    // Check for CAPTCHA — wrapped in timeout to prevent indefinite hangs
+    // from unresponsive Playwright evaluations leaking browser contexts
+    await withTimeout(
+      (async () => {
+        const captchaResult = await detectCaptcha(page)
+        if (captchaResult.detected) {
+          const authConfig = getBrowserAuthConfig()
+          if (authConfig.captchaSolver) {
+            console.log(`CAPTCHA detected: ${captchaResult.type}, attempting to solve...`)
+            const solveResult = await solveCaptcha(page, captchaResult, authConfig.captchaSolver)
+            authCostUsd += solveResult.costUsd
 
-        if (solveResult.success) {
-          // Wait for page to reload after CAPTCHA
-          await page.waitForTimeout(JS_RENDER_WAIT_MS)
-        } else {
-          console.warn(`CAPTCHA solving failed: ${solveResult.error}`)
+            if (solveResult.success) {
+              // Wait for page to reload after CAPTCHA
+              await page.waitForTimeout(JS_RENDER_WAIT_MS)
+            } else {
+              console.warn(`CAPTCHA solving failed: ${solveResult.error}`)
+            }
+          } else {
+            console.warn("CAPTCHA detected but no solver configured")
+          }
         }
-      } else {
-        console.warn("CAPTCHA detected but no solver configured")
+      })(),
+      CAPTCHA_TIMEOUT_MS,
+      () => {
+        console.warn(`CAPTCHA handling timed out after ${CAPTCHA_TIMEOUT_MS / 1000}s, skipping`)
       }
-    }
+    )
 
     // Check for paywall and attempt authentication if needed
     const paywallResult = await detectPaywall(page)
