@@ -3,6 +3,7 @@ import {
   SourceRateLimiter,
   BatchCostTracker,
   ParallelBatchRunner,
+  withTimeout,
   type BatchProgress,
 } from "./concurrency.js"
 
@@ -169,5 +170,28 @@ describe("ParallelBatchRunner", () => {
     })
 
     expect(results).toEqual([30, 10, 20])
+  })
+})
+
+describe("withTimeout", () => {
+  it("returns the promise result when it resolves before timeout", async () => {
+    const result = await withTimeout(Promise.resolve("fast"), 1000, () => "timed-out")
+    expect(result).toBe("fast")
+  })
+
+  it("returns the onTimeout value when promise exceeds timeout", async () => {
+    const result = await withTimeout(
+      new Promise<string>((resolve) => setTimeout(() => resolve("slow"), 500)),
+      50,
+      () => "timed-out"
+    )
+    expect(result).toBe("timed-out")
+  })
+
+  it("clears the timer when promise resolves first", async () => {
+    const start = Date.now()
+    await withTimeout(Promise.resolve("instant"), 5000, () => "timed-out")
+    // Should not wait 5 seconds
+    expect(Date.now() - start).toBeLessThan(100)
   })
 })

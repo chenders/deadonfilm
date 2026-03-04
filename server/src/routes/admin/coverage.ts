@@ -22,9 +22,20 @@ import {
   ActorCoverageFilters,
 } from "../../lib/db/admin-coverage-queries.js"
 
-/** Validate that a string is a plausible YYYY-MM-DD date. */
+/** Validate that a string is a valid YYYY-MM-DD calendar date. */
 function isValidDateParam(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !isNaN(Date.parse(value))
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+
+  const [yearStr, monthStr, dayStr] = value.split("-")
+  const year = Number.parseInt(yearStr, 10)
+  const month = Number.parseInt(monthStr, 10)
+  const day = Number.parseInt(dayStr, 10)
+
+  // Reconstruct in UTC and verify components match to reject overflow dates like 2024-02-30
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return (
+    date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day
+  )
 }
 
 const router = Router()
@@ -101,19 +112,31 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (req.query.minPopularity) {
-      filters.minPopularity = parseFloat(req.query.minPopularity as string)
+      const val = parseFloat(req.query.minPopularity as string)
+      if (Number.isFinite(val)) {
+        filters.minPopularity = val
+      }
     }
 
     if (req.query.maxPopularity) {
-      filters.maxPopularity = parseFloat(req.query.maxPopularity as string)
+      const val = parseFloat(req.query.maxPopularity as string)
+      if (Number.isFinite(val)) {
+        filters.maxPopularity = val
+      }
     }
 
     if (req.query.deathDateStart) {
-      filters.deathDateStart = req.query.deathDateStart as string
+      const val = req.query.deathDateStart as string
+      if (isValidDateParam(val)) {
+        filters.deathDateStart = val
+      }
     }
 
     if (req.query.deathDateEnd) {
-      filters.deathDateEnd = req.query.deathDateEnd as string
+      const val = req.query.deathDateEnd as string
+      if (isValidDateParam(val)) {
+        filters.deathDateEnd = val
+      }
     }
 
     if (req.query.birthDateStart) {

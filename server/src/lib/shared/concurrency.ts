@@ -226,3 +226,31 @@ export class ParallelBatchRunner<T, R> {
     return results.filter((r): r is R => r !== undefined)
   }
 }
+
+/**
+ * Race a promise against a timeout, returning a default value on timeout.
+ *
+ * Unlike AbortSignal.timeout(), this works with any promise (including
+ * Playwright page operations that don't accept AbortSignal). The original
+ * promise continues running but its result is discarded after timeout.
+ *
+ * @param promise - The promise to race
+ * @param timeoutMs - Maximum time to wait
+ * @param onTimeout - Called when timeout fires; its return value becomes the result
+ */
+export async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  onTimeout: () => T
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(onTimeout()), timeoutMs)
+  })
+
+  try {
+    return await Promise.race([promise, timeoutPromise])
+  } finally {
+    clearTimeout(timer!)
+  }
+}

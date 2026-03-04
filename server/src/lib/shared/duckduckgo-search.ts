@@ -10,6 +10,7 @@
  */
 
 import { decodeHtmlEntities } from "../death-sources/html-utils.js"
+import { withTimeout } from "./concurrency.js"
 
 const DUCKDUCKGO_HTML_URL = "https://html.duckduckgo.com/html/"
 const GOOGLE_CSE_URL = "https://www.googleapis.com/customsearch/v1"
@@ -19,6 +20,9 @@ const DDG_RESULTS_SELECTOR = ".result__url, .result__a, #links"
 
 /** Time to wait after CAPTCHA solve for page reload */
 const POST_CAPTCHA_WAIT_MS = 3000
+
+/** Maximum time for the entire CAPTCHA detection + solving flow */
+const CAPTCHA_TIMEOUT_MS = 60_000
 
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
@@ -275,38 +279,55 @@ async function browserDuckDuckGoSearch(
     // Get the page HTML
     let html = await page.content()
 
-    // Check for CAPTCHA even in browser mode
+    // Check for CAPTCHA even in browser mode — wrapped in timeout to prevent
+    // indefinite hangs from unresponsive Playwright page evaluations (which
+    // previously leaked browser contexts and blocked the worker)
     if (isDuckDuckGoCaptcha(html)) {
       console.log("DuckDuckGo CAPTCHA detected in browser mode, attempting CAPTCHA solve...")
 
-      // Try CAPTCHA detection + solving
-      const captchaResult = await detectCaptcha(page)
-      if (captchaResult.detected) {
-        console.log(
-          `DDG CAPTCHA detected as type="${captchaResult.type}", siteKey=${captchaResult.siteKey ? "found" : "null"}, context="${captchaResult.context}"`
-        )
-        const authConfig = getBrowserAuthConfig()
-        if (authConfig.captchaSolver) {
-          const solveResult = await solveCaptcha(page, captchaResult, authConfig.captchaSolver)
-          costUsd += solveResult.costUsd
+      const captchaHandled = await withTimeout(
+        (async () => {
+          const captchaResult = await detectCaptcha(page)
+          if (captchaResult.detected) {
+            console.log(
+              `DDG CAPTCHA detected as type="${captchaResult.type}", siteKey=${captchaResult.siteKey ? "found" : "null"}, context="${captchaResult.context}"`
+            )
+            const authConfig = getBrowserAuthConfig()
+            if (authConfig.captchaSolver) {
+              const solveResult = await solveCaptcha(page, captchaResult, authConfig.captchaSolver)
+              costUsd += solveResult.costUsd
 
-          if (solveResult.success) {
-            await page
-              .waitForLoadState("networkidle", { timeout: POST_CAPTCHA_WAIT_MS })
-              .catch(() => {})
-            html = await page.content()
+              if (solveResult.success) {
+                await page
+                  .waitForLoadState("networkidle", { timeout: POST_CAPTCHA_WAIT_MS })
+                  .catch(() => {})
+                return true
+              } else {
+                console.warn(`DDG CAPTCHA solving failed: ${solveResult.error}`)
+              }
+            } else {
+              console.warn(
+                "DDG CAPTCHA detected but no solver configured (set CAPTCHA_SOLVER_PROVIDER + API key)"
+              )
+            }
           } else {
-            console.warn(`DDG CAPTCHA solving failed: ${solveResult.error}`)
+            console.warn(
+              "DDG anomaly-modal present but detectCaptcha() found no standard CAPTCHA widget"
+            )
           }
-        } else {
+          return false
+        })(),
+        CAPTCHA_TIMEOUT_MS,
+        () => {
           console.warn(
-            "DDG CAPTCHA detected but no solver configured (set CAPTCHA_SOLVER_PROVIDER + API key)"
+            `DDG CAPTCHA handling timed out after ${CAPTCHA_TIMEOUT_MS / 1000}s, skipping`
           )
+          return false
         }
-      } else {
-        console.warn(
-          "DDG anomaly-modal present but detectCaptcha() found no standard CAPTCHA widget"
-        )
+      )
+
+      if (captchaHandled) {
+        html = await page.content()
       }
 
       // If still CAPTCHA after solving attempt, give up
