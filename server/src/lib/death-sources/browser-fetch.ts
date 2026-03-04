@@ -348,6 +348,10 @@ async function getBrowser(): Promise<Browser> {
         clearTimeout(idleTimeoutHandle)
         idleTimeoutHandle = null
       }
+      if (contextCleanupHandle) {
+        clearInterval(contextCleanupHandle)
+        contextCleanupHandle = null
+      }
     })
 
     // Start periodic stale context cleanup with re-entrancy guard
