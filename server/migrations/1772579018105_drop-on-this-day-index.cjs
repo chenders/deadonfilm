@@ -24,8 +24,8 @@ exports.up = (pgm) => {
 exports.down = (pgm) => {
   pgm.sql(`
     CREATE INDEX idx_actors_deathday_month_day ON actors (
-      (EXTRACT(MONTH FROM deathday)::int),
-      (EXTRACT(DAY FROM deathday)::int)
-    )
+      EXTRACT(MONTH FROM deathday),
+      EXTRACT(DAY FROM deathday)
+    ) WHERE deathday IS NOT NULL
   `);
 };

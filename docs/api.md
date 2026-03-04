@@ -115,10 +115,6 @@ Related actors by cause of death or decade.
 
 ---
 
-## Discovery
-
----
-
 ## Deaths
 
 ### `GET /api/deaths/notable`
