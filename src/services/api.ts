@@ -8,7 +8,6 @@ import type {
   CovidDeathsResponse,
   UnnaturalDeathsResponse,
   UnnaturalDeathCategory,
-  FeaturedMovieResponse,
   TriviaResponse,
   ThisWeekDeathsResponse,
   PopularMoviesResponse,
@@ -163,10 +162,6 @@ export async function getUnnaturalDeaths(
     searchParams.set("includeObscure", "true")
   }
   return fetchJson(`/unnatural-deaths?${searchParams.toString()}`)
-}
-
-export async function getFeaturedMovie(): Promise<FeaturedMovieResponse> {
-  return fetchJson("/featured-movie")
 }
 
 export async function getTrivia(): Promise<TriviaResponse> {

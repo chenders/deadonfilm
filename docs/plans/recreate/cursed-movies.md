@@ -152,7 +152,7 @@ Expandable accordion with `type: "movies" | "actors"` prop explaining:
 
 ### Component: `FeaturedCursedMovie` (was `src/components/home/FeaturedCursedMovie.tsx`)
 
-Home page widget showing the #1 highest mortality movie. Displays poster, title, year, death ratio, expected deaths, and excess mortality percentage. Uses `useFeaturedMovie` hook. Silently fails if data unavailable.
+Home page widget showing the #1 highest mortality movie. Displays poster, title, year, death ratio, expected deaths, and excess mortality percentage. Data is prefetched via route loader. Silently fails if data unavailable.
 
 ### API service functions (were in `src/services/api.ts`)
 
