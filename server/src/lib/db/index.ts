@@ -50,7 +50,6 @@ export {
   updateDeathInfoByActorId,
   getActorById,
   getActorByEitherIdWithSlug,
-  getDeceasedByMonthDay,
   getActorFilmography,
   getActorShowFilmography,
 } from "./actors.js"
@@ -84,8 +83,6 @@ export {
 export {
   getDeathsByDecade,
   getRecentDeaths,
-  getForeverYoungMovies,
-  getForeverYoungMoviesPaginated,
   getCovidDeaths,
   UNNATURAL_DEATH_CATEGORIES,
   getUnnaturalDeaths,

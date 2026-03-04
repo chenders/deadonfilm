@@ -118,10 +118,6 @@ describe("matchUrl", () => {
   })
 
   describe("static pages", () => {
-    it("matches /forever-young", () => {
-      expect(matchUrl("/forever-young")).toEqual({ pageType: "forever-young", params: {} })
-    })
-
     it("matches /in-detail", () => {
       expect(matchUrl("/in-detail")).toEqual({ pageType: "in-detail", params: {} })
     })

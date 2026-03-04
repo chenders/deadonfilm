@@ -10,10 +10,8 @@ import * as api from "@/services/api"
 vi.mock("@/services/api", () => ({
   getSiteStats: vi.fn(),
   getRecentDeaths: vi.fn(),
-  getOnThisDay: vi.fn(),
   searchMovies: vi.fn(),
   searchAll: vi.fn(),
-  getDiscoverMovie: vi.fn(),
   getProfileUrl: vi.fn((path) => (path ? `https://image.tmdb.org/t/p/w185${path}` : null)),
 }))
 
@@ -62,13 +60,6 @@ const mockDeaths = {
   ],
 }
 
-const mockOnThisDay = {
-  date: "2024-12-10",
-  month: "12",
-  day: "10",
-  deaths: [],
-}
-
 function renderWithProviders(ui: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -95,7 +86,6 @@ describe("HomePage", () => {
     // Set up default mocks that resolve to prevent hanging
     vi.mocked(api.getSiteStats).mockResolvedValue(mockStats)
     vi.mocked(api.getRecentDeaths).mockResolvedValue(mockDeaths)
-    vi.mocked(api.getOnThisDay).mockResolvedValue(mockOnThisDay)
     vi.mocked(api.searchMovies).mockResolvedValue({
       results: [],
       page: 1,

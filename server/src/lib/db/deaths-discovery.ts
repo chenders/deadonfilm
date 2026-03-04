@@ -2,7 +2,7 @@
  * Deaths discovery database functions.
  *
  * Functions for death-related discovery features: by decade, recent deaths,
- * forever young, COVID deaths, unnatural deaths, all deaths.
+ * COVID deaths, unnatural deaths, all deaths.
  */
 
 import { getPool } from "./pool.js"
@@ -11,9 +11,6 @@ import type {
   ActorRecord,
   DeathByDecadeRecord,
   DeathsByDecadeOptions,
-  ForeverYoungMovie,
-  ForeverYoungMovieRecord,
-  ForeverYoungOptions,
   CovidDeathOptions,
   UnnaturalDeathsOptions,
   UnnaturalDeathCategory,
@@ -137,92 +134,6 @@ export async function getRecentDeaths(limit: number = 5): Promise<
     [limit]
   )
   return result.rows
-}
-
-// ============================================================================
-// Forever Young feature - movies with leading actors who died young
-// ============================================================================
-
-// Get movies featuring leading actors (top 3 billing) who died abnormally young
-// Returns movies ordered by years lost, for random selection
-export async function getForeverYoungMovies(limit: number = 100): Promise<ForeverYoungMovie[]> {
-  const db = getPool()
-  // Find movies where a leading actor died with 40%+ of their expected lifespan still ahead
-  // i.e., years_lost > expected_lifespan * 0.40
-  const result = await db.query<ForeverYoungMovie>(
-    `SELECT DISTINCT ON (m.tmdb_id)
-       m.tmdb_id,
-       m.title,
-       m.release_date,
-       a.name as actor_name,
-       a.years_lost
-     FROM actor_movie_appearances aa
-     JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
-     JOIN actors a ON aa.actor_id = a.id
-     WHERE aa.billing_order <= 3
-       AND a.years_lost > a.expected_lifespan * 0.40
-     ORDER BY m.tmdb_id, a.years_lost DESC`,
-    []
-  )
-
-  // Sort by years_lost and limit after deduplication
-  return result.rows.sort((a, b) => b.years_lost - a.years_lost).slice(0, limit)
-}
-
-// Sort column allowlist for getForeverYoungMoviesPaginated
-const FOREVER_YOUNG_SORT_MAP: Record<string, string> = {
-  years_lost: "years_lost",
-  name: "actor_name",
-}
-
-// Get movies featuring leading actors who died abnormally young with pagination
-export async function getForeverYoungMoviesPaginated(
-  options: ForeverYoungOptions = {}
-): Promise<{ movies: ForeverYoungMovieRecord[]; totalCount: number }> {
-  const { limit = 50, offset = 0, sort, dir } = options
-  const db = getPool()
-
-  // Sort column comes from hardcoded allowlist, NOT user input (safe for SQL interpolation)
-  const sortColumn =
-    FOREVER_YOUNG_SORT_MAP[sort || "years_lost"] || FOREVER_YOUNG_SORT_MAP.years_lost
-  const sortDirection = dir === "asc" ? "ASC" : "DESC"
-  const nullsOrder = dir === "asc" ? "NULLS FIRST" : "NULLS LAST"
-
-  // Find movies where a leading actor died with 40%+ of their expected lifespan still ahead
-  // Uses CTE to get one actor per movie (the one who lost the most years),
-  // then paginates and returns with total count
-  const result = await db.query<ForeverYoungMovieRecord & { total_count: string }>(
-    `WITH forever_young_movies AS (
-       SELECT DISTINCT ON (m.tmdb_id)
-         m.tmdb_id as movie_tmdb_id,
-         m.title as movie_title,
-         m.release_year as movie_release_year,
-         m.poster_path as movie_poster_path,
-         a.id as actor_id,
-         a.tmdb_id as actor_tmdb_id,
-         a.name as actor_name,
-         a.profile_path as actor_profile_path,
-         a.years_lost,
-         a.cause_of_death,
-         a.cause_of_death_details
-       FROM actor_movie_appearances aa
-       JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
-       JOIN actors a ON aa.actor_id = a.id
-       WHERE aa.billing_order <= 3
-         AND a.years_lost > a.expected_lifespan * 0.40
-       ORDER BY m.tmdb_id, a.years_lost DESC
-     )
-     SELECT COUNT(*) OVER() as total_count, *
-     FROM forever_young_movies
-     ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}, movie_tmdb_id ASC, actor_id ASC
-     LIMIT $1 OFFSET $2`,
-    [limit, offset]
-  )
-
-  const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
-  const movies = result.rows.map(({ total_count: _total_count, ...movie }) => movie)
-
-  return { movies, totalCount }
 }
 
 // ============================================================================

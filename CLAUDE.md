@@ -174,7 +174,6 @@ corresponding `.test.ts` file exists. If not, create one with at least:
 - Edge case test (empty results, missing optional params)
 
 Currently untested route files (create tests when touching these):
-- `server/src/routes/on-this-day.ts`
 - `server/src/routes/shows/` (index, show-details, search, season)
 - `server/src/routes/admin/` (sitemap, cache, dashboard)
 

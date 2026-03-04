@@ -313,7 +313,7 @@ interface CollectionPageItem {
 }
 
 /**
- * Build CollectionPage schema for curated list pages (Death Watch, Forever Young, All Deaths)
+ * Build CollectionPage schema for curated list pages (Death Watch, All Deaths)
  */
 export function buildCollectionPageSchema(
   name: string,

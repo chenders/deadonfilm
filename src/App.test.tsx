@@ -33,13 +33,9 @@ vi.mock("@/services/api", () => ({
     })
   ),
   getRecentDeaths: vi.fn(() => Promise.resolve({ deaths: [] })),
-  getOnThisDay: vi.fn(() =>
-    Promise.resolve({ date: "2024-12-10", month: "12", day: "10", deaths: [] })
-  ),
   searchMovies: vi.fn(() =>
     Promise.resolve({ results: [], page: 1, total_pages: 0, total_results: 0 })
   ),
-  getDiscoverMovie: vi.fn(() => Promise.resolve(null)),
   getProfileUrl: vi.fn((path) => (path ? `https://image.tmdb.org/t/p/w185${path}` : null)),
   getMovie: vi.fn(() =>
     Promise.resolve({

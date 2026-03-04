@@ -387,35 +387,6 @@ export interface AllDeathsOptions {
   dir?: string
 }
 
-export interface ForeverYoungMovie {
-  tmdb_id: number
-  title: string
-  release_date: string | null
-  actor_name: string
-  years_lost: number
-}
-
-export interface ForeverYoungMovieRecord {
-  movie_tmdb_id: number
-  movie_title: string
-  movie_release_year: number | null
-  movie_poster_path: string | null
-  actor_id: number
-  actor_tmdb_id: number | null
-  actor_name: string
-  actor_profile_path: string | null
-  years_lost: number
-  cause_of_death: string | null
-  cause_of_death_details: string | null
-}
-
-export interface ForeverYoungOptions {
-  limit?: number
-  offset?: number
-  sort?: string
-  dir?: string
-}
-
 // ============================================================================
 // Cause of death types
 // ============================================================================

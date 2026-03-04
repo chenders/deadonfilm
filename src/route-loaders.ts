@@ -371,25 +371,6 @@ const routes: Array<{
     }),
   },
 
-  // Forever young
-  {
-    pattern: /^\/forever-young$/,
-    loader: (_params, searchParams) => {
-      const page = searchParams.get("page") || "1"
-      const sort = searchParams.get("sort") || "year"
-      const dir = searchParams.get("dir") || "desc"
-      return {
-        loaders: (base) => [
-          {
-            queryKey: ["forever-young", parseInt(page, 10), sort, dir],
-            queryFn: () =>
-              apiFetch(base, `/api/forever-young?page=${page}&sort=${sort}&dir=${dir}`),
-          },
-        ],
-      }
-    },
-  },
-
   // Covid deaths
   {
     pattern: /^\/covid-deaths$/,

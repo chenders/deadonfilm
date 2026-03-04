@@ -44,11 +44,9 @@
 | [**Actor Profiles**](https://deadonfilm.com/actor/audrey-hepburn-6834) | Life stories, death narratives, filmography with mortality data |
 | [**Notable Deaths**](https://deadonfilm.com/deaths/notable) | Detailed death circumstances with source citations |
 | [**Strange Deaths**](https://deadonfilm.com/deaths/strange) | Unusual or mysterious death circumstances |
-| [**Forever Young**](https://deadonfilm.com/forever-young) | Actors who died young, ranked by years of life lost |
 | [**Deaths by Cause**](https://deadonfilm.com/causes-of-death) | Full taxonomy of causes of death |
 | [**Deaths by Decade**](https://deadonfilm.com/deaths/decades) | Mortality trends across decades |
 | [**Unnatural Deaths**](https://deadonfilm.com/unnatural-deaths) | Browse by accident, overdose, homicide, suicide |
-| [**On This Day**](https://deadonfilm.com/on-this-day) | Actors who died on today's date |
 
 ## How It Works
 

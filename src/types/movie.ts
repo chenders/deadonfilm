@@ -79,12 +79,6 @@ export interface DeathInfoResponse {
   >
 }
 
-export interface RandomMovieResponse {
-  id: number
-  title: string
-  release_date: string
-}
-
 // Featured Movie types
 export interface FeaturedMovie {
   tmdbId: number

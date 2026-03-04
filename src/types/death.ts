@@ -39,27 +39,6 @@ export interface StoredEntityLinks {
   additional_context?: EntityLink[]
 }
 
-// On This Day
-export interface OnThisDayResponse {
-  date: string
-  month: string
-  day: string
-  deaths: Array<{
-    actor: {
-      id: number
-      name: string
-      profile_path: string | null
-      deathday: string
-    }
-    notableFilms: Array<{
-      id: number
-      title: string
-      year: string
-    }>
-  }>
-  message?: string
-}
-
 // Recent Deaths
 export interface RecentDeathsResponse {
   deaths: Array<{

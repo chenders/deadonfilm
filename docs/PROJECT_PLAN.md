@@ -25,7 +25,6 @@ Based on actuarial data from US Social Security Administration life tables, the 
 - [x] Created seed script: `npm run seed:movies -- <startYear> [endYear]`
 
 #### Phase 4: Discovery Pages
-- [x] `/forever-young` - Actors who died tragically young (years lost)
 - [x] `/covid-deaths` - Actors who died from COVID-19
 - [x] `/unnatural-deaths` - Accidents, suicides, overdoses, homicides
 - [x] `/deaths` - Browse deaths by cause or decade

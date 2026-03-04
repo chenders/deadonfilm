@@ -115,24 +115,6 @@ Related actors by cause of death or decade.
 
 ---
 
-## Discovery
-
-### `GET /api/forever-young`
-
-Actors who died young, ranked by years of life lost.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `page` | number | 1 | Page number |
-| `sort` | string | `years_lost` | `years_lost` or `name` |
-| `dir` | string | `asc` | `asc` or `desc` |
-
-### `GET /api/discover/:type`
-
-Discover random content. Currently supports `type=forever-young`.
-
----
-
 ## Deaths
 
 ### `GET /api/deaths/notable`
@@ -229,10 +211,6 @@ Recent actor deaths.
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `limit` | number | 5 | Number of results (max 20) |
-
-### `GET /api/on-this-day`
-
-Random actor who died on today's date.
 
 ### `GET /api/this-week`
 

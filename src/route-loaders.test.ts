@@ -152,11 +152,6 @@ describe("matchRouteLoaders", () => {
 
   // ── Special pages ───────────────────────────────────────────────
 
-  it("matches forever young", () => {
-    const specs = getSpecs("/forever-young")
-    expect(specs).toEqual([{ queryKey: ["forever-young", 1, "year", "desc"] }])
-  })
-
   it("matches covid deaths", () => {
     const specs = getSpecs("/covid-deaths?page=2&includeObscure=true")
     expect(specs).toEqual([{ queryKey: ["covid-deaths", 2, true] }])

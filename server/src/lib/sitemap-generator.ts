@@ -32,7 +32,6 @@ const staticPages = [
   { loc: "/", priority: "1.0", changefreq: "daily" },
   { loc: "/covid-deaths", priority: "0.6", changefreq: "weekly" },
   { loc: "/unnatural-deaths", priority: "0.6", changefreq: "weekly" },
-  { loc: "/forever-young", priority: "0.6", changefreq: "weekly" },
   { loc: "/in-detail", priority: "0.7", changefreq: "daily" },
   { loc: "/deaths", priority: "0.5", changefreq: "weekly" },
   { loc: "/deaths/all", priority: "0.5", changefreq: "weekly" },
