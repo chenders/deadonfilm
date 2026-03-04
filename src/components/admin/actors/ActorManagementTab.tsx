@@ -84,7 +84,9 @@ export default function ActorManagementTab() {
         ? searchParams.get("hasEnrichedBio") === "true"
         : undefined,
     maxPopularity: searchParams.get("maxPopularity")
-      ? parseFloat(searchParams.get("maxPopularity")!)
+      ? Number.isFinite(parseFloat(searchParams.get("maxPopularity")!))
+        ? parseFloat(searchParams.get("maxPopularity")!)
+        : undefined
       : undefined,
     deathDateStart: searchParams.get("deathDateStart") || undefined,
     deathDateEnd: searchParams.get("deathDateEnd") || undefined,

@@ -269,7 +269,14 @@ async function cleanupStaleContexts(): Promise<void> {
       console.warn(
         `Force-closing leaked browser context (age: ${ageSeconds}s, max: ${MAX_CONTEXT_AGE_MS / 1000}s)`
       )
-      await ctx.close().catch(() => {})
+      // Timeout the close() call to prevent cleanup itself from hanging
+      await withTimeout(
+        ctx.close().catch(() => {}),
+        10_000,
+        () => {
+          console.warn("Browser context close() timed out after 10s, abandoning")
+        }
+      )
     }
   }
 }
@@ -343,9 +350,18 @@ async function getBrowser(): Promise<Browser> {
       }
     })
 
-    // Start periodic stale context cleanup
+    // Start periodic stale context cleanup with re-entrancy guard
     if (!contextCleanupHandle) {
-      contextCleanupHandle = setInterval(cleanupStaleContexts, CONTEXT_CLEANUP_INTERVAL_MS)
+      let isCleanupRunning = false
+      contextCleanupHandle = setInterval(() => {
+        if (isCleanupRunning) return
+        isCleanupRunning = true
+        cleanupStaleContexts()
+          .catch((error) => console.error("Error during browser context cleanup:", error))
+          .finally(() => {
+            isCleanupRunning = false
+          })
+      }, CONTEXT_CLEANUP_INTERVAL_MS)
       // Don't keep the process alive just for cleanup
       if (contextCleanupHandle.unref) contextCleanupHandle.unref()
     }
