@@ -17,6 +17,15 @@ exports.config = {
     enabled: true
   },
 
+  // Ignore noisy transactions that clutter the APM dashboard
+  // Health checks run every few seconds and dominate the transaction list
+  rules: {
+    ignore: [
+      '^/health$',
+      '^/api/health$'
+    ]
+  },
+
   // Application Logging (Logs in Context)
   // Forwards application logs to New Relic with trace correlation
   application_logging: {
