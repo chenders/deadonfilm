@@ -177,6 +177,14 @@ jobs:
             docker compose up -d --scale app=1 --no-recreate app
           fi
 
+          # ─── Phase 2.5: Recreate nginx ───
+          # Nginx uses the same app image for static files (robots.txt, built
+          # frontend assets, nginx.conf baked into image). It must be recreated
+          # on each deploy so it picks up new static content. This is a ~1s
+          # restart — brief blip, but unavoidable since files are in the image.
+          echo "=== Phase 2.5: Recreating nginx with new image ==="
+          docker compose up -d --force-recreate --no-deps nginx
+
           # ─── Phase 3: Final verification ───
           echo "=== Phase 3: Final verification ==="
 
