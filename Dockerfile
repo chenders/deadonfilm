@@ -88,6 +88,6 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Default command runs the backend server
 # nginx and cron containers override this in docker-compose
-# --import newrelic/esm-loader.mjs ensures New Relic patches pg BEFORE ESM imports run
+# --require newrelic instruments CJS modules (pg), --import handles ESM modules
 WORKDIR /app/server
-CMD ["node", "--import", "newrelic/esm-loader.mjs", "dist/src/index.js"]
+CMD ["node", "--require", "newrelic", "--import", "newrelic/esm-loader.mjs", "dist/src/index.js"]
