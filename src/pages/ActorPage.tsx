@@ -255,7 +255,7 @@ export default function ActorPage() {
 
       <div data-testid="actor-page" className="mx-auto max-w-3xl">
         <Breadcrumb items={[{ label: "Home", href: "/" }, { label: actor.name }]} />
-        <AdminActorToolbar actorId={actorId} />
+        <AdminActorToolbar actorId={actor.id} />
 
         {/* Header section */}
         <div className="mb-6 flex flex-col items-center gap-6 sm:flex-row sm:items-start">

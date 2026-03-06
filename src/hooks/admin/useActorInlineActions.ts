@@ -58,19 +58,6 @@ interface EnrichBioInlineResult {
   }
 }
 
-interface GenerateBiographyResult {
-  success: boolean
-  result: {
-    biography: string | null
-    hasSubstantiveContent: boolean
-    sourceUrl: string | null
-    sourceType: string | null
-    costUsd?: number
-    latencyMs?: number
-  }
-  message?: string
-}
-
 // ============================================================================
 // API functions
 // ============================================================================
@@ -85,22 +72,6 @@ async function fetchActorAdminMetadata(actorId: number): Promise<ActorAdminMetad
       error?: { message?: string }
     }
     throw new Error(errorData.error?.message || "Failed to fetch actor metadata")
-  }
-
-  return response.json()
-}
-
-async function regenerateBiography(actorId: number): Promise<GenerateBiographyResult> {
-  const response = await fetch(adminApi("/biographies/generate"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ actorId }),
-  })
-
-  if (!response.ok) {
-    const errorData = (await response.json().catch(() => ({}))) as { error?: { message?: string } }
-    throw new Error(errorData.error?.message || "Failed to generate biography")
   }
 
   return response.json()
@@ -149,27 +120,6 @@ export function useActorAdminMetadata(
     queryFn: () => fetchActorAdminMetadata(actorId),
     enabled,
     staleTime: 30000,
-  })
-}
-
-export function useRegenerateBiography(actorId: number) {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
-
-  return useMutation({
-    mutationFn: () => regenerateBiography(actorId),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["actors"] })
-      queryClient.invalidateQueries({ queryKey: ["admin", "actor-metadata", actorId] })
-      if (data.result?.hasSubstantiveContent) {
-        toast.success("Biography regenerated")
-      } else {
-        toast.info("No substantial biography available")
-      }
-    },
-    onError: (error: Error) => {
-      toast.error(error.message)
-    },
   })
 }
 

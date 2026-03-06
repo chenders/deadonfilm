@@ -1,13 +1,12 @@
 import { useOptionalAdminAuth } from "@/hooks/useAdminAuth"
 import { useOptionalAdminMode } from "@/contexts/AdminModeContext"
 import {
-  useRegenerateBiography,
   useInlineEnrichDeath,
   useInlineEnrichBio,
   useActorAdminMetadata,
 } from "@/hooks/admin/useActorInlineActions"
 import AdminActionButton from "./AdminActionButton"
-import { DocumentIcon, SkullSmallIcon, SparkleIcon, GearIcon, PencilIcon } from "@/components/icons"
+import { SkullSmallIcon, SparkleIcon, GearIcon, PencilIcon } from "@/components/icons"
 import { formatRelativeTime } from "@/utils/formatRelativeTime"
 
 interface AdminActorToolbarProps {
@@ -30,14 +29,11 @@ export default function AdminActorToolbar({ actorId }: AdminActorToolbarProps) {
 /** Inner component: only rendered when authenticated, safe to use all hooks */
 function AdminActorToolbarInner({ actorId }: AdminActorToolbarProps) {
   const { adminModeEnabled, toggleAdminMode } = useOptionalAdminMode()
-  const regenBio = useRegenerateBiography(actorId)
   const enrichDeath = useInlineEnrichDeath(actorId)
   const enrichBio = useInlineEnrichBio(actorId)
   const { data: metadata } = useActorAdminMetadata(actorId, true)
 
   // Compute status colors from metadata
-  const regenBioStatusColor = metadata?.biography.hasContent ? "text-amber-600/70" : undefined
-
   const deathStatusColor = metadata?.dataQuality.hasDetailedDeathInfo
     ? "text-green-600"
     : metadata?.enrichment.enrichedAt
@@ -72,16 +68,6 @@ function AdminActorToolbarInner({ actorId }: AdminActorToolbarProps) {
     return parts.join(" ")
   })()
 
-  const regenBioStatusTitle = (() => {
-    if (!metadata) return "Regenerate biography"
-    const parts = ["Regenerate biography"]
-    if (metadata.biography.generatedAt) {
-      const relTime = formatRelativeTime(metadata.biography.generatedAt)
-      parts.push(`— Generated ${relTime}`)
-    }
-    return parts.join(" ")
-  })()
-
   return (
     <div className="mb-2 flex items-center justify-end gap-1.5" data-testid="admin-actor-toolbar">
       <button
@@ -98,18 +84,6 @@ function AdminActorToolbarInner({ actorId }: AdminActorToolbarProps) {
       >
         <GearIcon size={14} />
       </button>
-
-      <AdminActionButton
-        icon={<DocumentIcon size={14} />}
-        label="Regen bio"
-        title="Regenerate biography"
-        statusColor={regenBioStatusColor}
-        statusTitle={regenBioStatusTitle}
-        onClick={() => regenBio.mutate()}
-        isPending={regenBio.isPending}
-        isSuccess={regenBio.isSuccess}
-        isError={regenBio.isError}
-      />
 
       <AdminActionButton
         icon={<SkullSmallIcon size={14} />}
