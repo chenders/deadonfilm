@@ -62,14 +62,8 @@ exports.config = {
     max_event_samples_stored: 100
   },
 
-  // Custom instrumentation for external calls
-  // Automatically instrument HTTP calls, database queries, etc.
-  instrumentation: {
-    pg: { enabled: true },
-    timers: { enabled: true }
-  },
-
   // Database instance reporting - required for "instrumented database" status
+  // pg instrumentation is automatic via --require newrelic (CJS hook)
   // Extracts database name, host, and port from connection strings
   datastore_tracer: {
     instance_reporting: {

@@ -181,13 +181,13 @@ services:
         SHELL=/bin/sh
         PATH=/usr/local/bin:/usr/bin:/bin
         # TMDB sync - every 2 hours, syncs recent changes
-        0 */2 * * * cd /app/server && node --import newrelic/esm-loader.mjs dist/scripts/sync-tmdb-changes.js
+        0 */2 * * * cd /app/server && node --require newrelic --import newrelic/esm-loader.mjs dist/scripts/sync-tmdb-changes.js
         # Sitemap generation - daily at 6 AM UTC
-        0 6 * * * cd /app/server && node --import newrelic/esm-loader.mjs dist/scripts/sitemap-generate.js
+        0 6 * * * cd /app/server && node --require newrelic --import newrelic/esm-loader.mjs dist/scripts/sitemap-generate.js
         # Movie seeding - weekly Sunday 4 AM UTC
-        0 4 * * 0 cd /app/server && node --import newrelic/esm-loader.mjs dist/scripts/seed-movies.js $(($(date +%Y)-1)) $(date +%Y) --count 500
+        0 4 * * 0 cd /app/server && node --require newrelic --import newrelic/esm-loader.mjs dist/scripts/seed-movies.js $(($(date +%Y)-1)) $(date +%Y) --count 500
         # Find uncertain deaths - weekly Sunday 5 AM UTC
-        0 5 * * 0 cd /app/server && node --import newrelic/esm-loader.mjs dist/scripts/find-uncertain-deaths.js 2>&1 | head -100
+        0 5 * * 0 cd /app/server && node --require newrelic --import newrelic/esm-loader.mjs dist/scripts/find-uncertain-deaths.js 2>&1 | head -100
         EOF
         # Strip leading spaces from heredoc (YAML adds 8 spaces)
         sed -i 's/^[[:space:]]*//' /tmp/crontab
@@ -263,7 +263,7 @@ services:
     image: ghcr.io/chenders/deadonfilm:${IMAGE_TAG:-latest}
     container_name: deadonfilm-worker
     restart: unless-stopped
-    entrypoint: ["node", "--import", "newrelic/esm-loader.mjs", "dist/src/worker.js"]
+    entrypoint: ["node", "--require", "newrelic", "--import", "newrelic/esm-loader.mjs", "dist/src/worker.js"]
     env_file:
       - .env
     environment:
