@@ -165,7 +165,7 @@
     "jsdom": "^28.1.0",
     "jsonrepair": "^3.13.2",
     "jsonwebtoken": "^9.0.3",
-    "newrelic": "^13.6.6",
+    "newrelic": "^13.14.0",
     "node-pg-migrate": "^8.0.4",
     "openai": "^6.16.0",
     "p-limit": "^7.3.0",
