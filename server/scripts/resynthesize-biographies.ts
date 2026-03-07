@@ -39,7 +39,8 @@ function parsePositiveInt(value: string): number {
 function parseCommaSeparatedIds(value: string): number[] {
   return value.split(",").map((s) => {
     const n = parseInt(s.trim(), 10)
-    if (isNaN(n) || n <= 0) throw new InvalidArgumentError(`Invalid ID: ${s}`)
+    if (isNaN(n) || !Number.isInteger(n) || n <= 0)
+      throw new InvalidArgumentError(`Invalid ID: ${s}`)
     return n
   })
 }
@@ -82,7 +83,7 @@ async function queryActorsByVersion(
 ): Promise<ActorForBiography[]> {
   const result = await pool.query(
     `SELECT a.id, a.tmdb_id, a.imdb_person_id, a.name, a.birthday, a.deathday,
-            a.wikipedia_url, a.biography AS biography_raw_tmdb, a.biography
+            a.wikipedia_url, a.biography_raw_tmdb, a.biography
      FROM actors a
      JOIN actor_biography_details abd ON abd.actor_id = a.id
      WHERE a.biography_version = $1
@@ -228,20 +229,17 @@ async function run(options: {
     if (options.actorId) {
       actors = await queryActorsByIds(pool, options.actorId)
       if (actors.length === 0) {
-        console.error("No actors found with the specified IDs")
-        process.exit(1)
+        throw new Error("No actors found with the specified IDs")
       }
       console.log(`Found ${actors.length} actor(s) by ID`)
     } else if (options.version) {
       actors = await queryActorsByVersion(pool, options.version, options.limit)
       if (actors.length === 0) {
-        console.error(`No actors found with biography_version = "${options.version}"`)
-        process.exit(1)
+        throw new Error(`No actors found with biography_version = "${options.version}"`)
       }
       console.log(`Found ${actors.length} actor(s) with version ${options.version}`)
     } else {
-      console.error("Either --actor-id or --version is required")
-      process.exit(1)
+      throw new Error("Either --actor-id or --version is required")
     }
 
     // Show what we're about to do
@@ -318,7 +316,7 @@ async function run(options: {
     console.log(`${"=".repeat(60)}`)
   } catch (error) {
     console.error("Fatal error:", error)
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     await pool.end()
   }
