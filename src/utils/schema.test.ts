@@ -1,10 +1,173 @@
 import { describe, it, expect } from "vitest"
 import {
+  buildPersonSchema,
   buildTVSeriesSchema,
   buildTVEpisodeSchema,
   buildCollectionPageSchema,
   buildWebsiteSchema,
 } from "./schema"
+
+describe("buildPersonSchema", () => {
+  const baseActor = {
+    name: "John Wayne",
+    birthday: "1907-05-26",
+    deathday: "1979-06-11",
+    biography: "An American actor who became a popular icon.",
+    profilePath: "/abc123.jpg",
+    placeOfBirth: "Winterset, Iowa, USA",
+    tmdbId: 4165,
+  }
+
+  it("builds correct base Person schema", () => {
+    const result = buildPersonSchema(baseActor, "john-wayne-4165")
+
+    expect(result["@context"]).toBe("https://schema.org")
+    expect(result["@type"]).toBe("Person")
+    expect(result.name).toBe("John Wayne")
+    expect(result.birthDate).toBe("1907-05-26")
+    expect(result.deathDate).toBe("1979-06-11")
+    expect(result.url).toBe("https://deadonfilm.com/actor/john-wayne-4165")
+  })
+
+  it("defaults jobTitle to Actor when no knownForDepartment", () => {
+    const result = buildPersonSchema(baseActor, "john-wayne-4165")
+    expect(result.jobTitle).toBe("Actor")
+  })
+
+  it("maps knownForDepartment Directing to Director", () => {
+    const result = buildPersonSchema(
+      { ...baseActor, knownForDepartment: "Directing" },
+      "john-wayne-4165"
+    )
+    expect(result.jobTitle).toBe("Director")
+  })
+
+  it("maps knownForDepartment Writing to Writer", () => {
+    const result = buildPersonSchema(
+      { ...baseActor, knownForDepartment: "Writing" },
+      "john-wayne-4165"
+    )
+    expect(result.jobTitle).toBe("Writer")
+  })
+
+  it("maps knownForDepartment Acting to Actor", () => {
+    const result = buildPersonSchema(
+      { ...baseActor, knownForDepartment: "Acting" },
+      "john-wayne-4165"
+    )
+    expect(result.jobTitle).toBe("Actor")
+  })
+
+  it("falls back to Actor for unknown department", () => {
+    const result = buildPersonSchema(
+      { ...baseActor, knownForDepartment: "SomethingNew" },
+      "john-wayne-4165"
+    )
+    expect(result.jobTitle).toBe("Actor")
+  })
+
+  it("includes alternateName when alternateNames is provided", () => {
+    const result = buildPersonSchema(
+      { ...baseActor, alternateNames: ["Marion Morrison", "The Duke"] },
+      "john-wayne-4165"
+    )
+    expect(result.alternateName).toEqual(["Marion Morrison", "The Duke"])
+  })
+
+  it("omits alternateName when alternateNames is empty array", () => {
+    const result = buildPersonSchema({ ...baseActor, alternateNames: [] }, "john-wayne-4165")
+    expect(result.alternateName).toBeUndefined()
+  })
+
+  it("omits alternateName when alternateNames is null", () => {
+    const result = buildPersonSchema({ ...baseActor, alternateNames: null }, "john-wayne-4165")
+    expect(result.alternateName).toBeUndefined()
+  })
+
+  it("includes gender when provided", () => {
+    const result = buildPersonSchema({ ...baseActor, gender: "Male" }, "john-wayne-4165")
+    expect(result.gender).toBe("Male")
+  })
+
+  it("omits gender when null", () => {
+    const result = buildPersonSchema({ ...baseActor, gender: null }, "john-wayne-4165")
+    expect(result.gender).toBeUndefined()
+  })
+
+  it("includes nationality when provided", () => {
+    const result = buildPersonSchema({ ...baseActor, nationality: "American" }, "john-wayne-4165")
+    expect(result.nationality).toBe("American")
+  })
+
+  it("omits nationality when null", () => {
+    const result = buildPersonSchema({ ...baseActor, nationality: null }, "john-wayne-4165")
+    expect(result.nationality).toBeUndefined()
+  })
+
+  it("includes hasOccupation as Role array when occupations provided", () => {
+    const result = buildPersonSchema(
+      { ...baseActor, occupations: ["Actor", "Producer", "Director"] },
+      "john-wayne-4165"
+    )
+    expect(result.hasOccupation).toEqual([
+      { "@type": "Role", roleName: "Actor" },
+      { "@type": "Role", roleName: "Producer" },
+      { "@type": "Role", roleName: "Director" },
+    ])
+  })
+
+  it("omits hasOccupation when occupations is empty array", () => {
+    const result = buildPersonSchema({ ...baseActor, occupations: [] }, "john-wayne-4165")
+    expect(result.hasOccupation).toBeUndefined()
+  })
+
+  it("omits hasOccupation when occupations is null", () => {
+    const result = buildPersonSchema({ ...baseActor, occupations: null }, "john-wayne-4165")
+    expect(result.hasOccupation).toBeUndefined()
+  })
+
+  it("includes award when awards provided", () => {
+    const result = buildPersonSchema(
+      { ...baseActor, awards: ["Academy Award", "Golden Globe"] },
+      "john-wayne-4165"
+    )
+    expect(result.award).toEqual(["Academy Award", "Golden Globe"])
+  })
+
+  it("omits award when awards is empty array", () => {
+    const result = buildPersonSchema({ ...baseActor, awards: [] }, "john-wayne-4165")
+    expect(result.award).toBeUndefined()
+  })
+
+  it("includes alumniOf when education provided", () => {
+    const result = buildPersonSchema(
+      { ...baseActor, education: "University of Southern California" },
+      "john-wayne-4165"
+    )
+    expect(result.alumniOf).toBe("University of Southern California")
+  })
+
+  it("omits alumniOf when education is null", () => {
+    const result = buildPersonSchema({ ...baseActor, education: null }, "john-wayne-4165")
+    expect(result.alumniOf).toBeUndefined()
+  })
+
+  it("omits alumniOf when education is empty string", () => {
+    const result = buildPersonSchema({ ...baseActor, education: "" }, "john-wayne-4165")
+    expect(result.alumniOf).toBeUndefined()
+  })
+
+  it("omits all SEO fields when not provided", () => {
+    const result = buildPersonSchema(baseActor, "john-wayne-4165")
+
+    expect(result.alternateName).toBeUndefined()
+    expect(result.gender).toBeUndefined()
+    expect(result.nationality).toBeUndefined()
+    expect(result.hasOccupation).toBeUndefined()
+    expect(result.award).toBeUndefined()
+    expect(result.alumniOf).toBeUndefined()
+  })
+})
 
 describe("buildTVSeriesSchema", () => {
   const baseShow = {

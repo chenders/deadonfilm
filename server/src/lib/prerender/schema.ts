@@ -32,6 +32,20 @@ export function buildMovieSchema(
   }
 }
 
+const DEPARTMENT_TO_TITLE: Record<string, string> = {
+  Acting: "Actor",
+  Directing: "Director",
+  Writing: "Writer",
+  Production: "Producer",
+  Camera: "Cinematographer",
+  Editing: "Editor",
+  Sound: "Sound Designer",
+  Art: "Art Director",
+  "Costume & Make-Up": "Costume Designer",
+  "Visual Effects": "VFX Artist",
+  Crew: "Crew Member",
+}
+
 export function buildPersonSchema(
   actor: {
     name: string
@@ -39,6 +53,13 @@ export function buildPersonSchema(
     deathday: string | null
     profile_path: string | null
     tmdb_id: number | null
+    known_for_department?: string | null
+    alternate_names?: string[] | null
+    gender?: string | null
+    nationality?: string | null
+    occupations?: string[] | null
+    awards?: string[] | null
+    education?: string | null
   },
   slug: string
 ): Record<string, unknown> {
@@ -47,16 +68,27 @@ export function buildPersonSchema(
     sameAs.push(`https://www.themoviedb.org/person/${actor.tmdb_id}`)
   }
 
+  const jobTitle =
+    (actor.known_for_department && DEPARTMENT_TO_TITLE[actor.known_for_department]) || "Actor"
+
   return {
     "@context": "https://schema.org",
     "@type": "Person",
     name: actor.name,
-    jobTitle: "Actor",
+    jobTitle,
     birthDate: actor.birthday || undefined,
     deathDate: actor.deathday || undefined,
     image: actor.profile_path ? `https://image.tmdb.org/t/p/h632${actor.profile_path}` : undefined,
     url: `${BASE_URL}/actor/${slug}`,
     sameAs: sameAs.length > 0 ? sameAs : undefined,
+    alternateName: actor.alternate_names?.length ? actor.alternate_names : undefined,
+    gender: actor.gender || undefined,
+    nationality: actor.nationality || undefined,
+    hasOccupation: actor.occupations?.length
+      ? actor.occupations.map((o) => ({ "@type": "Role", roleName: o }))
+      : undefined,
+    award: actor.awards?.length ? actor.awards : undefined,
+    alumniOf: actor.education || undefined,
   }
 }
 

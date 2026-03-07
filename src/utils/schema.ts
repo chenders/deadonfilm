@@ -63,6 +63,27 @@ interface PersonSchemaInput {
   placeOfBirth: string | null
   tmdbId?: number | null
   causeOfDeath?: string | null
+  knownForDepartment?: string | null
+  alternateNames?: string[] | null
+  gender?: string | null
+  nationality?: string | null
+  occupations?: string[] | null
+  awards?: string[] | null
+  education?: string | null
+}
+
+const DEPARTMENT_TO_TITLE: Record<string, string> = {
+  Acting: "Actor",
+  Directing: "Director",
+  Writing: "Writer",
+  Production: "Producer",
+  Camera: "Cinematographer",
+  Editing: "Editor",
+  Sound: "Sound Designer",
+  Art: "Art Director",
+  "Costume & Make-Up": "Costume Designer",
+  "Visual Effects": "VFX Artist",
+  Crew: "Crew Member",
 }
 
 /**
@@ -74,11 +95,14 @@ export function buildPersonSchema(actor: PersonSchemaInput, slug: string): Recor
     sameAs.push(`https://www.themoviedb.org/person/${actor.tmdbId}`)
   }
 
+  const jobTitle =
+    (actor.knownForDepartment && DEPARTMENT_TO_TITLE[actor.knownForDepartment]) || "Actor"
+
   const schema: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Person",
     name: actor.name,
-    jobTitle: "Actor",
+    jobTitle,
     birthDate: actor.birthday || undefined,
     deathDate: actor.deathday || undefined,
     birthPlace: actor.placeOfBirth || undefined,
@@ -86,6 +110,14 @@ export function buildPersonSchema(actor: PersonSchemaInput, slug: string): Recor
     image: actor.profilePath ? `https://image.tmdb.org/t/p/h632${actor.profilePath}` : undefined,
     url: `${BASE_URL}/actor/${slug}`,
     sameAs: sameAs.length > 0 ? sameAs : undefined,
+    alternateName: actor.alternateNames?.length ? actor.alternateNames : undefined,
+    gender: actor.gender || undefined,
+    nationality: actor.nationality || undefined,
+    hasOccupation: actor.occupations?.length
+      ? actor.occupations.map((o) => ({ "@type": "Role", roleName: o }))
+      : undefined,
+    award: actor.awards?.length ? actor.awards : undefined,
+    alumniOf: actor.education || undefined,
   }
 
   if (actor.deathday && actor.causeOfDeath) {
