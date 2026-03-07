@@ -179,10 +179,11 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
        deathday_confidence,
        deathday_verification_source,
        deathday_verified_at,
+       known_for_department,
        updated_at
      )
      VALUES (
-       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
        CURRENT_TIMESTAMP
      )
      ON CONFLICT (tmdb_id) WHERE tmdb_id IS NOT NULL
@@ -204,6 +205,7 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
        deathday_confidence = COALESCE(actors.deathday_confidence, EXCLUDED.deathday_confidence),
        deathday_verification_source = COALESCE(actors.deathday_verification_source, EXCLUDED.deathday_verification_source),
        deathday_verified_at = COALESCE(actors.deathday_verified_at, EXCLUDED.deathday_verified_at),
+       known_for_department = COALESCE(actors.known_for_department, EXCLUDED.known_for_department),
        updated_at = CURRENT_TIMESTAMP
      RETURNING id`,
     [
@@ -225,6 +227,7 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
       actor.deathday_confidence ?? null,
       actor.deathday_verification_source ?? null,
       actor.deathday_verified_at ?? null,
+      actor.known_for_department ?? null,
     ]
   )
   return result.rows[0].id
@@ -271,10 +274,11 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<Map<numbe
            deathday_confidence,
            deathday_verification_source,
            deathday_verified_at,
+           known_for_department,
            updated_at
          )
          VALUES (
-           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
            CURRENT_TIMESTAMP
          )
          ON CONFLICT (tmdb_id) WHERE tmdb_id IS NOT NULL
@@ -296,6 +300,7 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<Map<numbe
            deathday_confidence = COALESCE(actors.deathday_confidence, EXCLUDED.deathday_confidence),
            deathday_verification_source = COALESCE(actors.deathday_verification_source, EXCLUDED.deathday_verification_source),
            deathday_verified_at = COALESCE(actors.deathday_verified_at, EXCLUDED.deathday_verified_at),
+           known_for_department = COALESCE(actors.known_for_department, EXCLUDED.known_for_department),
            updated_at = CURRENT_TIMESTAMP
          RETURNING id`,
         [
@@ -317,6 +322,7 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<Map<numbe
           actor.deathday_confidence ?? null,
           actor.deathday_verification_source ?? null,
           actor.deathday_verified_at ?? null,
+          actor.known_for_department ?? null,
         ]
       )
 

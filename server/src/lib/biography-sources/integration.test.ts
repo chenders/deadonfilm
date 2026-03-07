@@ -758,8 +758,15 @@ describe("Biography Enrichment Integration Test", () => {
       expect(upsertParams[10]).toContain("Josephine Saenz") // relationships
       expect(upsertParams[11]).toHaveLength(4) // lesserKnownFacts
 
+      // SEO fields
+      expect(upsertParams[12]).toBeNull() // alternateNames (empty array → null)
+      expect(upsertParams[13]).toBeNull() // gender
+      expect(upsertParams[14]).toBeNull() // nationality
+      expect(upsertParams[15]).toBeNull() // occupations (empty array → null)
+      expect(upsertParams[16]).toBeNull() // awards (empty array → null)
+
       // Sources JSON
-      const sourcesJson = upsertParams[12]
+      const sourcesJson = upsertParams[17]
       const parsedSources = JSON.parse(sourcesJson) as BiographySourceEntry[]
       expect(parsedSources).toHaveLength(2)
       expect(parsedSources.map((s) => s.type)).toContain(BiographySourceType.WIKIDATA_BIO)
@@ -770,7 +777,7 @@ describe("Biography Enrichment Integration Test", () => {
       expect(updateCall[0]).toContain("biography = $1")
       expect(updateCall[0]).toContain("biography_version = $2")
       expect(updateCall[1][0]).toContain("Glendale Union High School") // narrative
-      expect(updateCall[1][1]).toBe("5.1.0") // BIO_ENRICHMENT_VERSION
+      expect(updateCall[1][1]).toBe("6.0.0") // BIO_ENRICHMENT_VERSION
       expect(updateCall[1][2]).toBe(testActor.id)
 
       // Cache invalidated
@@ -791,6 +798,11 @@ describe("Biography Enrichment Integration Test", () => {
         relationships: null,
         lesserKnownFacts: [],
         hasSubstantiveContent: true,
+        alternateNames: [],
+        gender: null,
+        nationality: null,
+        occupations: [],
+        awards: [],
       }
 
       const sources: BiographySourceEntry[] = [
@@ -813,11 +825,12 @@ describe("Biography Enrichment Integration Test", () => {
 
       await writeBiographyToProduction(mockPool, testActor.id, data, sources)
 
-      // Should be 3 calls: SELECT, INSERT upsert, UPDATE actors (no archive step)
-      expect(mockQuery).toHaveBeenCalledTimes(3)
+      // Should be 4 calls: SELECT, INSERT upsert, UPDATE actors, UPDATE alternate_names (no archive step)
+      expect(mockQuery).toHaveBeenCalledTimes(4)
       expect(mockQuery.mock.calls[0][0]).toContain("SELECT biography, biography_legacy")
       expect(mockQuery.mock.calls[1][0]).toContain("INSERT INTO actor_biography_details")
       expect(mockQuery.mock.calls[2][0]).toContain("biography = $1")
+      expect(mockQuery.mock.calls[3][0]).toContain("alternate_names = $1")
     })
   })
 })

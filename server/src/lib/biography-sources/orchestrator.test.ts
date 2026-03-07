@@ -338,6 +338,11 @@ function createSynthesisResult(
             relationships: null,
             lesserKnownFacts: [],
             hasSubstantiveContent: true,
+            alternateNames: [],
+            gender: null,
+            nationality: null,
+            occupations: [],
+            awards: [],
           }
         : null,
     costUsd: overrides?.costUsd ?? 0.01,

@@ -19,7 +19,8 @@ import { BIO_ENRICHMENT_VERSION } from "./enrichment-version.js"
  * 1. Archive old biography to biography_legacy (one-time, only if not already archived)
  * 2. Upsert actor_biography_details with COALESCE strategy
  * 3. Update actors table (biography = narrative, set biography_version)
- * 4. Invalidate actor cache
+ * 4. Denormalize alternate_names to actors table for search
+ * 5. Invalidate actor cache
  */
 export async function writeBiographyToProduction(
   db: Pool,
@@ -53,8 +54,9 @@ export async function writeBiographyToProduction(
         life_notable_factors, birthplace_details, family_background,
         education, pre_fame_life, fame_catalyst,
         personal_struggles, relationships, lesser_known_facts,
+        alternate_names, gender, nationality, occupations, awards,
         sources, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
       ON CONFLICT (actor_id) DO UPDATE SET
         narrative = COALESCE(EXCLUDED.narrative, actor_biography_details.narrative),
         narrative_confidence = COALESCE(EXCLUDED.narrative_confidence, actor_biography_details.narrative_confidence),
@@ -67,6 +69,11 @@ export async function writeBiographyToProduction(
         personal_struggles = COALESCE(EXCLUDED.personal_struggles, actor_biography_details.personal_struggles),
         relationships = COALESCE(EXCLUDED.relationships, actor_biography_details.relationships),
         lesser_known_facts = COALESCE(EXCLUDED.lesser_known_facts, actor_biography_details.lesser_known_facts),
+        alternate_names = COALESCE(EXCLUDED.alternate_names, actor_biography_details.alternate_names),
+        gender = COALESCE(EXCLUDED.gender, actor_biography_details.gender),
+        nationality = COALESCE(EXCLUDED.nationality, actor_biography_details.nationality),
+        occupations = COALESCE(EXCLUDED.occupations, actor_biography_details.occupations),
+        awards = COALESCE(EXCLUDED.awards, actor_biography_details.awards),
         sources = COALESCE(EXCLUDED.sources, actor_biography_details.sources),
         updated_at = NOW()`,
       [
@@ -82,6 +89,11 @@ export async function writeBiographyToProduction(
         data.personalStruggles,
         data.relationships,
         data.lesserKnownFacts.length > 0 ? data.lesserKnownFacts : null,
+        data.alternateNames.length > 0 ? data.alternateNames : null,
+        data.gender,
+        data.nationality,
+        data.occupations.length > 0 ? data.occupations : null,
+        data.awards.length > 0 ? data.awards : null,
         JSON.stringify(sources),
       ]
     )
@@ -99,7 +111,13 @@ export async function writeBiographyToProduction(
       )
     }
 
-    // Step 4: Invalidate cache
+    // Step 4: Denormalize alternate_names to actors table for search
+    await db.query(`UPDATE actors SET alternate_names = $1 WHERE id = $2`, [
+      data.alternateNames.length > 0 ? data.alternateNames : null,
+      actorId,
+    ])
+
+    // Step 5: Invalidate cache
     await invalidateActorCache(actorId)
 
     // Record successful DB write in New Relic

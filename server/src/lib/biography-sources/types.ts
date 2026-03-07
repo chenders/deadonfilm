@@ -200,6 +200,12 @@ export interface BiographyData {
   relationships: string | null
   lesserKnownFacts: string[]
   hasSubstantiveContent: boolean
+  // SEO-specific structured fields
+  alternateNames: string[]
+  gender: string | null
+  nationality: string | null
+  occupations: string[]
+  awards: string[]
 }
 
 /**

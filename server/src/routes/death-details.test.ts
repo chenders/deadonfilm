@@ -73,6 +73,8 @@ describe("getActorDeathDetails", () => {
     wikipedia_url: null,
     profile_path: "/profile.jpg",
     fallback_profile_url: null,
+    known_for_department: "Acting",
+    alternate_names: null,
     tmdb_popularity: 50.0,
     age_at_death: 80,
     expected_lifespan: 85,
@@ -113,6 +115,7 @@ describe("getActorDeathDetails", () => {
     place_of_birth: "New York, NY",
     imdb_id: "nm1234567",
     popularity: 50.0,
+    known_for_department: "Acting",
   }
 
   const mockCircumstances = {
@@ -1231,6 +1234,8 @@ describe("getActorDeathDetails - URL redirect handling (legacy tmdb_id URLs)", (
     wikipedia_url: null,
     profile_path: "/profile.jpg",
     fallback_profile_url: null,
+    known_for_department: "Acting",
+    alternate_names: null,
     tmdb_popularity: 50.0,
     age_at_death: 80,
     expected_lifespan: 85,

@@ -98,6 +98,11 @@ function makeValidClaudeResponse(overrides: Record<string, unknown> = {}) {
     ],
     narrative_confidence: "high",
     has_substantive_content: true,
+    alternate_names: ["Marion Morrison", "The Duke"],
+    gender: "male",
+    nationality: "American",
+    occupations: ["actor", "producer"],
+    awards: ["Academy Award for Best Actor"],
     ...overrides,
   }
 }
@@ -256,7 +261,7 @@ describe("claude-cleanup (biography)", () => {
 
     it("includes critical instructions about filmography exclusion", () => {
       const prompt = buildBiographySynthesisPrompt(mockActor, mockSources)
-      expect(prompt).toContain("Do NOT list filmography, awards, box office numbers")
+      expect(prompt).toContain("Do NOT list filmography or box office numbers in the narrative")
       expect(prompt).toContain("Do NOT include birth/death dates")
     })
 
@@ -503,6 +508,74 @@ describe("claude-cleanup (biography)", () => {
       const result = await synthesizeBiography(mockActor, mockSources)
 
       expect(result.data!.hasSubstantiveContent).toBe(false)
+    })
+
+    it("parses SEO fields from Claude response", async () => {
+      mockCreate.mockResolvedValue(makeMockApiResponse(makeValidClaudeResponse()))
+
+      const result = await synthesizeBiography(mockActor, mockSources)
+
+      expect(result.data!.alternateNames).toEqual(["Marion Morrison", "The Duke"])
+      expect(result.data!.gender).toBe("male")
+      expect(result.data!.nationality).toBe("American")
+      expect(result.data!.occupations).toEqual(["actor", "producer"])
+      expect(result.data!.awards).toEqual(["Academy Award for Best Actor"])
+    })
+
+    it("handles gender string 'null' from Claude (returns null)", async () => {
+      const response = makeValidClaudeResponse({ gender: "null" })
+      mockCreate.mockResolvedValue(makeMockApiResponse(response))
+
+      const result = await synthesizeBiography(mockActor, mockSources)
+
+      expect(result.data!.gender).toBeNull()
+    })
+
+    it("handles nationality string 'null' from Claude (returns null)", async () => {
+      const response = makeValidClaudeResponse({ nationality: "null" })
+      mockCreate.mockResolvedValue(makeMockApiResponse(response))
+
+      const result = await synthesizeBiography(mockActor, mockSources)
+
+      expect(result.data!.nationality).toBeNull()
+    })
+
+    it("caps awards at 5 entries", async () => {
+      const response = makeValidClaudeResponse({
+        awards: ["Award 1", "Award 2", "Award 3", "Award 4", "Award 5", "Award 6", "Award 7"],
+      })
+      mockCreate.mockResolvedValue(makeMockApiResponse(response))
+
+      const result = await synthesizeBiography(mockActor, mockSources)
+
+      expect(result.data!.awards).toHaveLength(5)
+      expect(result.data!.awards).not.toContain("Award 6")
+    })
+
+    it("returns empty arrays for null SEO array fields", async () => {
+      const response = makeValidClaudeResponse({
+        alternate_names: null,
+        occupations: null,
+        awards: null,
+      })
+      mockCreate.mockResolvedValue(makeMockApiResponse(response))
+
+      const result = await synthesizeBiography(mockActor, mockSources)
+
+      expect(result.data!.alternateNames).toEqual([])
+      expect(result.data!.occupations).toEqual([])
+      expect(result.data!.awards).toEqual([])
+    })
+
+    it("filters non-string items from alternate_names", async () => {
+      const response = makeValidClaudeResponse({
+        alternate_names: ["Real Name", 42, null, "Nickname"],
+      })
+      mockCreate.mockResolvedValue(makeMockApiResponse(response))
+
+      const result = await synthesizeBiography(mockActor, mockSources)
+
+      expect(result.data!.alternateNames).toEqual(["Real Name", "Nickname"])
     })
 
     it("filters non-string items from lesser_known_facts", async () => {

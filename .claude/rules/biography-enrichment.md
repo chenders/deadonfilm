@@ -214,6 +214,11 @@ The biography system is designed to produce **personal narratives**, not career 
 | `relationships` | string | Marriages, partnerships, children |
 | `lesserKnownFacts` | string[] | Surprising or little-known facts |
 | `hasSubstantiveContent` | boolean | Whether biography has enough personal detail |
+| `alternateNames` | string[] | Stage names, maiden names, nicknames |
+| `gender` | string \| null | Gender identity |
+| `nationality` | string \| null | Primary nationality |
+| `occupations` | string[] | All known occupations |
+| `awards` | string[] | Notable awards (max 5) |
 
 ## Key Patterns
 

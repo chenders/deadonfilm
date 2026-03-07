@@ -25,6 +25,11 @@ function makeBiographyData(overrides: Partial<BiographyData> = {}): BiographyDat
     relationships: null,
     lesserKnownFacts: [],
     hasSubstantiveContent: false,
+    alternateNames: [],
+    gender: null,
+    nationality: null,
+    occupations: [],
+    awards: [],
     ...overrides,
   }
 }

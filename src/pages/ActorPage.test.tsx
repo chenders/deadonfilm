@@ -26,6 +26,7 @@ const mockLivingActor = {
     biographySourceType: "tmdb" as const,
     profilePath: "/profile.jpg",
     placeOfBirth: "Los Angeles, California, USA",
+    knownForDepartment: "Acting",
   },
   analyzedFilmography: [
     {
@@ -64,6 +65,7 @@ const mockDeceasedActor = {
     biographySourceType: "wikipedia" as const,
     profilePath: "/legacy.jpg",
     placeOfBirth: "New York City, New York, USA",
+    knownForDepartment: "Acting",
   },
   analyzedFilmography: [
     {
@@ -744,6 +746,11 @@ describe("ActorPage", () => {
           relationships: null,
           lesserKnownFacts: [],
           sources: null,
+          alternateNames: [],
+          gender: null,
+          nationality: null,
+          occupations: [],
+          awards: [],
         },
       })
 
@@ -778,6 +785,11 @@ describe("ActorPage", () => {
           relationships: null,
           lesserKnownFacts: [],
           sources: null,
+          alternateNames: [],
+          gender: null,
+          nationality: null,
+          occupations: [],
+          awards: [],
         },
       })
 

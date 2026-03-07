@@ -114,6 +114,12 @@ export interface BiographyDetails {
   relationships: string | null
   lesserKnownFacts: string[]
   sources: BiographySource[] | null
+  // SEO fields
+  alternateNames: string[]
+  gender: string | null
+  nationality: string | null
+  occupations: string[]
+  awards: string[]
 }
 
 export interface ActorProfileResponse {
@@ -130,6 +136,7 @@ export interface ActorProfileResponse {
     biographySourceType: "wikipedia" | "tmdb" | "imdb" | "enriched" | null
     profilePath: string | null
     placeOfBirth: string | null
+    knownForDepartment: string | null
   }
   analyzedFilmography: ActorFilmographyMovie[]
   analyzedTVFilmography: ActorFilmographyShow[]
