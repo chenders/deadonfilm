@@ -143,7 +143,7 @@ describe("writeBiographyToProduction", () => {
     expect(updateCall[0]).toContain("biography_version = $2")
     expect(updateCall[0]).toContain("biography_source_type = 'enriched'")
     expect(updateCall[0]).toContain("updated_at = NOW()")
-    expect(updateCall[1]).toEqual(["Full narrative text", "5.0.0", 42])
+    expect(updateCall[1]).toEqual(["Full narrative text", "5.1.0", 42])
   })
 
   it("skips actors table update when narrative is null", async () => {
