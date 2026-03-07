@@ -427,7 +427,7 @@ async function runComprehensiveTest(count: number) {
     }
 
     await pool.end()
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     setIgnoreCache(false)
   }

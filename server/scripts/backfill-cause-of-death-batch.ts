@@ -108,7 +108,7 @@ program
       await submitBatch(db, options)
     } catch (error) {
       console.error("Error submitting batch:", error)
-      process.exit(1)
+      process.exitCode = 1
     } finally {
       await resetPool()
     }
@@ -154,7 +154,7 @@ program
       await processResults(db, options.batchId, options.dryRun)
     } catch (error) {
       console.error("Error processing results:", error)
-      process.exit(1)
+      process.exitCode = 1
     } finally {
       if (db) {
         await resetPool()
@@ -178,7 +178,7 @@ program
       await reprocessFailures(db, options.batchId)
     } catch (error) {
       console.error("Error reprocessing failures:", error)
-      process.exit(1)
+      process.exitCode = 1
     } finally {
       await db.end()
     }

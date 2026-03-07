@@ -470,7 +470,7 @@ const program = new Command()
       await printSummary()
     } catch (error) {
       console.error("\n❌ Fatal error:", error)
-      process.exit(1)
+      process.exitCode = 1
     } finally {
       await shutdownBrowser()
     }

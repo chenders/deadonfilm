@@ -201,7 +201,7 @@ async function run(options: Options): Promise<void> {
       )
     }
 
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     await pool.end()
   }

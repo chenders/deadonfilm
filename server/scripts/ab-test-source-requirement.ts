@@ -333,7 +333,7 @@ async function runABTest(options: {
     console.log("=".repeat(60))
   } catch (error) {
     console.error("Fatal error:", error)
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     // Re-enable cache
     setIgnoreCache(false)
