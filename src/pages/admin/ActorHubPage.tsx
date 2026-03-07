@@ -23,8 +23,11 @@ const tabs = [
   { id: "rejected-factors", label: "Rejected Factors", testId: "tab-rejected-factors" },
 ]
 
+const validTabIds = new Set(tabs.map((t) => t.id))
+
 export default function ActorHubPage() {
-  const [activeTab, setActiveTab] = useTabParam<string>("management")
+  const [rawTab, setActiveTab] = useTabParam<string>("management")
+  const activeTab = validTabIds.has(rawTab) ? rawTab : "management"
 
   return (
     <AdminLayout fullWidth hideSidebar>

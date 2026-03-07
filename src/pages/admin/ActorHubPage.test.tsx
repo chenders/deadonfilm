@@ -129,4 +129,14 @@ describe("ActorHubPage", () => {
     expect(screen.getByTestId("popularity-tab")).toBeInTheDocument()
     expect(screen.queryByTestId("management-tab")).not.toBeInTheDocument()
   })
+
+  it("falls back to management tab for removed ?tab=biographies", () => {
+    renderPage("/admin/actors?tab=biographies")
+    expect(screen.getByTestId("management-tab")).toBeInTheDocument()
+  })
+
+  it("falls back to management tab for unknown tab values", () => {
+    renderPage("/admin/actors?tab=nonexistent")
+    expect(screen.getByTestId("management-tab")).toBeInTheDocument()
+  })
 })
