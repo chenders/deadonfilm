@@ -14,6 +14,7 @@
  * - P27: country of citizenship (birthplace context)
  * - P106: occupation (pre-fame life, non-acting occupations)
  * - P166: award received (non-entertainment awards)
+ * - P742: pseudonym (alternate names / stage names)
  */
 
 import { BaseBiographySource, type BiographyLookupResult } from "../base-source.js"
@@ -78,6 +79,7 @@ interface WikidataBioBinding {
   citizenships?: { value: string }
   occupations?: { value: string }
   awards?: { value: string }
+  pseudonyms?: { value: string }
   birthDate?: { value: string }
 }
 
@@ -94,6 +96,7 @@ interface ParsedWikidataBio {
   citizenships: string | null
   occupations: string | null
   awards: string | null
+  pseudonyms: string | null
   entityUrl: string | null
 }
 
@@ -225,6 +228,7 @@ export class WikidataBiographySource extends BaseBiographySource {
              (GROUP_CONCAT(DISTINCT ?citizenshipLabel; SEPARATOR=", ") AS ?citizenships)
              (GROUP_CONCAT(DISTINCT ?occupationLabel; SEPARATOR=", ") AS ?occupations)
              (GROUP_CONCAT(DISTINCT ?awardLabel; SEPARATOR=", ") AS ?awards)
+             (GROUP_CONCAT(DISTINCT ?pseudonymLabel; SEPARATOR=", ") AS ?pseudonyms)
              ?birthDate
       WHERE {
         ?person wdt:P31 wd:Q5 .
@@ -244,6 +248,7 @@ export class WikidataBiographySource extends BaseBiographySource {
         OPTIONAL { ?person wdt:P27 ?citizenship . ?citizenship rdfs:label ?citizenshipLabel . FILTER(LANG(?citizenshipLabel) = "en") }
         OPTIONAL { ?person wdt:P106 ?occupation . ?occupation rdfs:label ?occupationLabel . FILTER(LANG(?occupationLabel) = "en") }
         OPTIONAL { ?person wdt:P166 ?award . ?award rdfs:label ?awardLabel . FILTER(LANG(?awardLabel) = "en") }
+        OPTIONAL { ?person wdt:P742 ?pseudonymLabel . }
       }
       GROUP BY ?person ?personLabel ?birthDate
       LIMIT 5
@@ -283,6 +288,7 @@ export class WikidataBiographySource extends BaseBiographySource {
         citizenships: filterValidLabels(binding.citizenships?.value),
         occupations: filterValidLabels(binding.occupations?.value),
         awards: filterValidLabels(binding.awards?.value),
+        pseudonyms: filterValidLabels(binding.pseudonyms?.value),
         entityUrl,
       }
     }
@@ -307,6 +313,7 @@ export class WikidataBiographySource extends BaseBiographySource {
     if (parsed.citizenships) lines.push(`Citizenship: ${parsed.citizenships}`)
     if (parsed.occupations) lines.push(`Occupation: ${parsed.occupations}`)
     if (parsed.awards) lines.push(`Awards: ${parsed.awards}`)
+    if (parsed.pseudonyms) lines.push(`Also known as: ${parsed.pseudonyms}`)
     if (parsed.religions) lines.push(`Religion: ${parsed.religions}`)
 
     return lines.join("\n")
@@ -330,6 +337,7 @@ export class WikidataBiographySource extends BaseBiographySource {
     if (parsed.citizenships) populatedCount++
     if (parsed.occupations) populatedCount++
     if (parsed.awards) populatedCount++
+    if (parsed.pseudonyms) populatedCount++
 
     return Math.min(0.8, 0.3 + populatedCount * 0.1)
   }
