@@ -112,12 +112,14 @@ export function buildPersonSchema(actor: PersonSchemaInput, slug: string): Recor
     sameAs: sameAs.length > 0 ? sameAs : undefined,
     alternateName: actor.alternateNames?.length ? actor.alternateNames : undefined,
     gender: actor.gender || undefined,
-    nationality: actor.nationality || undefined,
+    nationality: actor.nationality ? { "@type": "Country", name: actor.nationality } : undefined,
     hasOccupation: actor.occupations?.length
       ? actor.occupations.map((o) => ({ "@type": "Occupation", name: o }))
       : undefined,
     award: actor.awards?.length ? actor.awards : undefined,
-    alumniOf: actor.education || undefined,
+    alumniOf: actor.education
+      ? { "@type": "EducationalOrganization", name: actor.education }
+      : undefined,
   }
 
   if (actor.deathday && actor.causeOfDeath) {

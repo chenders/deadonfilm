@@ -30,6 +30,7 @@ export interface ActorRecord {
   profile_path: string | null
   fallback_profile_url: string | null // Non-TMDB profile image fallback
   known_for_department: string | null // TMDB department: "Acting", "Directing", "Writing", etc.
+  alternate_names: string[] | null // Stage names, maiden names, birth names from biography enrichment
   tmdb_popularity: number | null // Renamed from 'popularity' for clarity
 
   // DOF popularity scoring

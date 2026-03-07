@@ -34,6 +34,7 @@ describe("getActorByEitherIdWithSlug", () => {
     profile_path: null,
     fallback_profile_url: null,
     known_for_department: null,
+    alternate_names: null,
     tmdb_popularity: 10,
     age_at_death: null,
     expected_lifespan: null,

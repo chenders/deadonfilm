@@ -94,9 +94,9 @@ describe("buildPersonSchema", () => {
     expect(result.gender).toBeUndefined()
   })
 
-  it("includes nationality when provided", () => {
+  it("includes nationality as Country object when provided", () => {
     const result = buildPersonSchema({ ...baseActor, nationality: "American" }, "john-wayne-4165")
-    expect(result.nationality).toBe("American")
+    expect(result.nationality).toEqual({ "@type": "Country", name: "American" })
   })
 
   it("omits nationality when null", () => {
@@ -139,12 +139,15 @@ describe("buildPersonSchema", () => {
     expect(result.award).toBeUndefined()
   })
 
-  it("includes alumniOf when education provided", () => {
+  it("includes alumniOf as EducationalOrganization when education provided", () => {
     const result = buildPersonSchema(
       { ...baseActor, education: "University of Southern California" },
       "john-wayne-4165"
     )
-    expect(result.alumniOf).toBe("University of Southern California")
+    expect(result.alumniOf).toEqual({
+      "@type": "EducationalOrganization",
+      name: "University of Southern California",
+    })
   })
 
   it("omits alumniOf when education is null", () => {
