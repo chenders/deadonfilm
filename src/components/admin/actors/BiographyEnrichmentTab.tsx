@@ -801,7 +801,7 @@ export default function BiographyEnrichmentTab() {
               <tbody className="divide-y divide-admin-border">
                 {actors.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-admin-text-muted">
+                    <td colSpan={7} className="px-4 py-8 text-center text-admin-text-muted">
                       No actors match the current filters
                     </td>
                   </tr>
