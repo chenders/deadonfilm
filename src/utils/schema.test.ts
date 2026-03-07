@@ -110,9 +110,9 @@ describe("buildPersonSchema", () => {
       "john-wayne-4165"
     )
     expect(result.hasOccupation).toEqual([
-      { "@type": "Role", roleName: "Actor" },
-      { "@type": "Role", roleName: "Producer" },
-      { "@type": "Role", roleName: "Director" },
+      { "@type": "Occupation", name: "Actor" },
+      { "@type": "Occupation", name: "Producer" },
+      { "@type": "Occupation", name: "Director" },
     ])
   })
 

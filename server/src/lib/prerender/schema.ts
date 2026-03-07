@@ -85,7 +85,7 @@ export function buildPersonSchema(
     gender: actor.gender || undefined,
     nationality: actor.nationality || undefined,
     hasOccupation: actor.occupations?.length
-      ? actor.occupations.map((o) => ({ "@type": "Role", roleName: o }))
+      ? actor.occupations.map((o) => ({ "@type": "Occupation", name: o }))
       : undefined,
     award: actor.awards?.length ? actor.awards : undefined,
     alumniOf: actor.education || undefined,
