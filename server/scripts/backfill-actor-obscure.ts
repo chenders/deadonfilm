@@ -356,6 +356,7 @@ async function runBackfill(options: BackfillOptions): Promise<BackfillResult | n
   } catch (error) {
     console.error("Fatal error:", error)
     process.exitCode = 1
+    return null
   } finally {
     await db.end()
   }

@@ -129,6 +129,7 @@ async function runBackfill(updateAll: boolean): Promise<{
   } catch (error) {
     console.error("Fatal error:", error)
     process.exitCode = 1
+    return { totalProcessed: 0, updated: 0, skipped: 0 }
   } finally {
     await db.end()
   }
