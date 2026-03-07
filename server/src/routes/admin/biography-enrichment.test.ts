@@ -24,6 +24,7 @@ vi.mock("../../lib/db/pool.js", () => ({
 
 // Mock dynamic imports used by the golden test endpoint
 const mockEnrichActor = vi.fn()
+const mockResynthesizeFromCache = vi.fn()
 const mockWriteBiographyToProduction = vi.fn()
 const mockScoreAllResults = vi.fn()
 
@@ -35,6 +36,7 @@ vi.mock("../../lib/biography/golden-test-cases.js", () => ({
 vi.mock("../../lib/biography-sources/orchestrator.js", () => ({
   BiographyEnrichmentOrchestrator: class {
     enrichActor = mockEnrichActor
+    resynthesizeFromCache = mockResynthesizeFromCache
   },
 }))
 
@@ -183,6 +185,15 @@ describe("Admin Biography Enrichment Endpoints", () => {
       expect(res.status).toBe(400)
     })
 
+    it("rejects non-integer actorId", async () => {
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/enrich")
+        .send({ actorId: 42.5 })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toContain("positive integer")
+    })
+
     it("returns 404 for unknown actor", async () => {
       mockPoolQuery.mockResolvedValueOnce({ rows: [] })
 
@@ -192,6 +203,148 @@ describe("Admin Biography Enrichment Endpoints", () => {
 
       expect(res.status).toBe(404)
       expect(res.body.error.message).toBe("Actor not found")
+    })
+  })
+
+  // ==========================================================================
+  // POST /admin/api/biography-enrichment/re-synthesize
+  // ==========================================================================
+
+  describe("POST /re-synthesize", () => {
+    it("rejects missing actorId", async () => {
+      const res = await request(app).post("/admin/api/biography-enrichment/re-synthesize").send({})
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toContain("actorId is required")
+    })
+
+    it("rejects non-numeric actorId", async () => {
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/re-synthesize")
+        .send({ actorId: "abc" })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toContain("actorId is required")
+    })
+
+    it("rejects non-integer actorId", async () => {
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/re-synthesize")
+        .send({ actorId: 42.5 })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toContain("positive integer")
+    })
+
+    it("returns 404 for unknown actor", async () => {
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] })
+
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/re-synthesize")
+        .send({ actorId: 99999 })
+
+      expect(res.status).toBe(404)
+      expect(res.body.error.message).toBe("Actor not found")
+    })
+
+    it("returns 422 when re-synthesis fails", async () => {
+      // Actor lookup
+      mockPoolQuery.mockResolvedValueOnce({
+        rows: [{ id: 42, name: "John Wayne", tmdb_id: 100 }],
+      })
+      // Current narrative lookup
+      mockPoolQuery.mockResolvedValueOnce({
+        rows: [{ narrative: "Old narrative text" }],
+      })
+
+      mockResynthesizeFromCache.mockResolvedValueOnce({
+        error: "No cached source data found",
+        data: null,
+        sources: [],
+        stats: { totalCostUsd: 0 },
+      })
+
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/re-synthesize")
+        .send({ actorId: 42 })
+
+      expect(res.status).toBe(422)
+      expect(res.body.success).toBe(false)
+      expect(res.body.error).toBe("No cached source data found")
+      expect(res.body.previousNarrative).toBe("Old narrative text")
+      expect(res.body.newNarrative).toBeNull()
+    })
+
+    it("re-synthesizes and writes to production on success", async () => {
+      // Actor lookup
+      mockPoolQuery.mockResolvedValueOnce({
+        rows: [{ id: 42, name: "John Wayne", tmdb_id: 100 }],
+      })
+      // Current narrative lookup
+      mockPoolQuery.mockResolvedValueOnce({
+        rows: [{ narrative: "Old narrative" }],
+      })
+
+      const newData = {
+        hasSubstantiveContent: true,
+        narrative: "New synthesized narrative",
+      }
+      mockResynthesizeFromCache.mockResolvedValueOnce({
+        data: newData,
+        sources: [{ type: "wikipedia-bio", url: "https://en.wikipedia.org/wiki/John_Wayne" }],
+        stats: { totalCostUsd: 0.02 },
+      })
+      mockWriteBiographyToProduction.mockResolvedValueOnce(undefined)
+
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/re-synthesize")
+        .send({ actorId: 42 })
+
+      expect(res.status).toBe(200)
+      expect(res.body.success).toBe(true)
+      expect(res.body.previousNarrative).toBe("Old narrative")
+      expect(res.body.newNarrative).toBe("New synthesized narrative")
+      expect(res.body.stats.totalCostUsd).toBe(0.02)
+      expect(mockWriteBiographyToProduction).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        42,
+        newData,
+        expect.any(Array)
+      )
+    })
+
+    it("does not write to production when content is not substantive", async () => {
+      // Actor lookup
+      mockPoolQuery.mockResolvedValueOnce({
+        rows: [{ id: 42, name: "John Wayne", tmdb_id: 100 }],
+      })
+      // Current narrative lookup
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] })
+
+      mockResynthesizeFromCache.mockResolvedValueOnce({
+        data: { hasSubstantiveContent: false, narrative: null },
+        sources: [],
+        stats: { totalCostUsd: 0.01 },
+      })
+
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/re-synthesize")
+        .send({ actorId: 42 })
+
+      expect(res.status).toBe(200)
+      expect(res.body.success).toBe(true)
+      expect(mockWriteBiographyToProduction).not.toHaveBeenCalled()
+    })
+
+    it("returns 500 on unexpected error", async () => {
+      mockPoolQuery.mockRejectedValueOnce(new Error("Connection refused"))
+
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/re-synthesize")
+        .send({ actorId: 42 })
+
+      expect(res.status).toBe(500)
+      expect(res.body.error.message).toBe("Connection refused")
     })
   })
 

@@ -213,6 +213,11 @@ vi.mock("./claude-cleanup.js", () => ({
   synthesizeBiography: vi.fn(),
 }))
 
+// Mock cache retrieval for resynthesizeFromCache tests
+vi.mock("../death-sources/cache.js", () => ({
+  getCachedQueriesForActor: vi.fn().mockResolvedValue([]),
+}))
+
 // Import after mocks
 import { BiographyEnrichmentOrchestrator } from "./orchestrator.js"
 import { synthesizeBiography } from "./claude-cleanup.js"
@@ -224,6 +229,8 @@ import { WikipediaBiographySource } from "./sources/wikipedia.js"
 import { BritannicaBiographySource } from "./sources/britannica.js"
 import { BiographySourceType, type ActorForBiography } from "./types.js"
 import type { BiographyLookupResult } from "./base-source.js"
+import { getCachedQueriesForActor } from "../death-sources/cache.js"
+import type { CachedQueryResult } from "../death-sources/cache.js"
 import type { ReliabilityTier } from "../death-sources/types.js"
 
 // ============================================================================
@@ -1329,6 +1336,151 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       expect(orchestrator.getSourceCount()).toBe(0)
       expect(orchestrator.getSourceNames()).toEqual([])
+    })
+  })
+
+  // --------------------------------------------------------------------------
+  // resynthesizeFromCache
+  // --------------------------------------------------------------------------
+  describe("resynthesizeFromCache", () => {
+    function createCachedEntry(
+      sourceType: string,
+      lookupResult: BiographyLookupResult | null,
+      options?: { errorMessage?: string }
+    ): CachedQueryResult {
+      return {
+        id: 1,
+        sourceType: sourceType as CachedQueryResult["sourceType"],
+        actorId: testActor.id,
+        queryString: "test query",
+        queryHash: "abc123",
+        responseStatus: 200,
+        responseRaw: lookupResult,
+        isCompressed: false,
+        responseSizeBytes: 100,
+        errorMessage: options?.errorMessage ?? null,
+        queriedAt: new Date(),
+        responseTimeMs: 100,
+        costUsd: 0,
+      }
+    }
+
+    it("returns error when no cached data exists", async () => {
+      vi.mocked(getCachedQueriesForActor).mockResolvedValue([])
+
+      const orchestrator = new BiographyEnrichmentOrchestrator()
+      const result = await orchestrator.resynthesizeFromCache(testActor)
+
+      expect(result.error).toBe("No cached biography source data found for this actor")
+      expect(result.data).toBeNull()
+      expect(result.sources).toEqual([])
+      expect(result.stats.sourcesAttempted).toBe(0)
+    })
+
+    it("filters out non-biography source types", async () => {
+      const deathEntry = createCachedEntry(
+        "wikidata-death",
+        createSuccessfulLookup({ sourceName: "Wikidata" })
+      )
+      vi.mocked(getCachedQueriesForActor).mockResolvedValue([deathEntry])
+
+      const orchestrator = new BiographyEnrichmentOrchestrator()
+      const result = await orchestrator.resynthesizeFromCache(testActor)
+
+      expect(result.error).toBe("No cached biography source data found for this actor")
+      expect(result.data).toBeNull()
+    })
+
+    it("filters out entries with errors", async () => {
+      const errorEntry = createCachedEntry(
+        BiographySourceType.WIKIDATA_BIO,
+        createSuccessfulLookup(),
+        { errorMessage: "Request failed" }
+      )
+      vi.mocked(getCachedQueriesForActor).mockResolvedValue([errorEntry])
+
+      const orchestrator = new BiographyEnrichmentOrchestrator()
+      const result = await orchestrator.resynthesizeFromCache(testActor)
+
+      expect(result.error).toBe("No cached biography source data found for this actor")
+    })
+
+    it("calls synthesizeBiography with cached sources on success", async () => {
+      const lookup = createSuccessfulLookup({ sourceName: "Wikipedia" })
+      const entry = createCachedEntry(BiographySourceType.WIKIDATA_BIO, lookup)
+      vi.mocked(getCachedQueriesForActor).mockResolvedValue([entry])
+      vi.mocked(synthesizeBiography).mockResolvedValue(createSynthesisResult())
+
+      const orchestrator = new BiographyEnrichmentOrchestrator()
+      const result = await orchestrator.resynthesizeFromCache(testActor)
+
+      expect(synthesizeBiography).toHaveBeenCalledWith(
+        testActor,
+        [lookup.data],
+        expect.objectContaining({ model: expect.any(String) })
+      )
+      expect(result.data).not.toBeNull()
+      expect(result.data?.narrative).toBe("Full narrative")
+      expect(result.error).toBeUndefined()
+    })
+
+    it("preserves source entries from cached data", async () => {
+      const lookup = createSuccessfulLookup({ sourceName: "Wikipedia" })
+      const entry = createCachedEntry(BiographySourceType.WIKIDATA_BIO, lookup)
+      vi.mocked(getCachedQueriesForActor).mockResolvedValue([entry])
+      vi.mocked(synthesizeBiography).mockResolvedValue(createSynthesisResult())
+
+      const orchestrator = new BiographyEnrichmentOrchestrator()
+      const result = await orchestrator.resynthesizeFromCache(testActor)
+
+      expect(result.sources).toHaveLength(1)
+      expect(result.sources[0].type).toBe(BiographySourceType.WIKIDATA_BIO)
+      expect(result.sources[0].confidence).toBe(0.8)
+    })
+
+    it("deduplicates by source type, keeping only the most recent entry", async () => {
+      const olderLookup = createSuccessfulLookup({ sourceName: "Wikipedia (old)" })
+      const newerLookup = createSuccessfulLookup({ sourceName: "Wikipedia (new)" })
+
+      // getCachedQueriesForActor returns newest-first, so newerLookup comes first
+      const newerEntry = createCachedEntry(BiographySourceType.WIKIPEDIA_BIO, newerLookup)
+      const olderEntry = createCachedEntry(BiographySourceType.WIKIPEDIA_BIO, olderLookup)
+      const wikidataEntry = createCachedEntry(
+        BiographySourceType.WIKIDATA_BIO,
+        createSuccessfulLookup({ sourceName: "Wikidata" })
+      )
+
+      vi.mocked(getCachedQueriesForActor).mockResolvedValue([newerEntry, olderEntry, wikidataEntry])
+      vi.mocked(synthesizeBiography).mockResolvedValue(createSynthesisResult())
+
+      const orchestrator = new BiographyEnrichmentOrchestrator()
+      const result = await orchestrator.resynthesizeFromCache(testActor)
+
+      // Should pass only 2 sources (deduplicated Wikipedia + Wikidata), not 3
+      expect(synthesizeBiography).toHaveBeenCalledWith(
+        testActor,
+        expect.any(Array),
+        expect.any(Object)
+      )
+      const passedSources = vi.mocked(synthesizeBiography).mock.calls[0][1]
+      expect(passedSources).toHaveLength(2)
+      expect(result.sources).toHaveLength(2)
+      expect(result.stats.sourcesAttempted).toBe(2)
+    })
+
+    it("returns error on synthesis failure", async () => {
+      const entry = createCachedEntry(BiographySourceType.WIKIDATA_BIO, createSuccessfulLookup())
+      vi.mocked(getCachedQueriesForActor).mockResolvedValue([entry])
+      vi.mocked(synthesizeBiography).mockResolvedValue(
+        createSynthesisResult({ error: "Claude API error", narrative: null })
+      )
+
+      const orchestrator = new BiographyEnrichmentOrchestrator()
+      const result = await orchestrator.resynthesizeFromCache(testActor)
+
+      expect(result.error).toBe("Claude API error")
+      expect(result.data).toBeNull()
+      expect(result.sources).toHaveLength(1)
     })
   })
 })

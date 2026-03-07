@@ -3,7 +3,7 @@
  * Shows enrichment status, allows single/batch enrichment, and displays golden test results.
  */
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Link } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import LoadingSpinner from "../../common/LoadingSpinner"
@@ -18,7 +18,6 @@ import { adminApi } from "../../../services/api"
 
 interface EnrichmentActor {
   id: number
-  tmdbId: number | null
   name: string
   popularity: number | null
   deathday: string
@@ -107,6 +106,31 @@ async function enrichSingleActor(actorId: number): Promise<{ success: boolean; m
   }
 
   return response.json()
+}
+
+async function resynthesizeSingleActor(
+  actorId: number
+): Promise<{ success: boolean; error?: string }> {
+  const response = await fetch(adminApi("/biography-enrichment/re-synthesize"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ actorId }),
+  })
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null)
+    const serverMsg = data?.error?.message || data?.error || `HTTP ${response.status}`
+    throw new Error(`Re-synthesis failed: ${serverMsg}`)
+  }
+
+  const data: { success?: boolean; error?: string } = await response.json()
+
+  if (data.success === false) {
+    throw new Error(`Re-synthesis failed: ${data.error || "Unknown error"}`)
+  }
+
+  return data as { success: boolean; error?: string }
 }
 
 async function queueBatchEnrichment(params: {
@@ -294,6 +318,7 @@ export default function BiographyEnrichmentTab() {
   const [needsEnrichment, setNeedsEnrichment] = useState(true)
   const [batchLimit, setBatchLimit] = useState(10)
   const [enrichingActorId, setEnrichingActorId] = useState<number | null>(null)
+  const [resynthesizingActorId, setResynthesizingActorId] = useState<number | null>(null)
   const [activeBatchJobId, setActiveBatchJobId] = useState<string | null>(null)
   const pageSize = 50
 
@@ -342,6 +367,13 @@ export default function BiographyEnrichmentTab() {
     },
   })
 
+  const resynthMutation = useMutation({
+    mutationFn: resynthesizeSingleActor,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-biography-enrichment"] })
+    },
+  })
+
   const goldenTestMutation = useMutation({
     mutationFn: runGoldenTests,
   })
@@ -350,8 +382,21 @@ export default function BiographyEnrichmentTab() {
     setEnrichingActorId(actorId)
     try {
       await enrichMutation.mutateAsync(actorId)
+    } catch {
+      // Error state handled by mutation
     } finally {
       setEnrichingActorId(null)
+    }
+  }
+
+  const handleResynthSingle = async (actorId: number) => {
+    setResynthesizingActorId(actorId)
+    try {
+      await resynthMutation.mutateAsync(actorId)
+    } catch {
+      // Error state handled by mutation
+    } finally {
+      setResynthesizingActorId(null)
     }
   }
 
@@ -366,10 +411,10 @@ export default function BiographyEnrichmentTab() {
     }
   }
 
-  const handleBatchComplete = () => {
+  const handleBatchComplete = useCallback(() => {
     setActiveBatchJobId(null)
     queryClient.invalidateQueries({ queryKey: ["admin-biography-enrichment"] })
-  }
+  }, [queryClient])
 
   const stats = data?.stats
   const actors = data?.actors || []
@@ -647,6 +692,25 @@ export default function BiographyEnrichmentTab() {
       {/* Error State */}
       {error && <ErrorMessage message="Failed to load enrichment data. Please try again later." />}
 
+      {/* Per-actor mutation errors */}
+      {(enrichMutation.isError || resynthMutation.isError) && (
+        <div className="border-admin-error/30 bg-admin-error/10 rounded border p-3">
+          <p className="text-admin-error text-sm">
+            {(() => {
+              const displayedError = enrichMutation.isError
+                ? enrichMutation.error
+                : resynthMutation.error
+
+              if (displayedError instanceof Error) {
+                return `Error: ${displayedError.message}`
+              }
+
+              return "Error: Unknown error"
+            })()}
+          </p>
+        </div>
+      )}
+
       {/* Data Table */}
       {data && (
         <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
@@ -703,6 +767,16 @@ export default function BiographyEnrichmentTab() {
                       >
                         {enrichingActorId === actor.id ? "..." : "Enrich"}
                       </button>
+                      {actor.hasEnrichment && (
+                        <button
+                          onClick={() => handleResynthSingle(actor.id)}
+                          disabled={resynthesizingActorId === actor.id || resynthMutation.isPending}
+                          className="rounded bg-admin-interactive-secondary px-3 py-1.5 text-xs text-admin-text-primary hover:bg-admin-surface-overlay disabled:opacity-50"
+                          title="Re-synthesize from cached sources"
+                        >
+                          {resynthesizingActorId === actor.id ? "..." : "Re-synth"}
+                        </button>
+                      )}
                       <a
                         href={`/actor/${createActorSlug(actor.name, actor.id)}`}
                         target="_blank"
@@ -749,7 +823,7 @@ export default function BiographyEnrichmentTab() {
               <tbody className="divide-y divide-admin-border">
                 {actors.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-admin-text-muted">
+                    <td colSpan={7} className="px-4 py-8 text-center text-admin-text-muted">
                       No actors match the current filters
                     </td>
                   </tr>
@@ -821,6 +895,18 @@ export default function BiographyEnrichmentTab() {
                           >
                             {enrichingActorId === actor.id ? "..." : "Enrich"}
                           </button>
+                          {actor.hasEnrichment && (
+                            <button
+                              onClick={() => handleResynthSingle(actor.id)}
+                              disabled={
+                                resynthesizingActorId === actor.id || resynthMutation.isPending
+                              }
+                              className="rounded bg-admin-interactive-secondary px-2 py-1 text-xs text-admin-text-primary transition-colors hover:bg-admin-surface-overlay disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Re-synthesize from cached sources (prompt only)"
+                            >
+                              {resynthesizingActorId === actor.id ? "..." : "Re-synth"}
+                            </button>
+                          )}
                           <a
                             href={`/actor/${createActorSlug(actor.name, actor.id)}`}
                             target="_blank"

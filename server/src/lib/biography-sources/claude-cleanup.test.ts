@@ -229,14 +229,14 @@ describe("claude-cleanup (biography)", () => {
       const prompt = buildBiographySynthesisPrompt(mockActor, mockSources)
       expect(prompt).toContain("NARRATIVE STRUCTURE")
       expect(prompt).toContain("Open with childhood/family background")
-      expect(prompt).toContain("VARY openings")
+      expect(prompt).toContain("NEVER open with")
     })
 
     it("includes tone guidelines", () => {
       const prompt = buildBiographySynthesisPrompt(mockActor, mockSources)
       expect(prompt).toContain("TONE")
       expect(prompt).toContain("well-researched retrospective, not a magazine profile")
-      expect(prompt).toContain("No superlatives")
+      expect(prompt).toContain("NEVER use these words")
     })
 
     it("includes valid life notable factors list", () => {
