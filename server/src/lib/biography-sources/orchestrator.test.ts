@@ -1438,6 +1438,36 @@ describe("BiographyEnrichmentOrchestrator", () => {
       expect(result.sources[0].confidence).toBe(0.8)
     })
 
+    it("deduplicates by source type, keeping only the most recent entry", async () => {
+      const olderLookup = createSuccessfulLookup({ sourceName: "Wikipedia (old)" })
+      const newerLookup = createSuccessfulLookup({ sourceName: "Wikipedia (new)" })
+
+      // getCachedQueriesForActor returns newest-first, so newerLookup comes first
+      const newerEntry = createCachedEntry(BiographySourceType.WIKIPEDIA_BIO, newerLookup)
+      const olderEntry = createCachedEntry(BiographySourceType.WIKIPEDIA_BIO, olderLookup)
+      const wikidataEntry = createCachedEntry(
+        BiographySourceType.WIKIDATA_BIO,
+        createSuccessfulLookup({ sourceName: "Wikidata" })
+      )
+
+      vi.mocked(getCachedQueriesForActor).mockResolvedValue([newerEntry, olderEntry, wikidataEntry])
+      vi.mocked(synthesizeBiography).mockResolvedValue(createSynthesisResult())
+
+      const orchestrator = new BiographyEnrichmentOrchestrator()
+      const result = await orchestrator.resynthesizeFromCache(testActor)
+
+      // Should pass only 2 sources (deduplicated Wikipedia + Wikidata), not 3
+      expect(synthesizeBiography).toHaveBeenCalledWith(
+        testActor,
+        expect.any(Array),
+        expect.any(Object)
+      )
+      const passedSources = vi.mocked(synthesizeBiography).mock.calls[0][1]
+      expect(passedSources).toHaveLength(2)
+      expect(result.sources).toHaveLength(2)
+      expect(result.stats.sourcesAttempted).toBe(2)
+    })
+
     it("returns error on synthesis failure", async () => {
       const entry = createCachedEntry(BiographySourceType.WIKIDATA_BIO, createSuccessfulLookup())
       vi.mocked(getCachedQueriesForActor).mockResolvedValue([entry])

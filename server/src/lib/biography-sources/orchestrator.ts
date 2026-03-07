@@ -840,20 +840,26 @@ export class BiographyEnrichmentOrchestrator {
     // Retrieve all cached queries for this actor
     const cachedEntries = await getCachedQueriesForActor(actor.id)
 
-    // Filter to biography sources with successful responses containing text
+    // Filter to biography sources with successful responses containing text.
+    // Deduplicate by sourceType, keeping only the most recent entry per type
+    // (cachedEntries are ordered newest-first by queried_at).
     const rawSources: RawBiographySourceData[] = []
     const sourceEntries: BiographySourceEntry[] = []
+    const seenSourceTypes = new Set<string>()
     for (const entry of cachedEntries) {
       // Only include biography source types
       if (!bioSourceTypes.has(entry.sourceType as string)) continue
       // Skip errors
       if (entry.errorMessage) continue
+      // Deduplicate: keep only the most recent entry per source type
+      if (seenSourceTypes.has(entry.sourceType)) continue
 
       // Extract data from cached BiographyLookupResult
       const lookupResult = entry.responseRaw as BiographyLookupResult | null
       if (!lookupResult?.success || !lookupResult.data) continue
       if (!lookupResult.data.text || lookupResult.data.text.trim().length === 0) continue
 
+      seenSourceTypes.add(entry.sourceType)
       rawSources.push(lookupResult.data)
       sourceEntries.push(lookupResult.source)
     }
