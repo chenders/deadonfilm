@@ -131,8 +131,10 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
 
 router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
   const { actorId } = req.body
-  if (!actorId || typeof actorId !== "number") {
-    res.status(400).json({ error: { message: "actorId is required and must be a number" } })
+  if (typeof actorId !== "number" || !Number.isInteger(actorId) || actorId <= 0) {
+    res
+      .status(400)
+      .json({ error: { message: "actorId is required and must be a positive integer" } })
     return
   }
 
@@ -183,8 +185,10 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
 
 router.post("/re-synthesize", async (req: Request, res: Response): Promise<void> => {
   const { actorId } = req.body
-  if (!actorId || typeof actorId !== "number") {
-    res.status(400).json({ error: { message: "actorId is required and must be a number" } })
+  if (typeof actorId !== "number" || !Number.isInteger(actorId) || actorId <= 0) {
+    res
+      .status(400)
+      .json({ error: { message: "actorId is required and must be a positive integer" } })
     return
   }
 

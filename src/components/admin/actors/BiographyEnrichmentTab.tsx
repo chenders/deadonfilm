@@ -697,10 +697,17 @@ export default function BiographyEnrichmentTab() {
       {(enrichMutation.isError || resynthMutation.isError) && (
         <div className="border-admin-error/30 bg-admin-error/10 rounded border p-3">
           <p className="text-admin-error text-sm">
-            Error:{" "}
-            {(enrichMutation.error ?? resynthMutation.error) instanceof Error
-              ? (enrichMutation.error ?? resynthMutation.error)?.message
-              : "Unknown error"}
+            {(() => {
+              const displayedError = enrichMutation.isError
+                ? enrichMutation.error
+                : resynthMutation.error
+
+              if (displayedError instanceof Error) {
+                return `Error: ${displayedError.message}`
+              }
+
+              return "Error: Unknown error"
+            })()}
           </p>
         </div>
       )}

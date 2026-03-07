@@ -185,6 +185,15 @@ describe("Admin Biography Enrichment Endpoints", () => {
       expect(res.status).toBe(400)
     })
 
+    it("rejects non-integer actorId", async () => {
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/enrich")
+        .send({ actorId: 42.5 })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toContain("positive integer")
+    })
+
     it("returns 404 for unknown actor", async () => {
       mockPoolQuery.mockResolvedValueOnce({ rows: [] })
 
@@ -216,6 +225,15 @@ describe("Admin Biography Enrichment Endpoints", () => {
 
       expect(res.status).toBe(400)
       expect(res.body.error.message).toContain("actorId is required")
+    })
+
+    it("rejects non-integer actorId", async () => {
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/re-synthesize")
+        .send({ actorId: 42.5 })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toContain("positive integer")
     })
 
     it("returns 404 for unknown actor", async () => {
