@@ -91,7 +91,12 @@ describe("writeBiographyToProduction", () => {
     expect(params[9]).toBe(data.personalStruggles)
     expect(params[10]).toBe(data.relationships)
     expect(params[11]).toEqual(["Played college football", "Was a chess champion"])
-    expect(params[12]).toBe(JSON.stringify(sources))
+    expect(params[12]).toBeNull() // alternateNames (empty → null)
+    expect(params[13]).toBeNull() // gender
+    expect(params[14]).toBeNull() // nationality
+    expect(params[15]).toBeNull() // occupations (empty → null)
+    expect(params[16]).toBeNull() // awards (empty → null)
+    expect(params[17]).toBe(JSON.stringify(sources))
   })
 
   it("archives old biography on first enrichment", async () => {
@@ -204,6 +209,9 @@ describe("writeBiographyToProduction", () => {
     const data = makeBiographyData({
       lifeNotableFactors: [],
       lesserKnownFacts: [],
+      alternateNames: [],
+      occupations: [],
+      awards: [],
     })
 
     await writeBiographyToProduction(mockPool, 42, data, makeSources())
@@ -211,6 +219,63 @@ describe("writeBiographyToProduction", () => {
     const upsertParams = mockQuery.mock.calls[1][1]
     expect(upsertParams[3]).toBeNull() // lifeNotableFactors (empty → null)
     expect(upsertParams[11]).toBeNull() // lesserKnownFacts (empty → null)
+    expect(upsertParams[12]).toBeNull() // alternateNames (empty → null)
+    expect(upsertParams[15]).toBeNull() // occupations (empty → null)
+    expect(upsertParams[16]).toBeNull() // awards (empty → null)
+  })
+
+  it("writes SEO fields with non-empty values", async () => {
+    const data = makeBiographyData({
+      alternateNames: ["Marion Morrison", "Duke"],
+      gender: "Male",
+      nationality: "American",
+      occupations: ["Actor", "Director", "Producer"],
+      awards: ["Academy Award for Best Actor"],
+    })
+
+    await writeBiographyToProduction(mockPool, 42, data, makeSources())
+
+    const upsertParams = mockQuery.mock.calls[1][1]
+    expect(upsertParams[12]).toEqual(["Marion Morrison", "Duke"])
+    expect(upsertParams[13]).toBe("Male")
+    expect(upsertParams[14]).toBe("American")
+    expect(upsertParams[15]).toEqual(["Actor", "Director", "Producer"])
+    expect(upsertParams[16]).toEqual(["Academy Award for Best Actor"])
+  })
+
+  it("denormalizes alternate_names to actors table when non-empty", async () => {
+    const data = makeBiographyData({
+      alternateNames: ["Marion Morrison", "Duke"],
+    })
+
+    await writeBiographyToProduction(mockPool, 42, data, makeSources())
+
+    // Calls: SELECT, INSERT upsert, UPDATE actors (biography), UPDATE actors (alternate_names)
+    const allQueries = mockQuery.mock.calls.map((c: unknown[]) => c[0] as string)
+    const altNamesCall = allQueries.find(
+      (q: string) => q.includes("alternate_names = $1") && q.includes("WHERE id = $2")
+    )
+    expect(altNamesCall).toBeDefined()
+
+    // Find the actual call with alternate_names update
+    const altNamesCallIndex = mockQuery.mock.calls.findIndex(
+      (c: unknown[]) =>
+        (c[0] as string).includes("alternate_names = $1") &&
+        (c[0] as string).includes("WHERE id = $2")
+    )
+    expect(mockQuery.mock.calls[altNamesCallIndex][1]).toEqual([["Marion Morrison", "Duke"], 42])
+  })
+
+  it("skips alternate_names denormalization when array is empty", async () => {
+    const data = makeBiographyData({ alternateNames: [] })
+
+    await writeBiographyToProduction(mockPool, 42, data, makeSources())
+
+    const allQueries = mockQuery.mock.calls.map((c: unknown[]) => c[0] as string)
+    const altNamesCall = allQueries.find(
+      (q: string) => q.includes("alternate_names = $1") && !q.includes("INSERT") // Exclude the upsert query which also has alternate_names
+    )
+    expect(altNamesCall).toBeUndefined()
   })
 })
 
