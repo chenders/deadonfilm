@@ -38,7 +38,7 @@ program.parse()
 
 ## Error Handling
 
-Wrap main logic in try-catch with `process.exit(1)` on fatal errors:
+Wrap main logic in try-catch. Use `process.exitCode = 1` (not `process.exit(1)`) so `finally` blocks run and connections are cleaned up:
 
 ```typescript
 async function run(options: Options) {
@@ -47,9 +47,11 @@ async function run(options: Options) {
     // ... main logic
   } catch (error) {
     console.error("Fatal error:", error)
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     await pool.end()
   }
 }
 ```
+
+**Why not `process.exit(1)`?** It terminates immediately, skipping `finally` blocks. This leaks database connections and leaves Redis clients open, which can cause the process to hang or produce warnings. Setting `process.exitCode` lets Node.js exit naturally after cleanup completes.

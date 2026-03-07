@@ -149,7 +149,8 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
       [actorId]
     )
 
-    if (actorResult.rows.length === 0) {
+    const actor = actorResult.rows[0]
+    if (!actor) {
       res.status(404).json({ error: { message: "Actor not found" } })
       return
     }
@@ -159,7 +160,7 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
       await import("../../lib/biography-enrichment-db-writer.js")
 
     const orchestrator = new BiographyEnrichmentOrchestrator()
-    const result = await orchestrator.enrichActor(actorResult.rows[0])
+    const result = await orchestrator.enrichActor(actor)
 
     if (result.data && result.data.hasSubstantiveContent) {
       await writeBiographyToProduction(pool, actorId, result.data, result.sources)

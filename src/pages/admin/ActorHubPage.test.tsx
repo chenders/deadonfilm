@@ -21,9 +21,6 @@ vi.mock("../../components/admin/actors/ActorManagementTab", () => ({
 vi.mock("../../components/admin/actors/ActorDiagnosticTab", () => ({
   default: () => <div data-testid="diagnostic-tab">Actor Diagnostic Content</div>,
 }))
-vi.mock("../../components/admin/actors/BiographiesTab", () => ({
-  default: () => <div data-testid="biographies-tab">Biographies Content</div>,
-}))
 vi.mock("../../components/admin/actors/BiographyEnrichmentTab", () => ({
   default: () => <div data-testid="bio-enrichment-tab">Bio Enrichment Content</div>,
 }))
@@ -57,16 +54,15 @@ describe("ActorHubPage", () => {
     expect(screen.getByRole("heading", { name: /actors/i })).toBeInTheDocument()
     expect(
       screen.getByText(
-        /manage actors, diagnostics, biographies, bio enrichment, data quality, popularity scores, and rejected factors/i
+        /manage actors, diagnostics, bio enrichment, data quality, popularity scores, and rejected factors/i
       )
     ).toBeInTheDocument()
   })
 
-  it("renders all seven tabs", () => {
+  it("renders all six tabs", () => {
     renderPage()
     expect(screen.getByRole("tab", { name: /management/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /diagnostic/i })).toBeInTheDocument()
-    expect(screen.getByRole("tab", { name: /biographies/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /bio enrichment/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /data quality/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /popularity/i })).toBeInTheDocument()
@@ -77,7 +73,6 @@ describe("ActorHubPage", () => {
     renderPage()
     expect(screen.getByTestId("management-tab")).toBeInTheDocument()
     expect(screen.queryByTestId("diagnostic-tab")).not.toBeInTheDocument()
-    expect(screen.queryByTestId("biographies-tab")).not.toBeInTheDocument()
     expect(screen.queryByTestId("bio-enrichment-tab")).not.toBeInTheDocument()
     expect(screen.queryByTestId("data-quality-tab")).not.toBeInTheDocument()
     expect(screen.queryByTestId("popularity-tab")).not.toBeInTheDocument()
@@ -88,13 +83,6 @@ describe("ActorHubPage", () => {
     fireEvent.click(screen.getByRole("tab", { name: /diagnostic/i }))
     expect(screen.queryByTestId("management-tab")).not.toBeInTheDocument()
     expect(screen.getByTestId("diagnostic-tab")).toBeInTheDocument()
-  })
-
-  it("switches to biographies tab on click", () => {
-    renderPage()
-    fireEvent.click(screen.getByRole("tab", { name: /biographies/i }))
-    expect(screen.queryByTestId("management-tab")).not.toBeInTheDocument()
-    expect(screen.getByTestId("biographies-tab")).toBeInTheDocument()
   })
 
   it("switches to bio enrichment tab on click", () => {
@@ -124,12 +112,6 @@ describe("ActorHubPage", () => {
     expect(screen.queryByTestId("management-tab")).not.toBeInTheDocument()
   })
 
-  it("opens correct tab when URL has ?tab=biographies", () => {
-    renderPage("/admin/actors?tab=biographies")
-    expect(screen.getByTestId("biographies-tab")).toBeInTheDocument()
-    expect(screen.queryByTestId("management-tab")).not.toBeInTheDocument()
-  })
-
   it("opens correct tab when URL has ?tab=bio-enrichment", () => {
     renderPage("/admin/actors?tab=bio-enrichment")
     expect(screen.getByTestId("bio-enrichment-tab")).toBeInTheDocument()
@@ -146,5 +128,15 @@ describe("ActorHubPage", () => {
     renderPage("/admin/actors?tab=popularity")
     expect(screen.getByTestId("popularity-tab")).toBeInTheDocument()
     expect(screen.queryByTestId("management-tab")).not.toBeInTheDocument()
+  })
+
+  it("falls back to management tab for removed ?tab=biographies", () => {
+    renderPage("/admin/actors?tab=biographies")
+    expect(screen.getByTestId("management-tab")).toBeInTheDocument()
+  })
+
+  it("falls back to management tab for unknown tab values", () => {
+    renderPage("/admin/actors?tab=nonexistent")
+    expect(screen.getByTestId("management-tab")).toBeInTheDocument()
   })
 })

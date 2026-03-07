@@ -99,7 +99,7 @@ async function run() {
     }
   } catch (error) {
     console.error("Error cleaning up death data:", error)
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     await pool.end()
   }

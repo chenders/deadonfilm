@@ -251,7 +251,7 @@ async function run(options: Options): Promise<void> {
     console.log("=== Backfill Complete ===\n")
   } catch (error) {
     console.error("\nFatal error:", error)
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     await pool.end()
   }

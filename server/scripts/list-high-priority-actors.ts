@@ -1,4 +1,6 @@
 #!/usr/bin/env tsx
+import "dotenv/config" // MUST be first import
+
 /**
  * List high-priority actors (popularity >= 10) without death pages
  * Demonstrates the actorIds parameter for enrichment
@@ -57,7 +59,7 @@ const program = new Command()
       }
     } catch (error) {
       console.error("Error:", error)
-      process.exit(1)
+      process.exitCode = 1
     } finally {
       await pool.end()
     }

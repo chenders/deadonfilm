@@ -191,7 +191,7 @@ async function run(options: Options): Promise<void> {
     console.log("The new prompt should produce more factual, less obituary-like text.\n")
   } catch (error) {
     console.error("\nError:", error)
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     await pool.end()
   }

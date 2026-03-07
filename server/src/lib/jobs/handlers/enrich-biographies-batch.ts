@@ -2,10 +2,8 @@
  * Batch Biography Enrichment Handler
  *
  * BullMQ job handler that enriches actor biographies using the multi-source
- * biography enrichment orchestrator. Unlike GenerateBiographiesBatchHandler
- * (which uses the Anthropic Batches API for TMDB-based generation), this handler
- * uses the full biography enrichment pipeline with multiple data sources and
- * Claude synthesis.
+ * biography enrichment orchestrator. Uses the full biography enrichment pipeline
+ * with multiple data sources and Claude synthesis.
  *
  * When a runId is provided, tracks per-actor results in bio_enrichment_run_actors
  * and updates bio_enrichment_runs with progress, costs, and source stats.

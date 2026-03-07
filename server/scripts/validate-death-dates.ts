@@ -205,7 +205,7 @@ async function run(options: {
     console.log(`Done. Updated ${updated} actors.`)
   } catch (error) {
     console.error("Fatal error:", error)
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     await pool.end()
   }

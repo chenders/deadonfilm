@@ -227,7 +227,7 @@ async function runBackfill(dryRun: boolean) {
     console.log(`- Cleared (no meaningful details): ${cleared}`)
   } catch (error) {
     console.error("Fatal error:", error)
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     await pool.end()
   }
