@@ -130,7 +130,12 @@ Return JSON only:
   "relationships": "Marriages, significant partnerships, children...",
   "lesser_known_facts": ["Array of surprising or little-known facts that are NOT already mentioned in the narrative above. Each fact should add NEW information the reader hasn't already seen."],
   "narrative_confidence": "high|medium|low",
-  "has_substantive_content": true/false
+  "has_substantive_content": true/false,
+  "alternate_names": ["Stage names, maiden names, nicknames, birth names if different from professional name. Empty array if none."],
+  "gender": "male|female|non-binary|null (only if clearly stated in sources)",
+  "nationality": "Primary nationality, e.g. 'American', 'British-American'. null if unknown.",
+  "occupations": ["All known occupations beyond acting — e.g., 'politician', 'inventor', 'pilot', 'singer'. Include 'actor' or 'actress' as appropriate. Empty array if only acting."],
+  "awards": ["Up to 5 notable awards if clearly sourced — e.g., 'Academy Award for Best Actor', 'Presidential Medal of Freedom'. Empty array if none clearly documented."]
 }
 
 NARRATIVE STRUCTURE:
@@ -215,13 +220,14 @@ LESSER-KNOWN FACTS RULES:
   GOOD: Narrative covers career → fact reveals "He was a licensed pilot who owned three planes"
 
 CRITICAL:
-- Do NOT list filmography, awards, box office numbers
+- Do NOT list filmography or box office numbers in the narrative
+- Do NOT mention specific awards in the narrative text. Extract them ONLY into the "awards" structured field.
 - Do NOT include birth/death dates (displayed separately on the page)
 - Do NOT describe how or when the person died — death circumstances have their own dedicated section on the page. End the narrative before the death event.
 - Mention their career only as context for their personal story
-- NEVER mention specific award names (Oscar, Academy Award, Emmy, Tony, Grammy, Golden Globe,
-  BAFTA, SAG, Pulitzer, Cannes, Venice). Instead of "She won an Academy Award," say "she was
-  recognized for her work" or simply omit the reference entirely.
+- NEVER mention specific award names in the narrative (Oscar, Academy Award, Emmy, Tony, Grammy,
+  Golden Globe, BAFTA, SAG, Pulitzer, Cannes, Venice). Instead extract them into the "awards"
+  field. The narrative should say "recognized for her work" or simply omit the reference.
 - If sources are thin, write a SHORTER biography rather than padding with career achievements
   or vague generalities. A 3-paragraph biography with specific details is better than a
   6-paragraph biography padded with phrases like "was known for dedication to craft" or
@@ -394,6 +400,20 @@ export async function synthesizeBiography(
       : [],
     hasSubstantiveContent:
       typeof parsed.has_substantive_content === "boolean" ? parsed.has_substantive_content : false,
+    alternateNames: Array.isArray(parsed.alternate_names)
+      ? parsed.alternate_names.filter((f: unknown): f is string => typeof f === "string")
+      : [],
+    gender: typeof parsed.gender === "string" && parsed.gender !== "null" ? parsed.gender : null,
+    nationality:
+      typeof parsed.nationality === "string" && parsed.nationality !== "null"
+        ? parsed.nationality
+        : null,
+    occupations: Array.isArray(parsed.occupations)
+      ? parsed.occupations.filter((f: unknown): f is string => typeof f === "string")
+      : [],
+    awards: Array.isArray(parsed.awards)
+      ? parsed.awards.filter((f: unknown): f is string => typeof f === "string").slice(0, 5)
+      : [],
   }
 
   // Record successful parse in New Relic

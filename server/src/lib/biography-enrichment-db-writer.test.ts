@@ -40,6 +40,11 @@ function makeBiographyData(overrides: Partial<BiographyData> = {}): BiographyDat
     relationships: "Married three times.",
     lesserKnownFacts: ["Played college football", "Was a chess champion"],
     hasSubstantiveContent: true,
+    alternateNames: [],
+    gender: null,
+    nationality: null,
+    occupations: [],
+    awards: [],
     ...overrides,
   }
 }

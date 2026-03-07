@@ -791,6 +791,11 @@ describe("Biography Enrichment Integration Test", () => {
         relationships: null,
         lesserKnownFacts: [],
         hasSubstantiveContent: true,
+        alternateNames: [],
+        gender: null,
+        nationality: null,
+        occupations: [],
+        awards: [],
       }
 
       const sources: BiographySourceEntry[] = [

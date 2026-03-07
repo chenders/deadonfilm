@@ -256,7 +256,7 @@ describe("claude-cleanup (biography)", () => {
 
     it("includes critical instructions about filmography exclusion", () => {
       const prompt = buildBiographySynthesisPrompt(mockActor, mockSources)
-      expect(prompt).toContain("Do NOT list filmography, awards, box office numbers")
+      expect(prompt).toContain("Do NOT list filmography or box office numbers in the narrative")
       expect(prompt).toContain("Do NOT include birth/death dates")
     })
 
