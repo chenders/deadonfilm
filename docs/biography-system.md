@@ -4,66 +4,7 @@
 
 Dead on Film generates AI-written biographies for actors using Claude. The biographies are designed to tell the person's story — not summarize their filmography. The goal is the kind of biography you'd want to read about someone you've never heard of: where they came from, what shaped them, what their life was actually like.
 
-Two systems work together:
-
-1. **Biography Generator** — Produces concise 6-line summaries from TMDB and Wikipedia via Claude Sonnet. This is the "teaser" biography shown on the actor page.
-
-2. **Biography Enrichment Pipeline** — Researches 37 sources to build rich, multi-paragraph personal narratives with structured data: family background, education, personal struggles, lesser-known facts, and life circumstance tags. This is the "Life" section on actor pages, shown in an expandable card.
-
-## Biography Generator
-
-### How It Works
-
-1. **Source gathering** — The system retrieves the actor's biography text from TMDB (which itself sources from community contributions, often drawn from Wikipedia). If a Wikipedia URL is available, the system also fetches the Wikipedia biography directly for richer personal detail.
-
-2. **AI rewriting** — Claude Sonnet rewrites the raw biography into clean, factual prose. The prompt enforces strict editorial constraints (see below).
-
-3. **Quality gate** — The AI returns a `has_substantive_content` boolean. Biographies that amount to little more than dates and titles are rejected. The raw text must be at least 50 characters to even attempt generation.
-
-4. **Storage** — The generated biography replaces the raw TMDB text in the database, with source attribution tracking (Wikipedia > TMDB > IMDb).
-
-### Source Priority
-
-| Priority | Source | Why |
-|---|---|---|
-| 1 | Wikipedia | Richest personal detail, covers childhood, family, struggles |
-| 2 | TMDB | Community-contributed, often drawn from Wikipedia |
-| 3 | IMDb | Career-focused, less personal detail |
-
-When both TMDB and Wikipedia biographies are available, both are provided to Claude with the instruction to synthesize the most complete personal narrative.
-
-### The Prompt
-
-The core prompt (from `server/src/lib/biography/biography-generator.ts`):
-
-```
-Rewrite this actor biography for {name}. Create a clean, factual summary
-suitable for a movie database.
-
-REQUIREMENTS:
-1. Maximum 6 lines of text (this is a HARD LIMIT)
-2. Use neutral, factual language - AVOID superlatives and praise words
-3. Structure:
-   - Start with any noteworthy pre-fame background
-   - Cover career highlights: notable roles, genres, career trajectory
-   - End with ONE brief sentence about how they died (if deceased)
-4. Third person voice
-5. DO NOT include: specific birth dates, source attributions, citation
-   markers, URLs, trailing ellipsis
-6. If the original is mostly biographical dates with little career content,
-   return has_substantive_content: false
-```
-
-### AI Model
-
-- **Model**: Claude Sonnet (`claude-sonnet-4-20250514`)
-- **Max tokens**: 500 (biographies are short)
-- **Cost**: ~$0.003 per biography (standard API), ~$0.0015 per biography (Batch API at 50% discount)
-- **Batch processing**: Available via Claude Batch API for bulk generation
-
-## Biography Enrichment Pipeline
-
-The enrichment pipeline goes beyond the basic 6-line biography. It researches 37 sources to build multi-paragraph personal narratives with structured data fields.
+The **Biography Enrichment Pipeline** researches 37 sources to build rich, multi-paragraph personal narratives with structured data: family background, education, personal struggles, lesser-known facts, and life circumstance tags. These appear as the "Life" section on actor pages, shown in an expandable card.
 
 ### Three-Stage Content Pipeline
 
@@ -267,8 +208,7 @@ The biography prompt enforces specific editorial constraints:
 - The biography should read like a well-written encyclopedia entry, not a press release
 
 ### Length
-- **Generator**: Hard limit of 6 lines (concise summary)
-- **Enrichment**: Multi-paragraph narrative (no hard limit, but focused on personal life)
+- Multi-paragraph narrative (no hard limit, but focused on personal life)
 
 ## Cost Tracking
 
@@ -284,9 +224,7 @@ Metrics are stored in the `ai_usage` table for monitoring spend and quality over
 
 | Script | Purpose |
 |---|---|
-| `server/scripts/generate-biographies.ts` | Batch biography generation for actors missing biographies |
 | `server/scripts/enrich-biographies.ts` | Multi-source biography enrichment CLI |
-| Admin UI "Regen bio" button | Single-actor regeneration via `/admin/api/biographies/generate` |
 | Admin Biography Enrichment tab | Manage enrichment, run golden tests, queue batch jobs |
 
 ## Entity Linking

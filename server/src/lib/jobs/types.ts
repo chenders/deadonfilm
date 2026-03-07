@@ -22,7 +22,6 @@ import { z } from "zod"
  * - FETCH_*: External API data fetching
  * - ENRICH_*: Data enrichment/enhancement
  * - WARM_*: Cache warming
- * - GENERATE_*: Content generation
  * - PROCESS_*: Data processing
  */
 export enum JobType {
@@ -61,9 +60,6 @@ export enum JobType {
 
   // Cache operations
   REBUILD_DEATH_CACHES = "rebuild-death-caches",
-
-  // Biography generation
-  GENERATE_BIOGRAPHIES_BATCH = "generate-biographies-batch",
 
   // Biography enrichment
   ENRICH_BIOGRAPHIES_BATCH = "enrich-biographies-batch",
@@ -281,14 +277,6 @@ export const rebuildDeathCachesPayloadSchema = z.object({
   // No parameters needed - rebuilds all death-related caches
 })
 
-// Biography batch generation payload
-export const generateBiographiesBatchPayloadSchema = z.object({
-  actorIds: z.array(z.number().int().positive()).optional(),
-  limit: z.number().int().positive().max(500).optional(),
-  minPopularity: z.number().min(0).finite().optional(),
-  allowRegeneration: z.boolean().default(false),
-})
-
 // Biography enrichment batch payload
 export const enrichBiographiesBatchPayloadSchema = z.object({
   runId: z.number().int().positive().optional(),
@@ -355,7 +343,6 @@ export const jobPayloadSchemas = {
   [JobType.CALCULATE_CONTENT_POPULARITY]: calculateContentPopularityPayloadSchema,
   [JobType.CALCULATE_ACTOR_POPULARITY]: calculateActorPopularityPayloadSchema,
   [JobType.REBUILD_DEATH_CACHES]: rebuildDeathCachesPayloadSchema,
-  [JobType.GENERATE_BIOGRAPHIES_BATCH]: generateBiographiesBatchPayloadSchema,
   [JobType.ENRICH_BIOGRAPHIES_BATCH]: enrichBiographiesBatchPayloadSchema,
 } as const
 
@@ -389,7 +376,6 @@ export type CalculateContentPopularityPayload = z.infer<
 >
 export type CalculateActorPopularityPayload = z.infer<typeof calculateActorPopularityPayloadSchema>
 export type RebuildDeathCachesPayload = z.infer<typeof rebuildDeathCachesPayloadSchema>
-export type GenerateBiographiesBatchPayload = z.infer<typeof generateBiographiesBatchPayloadSchema>
 export type EnrichBiographiesBatchPayload = z.infer<typeof enrichBiographiesBatchPayloadSchema>
 
 /**
@@ -422,7 +408,6 @@ export type JobPayloadMap = {
   [JobType.CALCULATE_CONTENT_POPULARITY]: CalculateContentPopularityPayload
   [JobType.CALCULATE_ACTOR_POPULARITY]: CalculateActorPopularityPayload
   [JobType.REBUILD_DEATH_CACHES]: RebuildDeathCachesPayload
-  [JobType.GENERATE_BIOGRAPHIES_BATCH]: GenerateBiographiesBatchPayload
   [JobType.ENRICH_BIOGRAPHIES_BATCH]: EnrichBiographiesBatchPayload
 }
 
@@ -557,6 +542,5 @@ export const jobTypeToQueue: Record<JobType, QueueName> = {
   [JobType.CALCULATE_CONTENT_POPULARITY]: QueueName.MAINTENANCE,
   [JobType.CALCULATE_ACTOR_POPULARITY]: QueueName.MAINTENANCE,
   [JobType.REBUILD_DEATH_CACHES]: QueueName.CACHE,
-  [JobType.GENERATE_BIOGRAPHIES_BATCH]: QueueName.ENRICHMENT,
   [JobType.ENRICH_BIOGRAPHIES_BATCH]: QueueName.ENRICHMENT,
 }

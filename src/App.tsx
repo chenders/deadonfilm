@@ -387,7 +387,7 @@ function App() {
               <Route path="/admin/logs" element={<Navigate to="/admin/jobs?tab=logs" replace />} />
               <Route
                 path="/admin/biographies"
-                element={<Navigate to="/admin/actors?tab=biographies" replace />}
+                element={<Navigate to="/admin/actors?tab=bio-enrichment" replace />}
               />
 
               {/* Public routes (with Layout) */}
