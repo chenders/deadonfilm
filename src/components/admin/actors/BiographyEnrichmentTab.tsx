@@ -125,7 +125,13 @@ async function resynthesizeSingleActor(
     throw new Error(`Re-synthesis failed: ${serverMsg}`)
   }
 
-  return response.json()
+  const data: { success?: boolean; error?: string } = await response.json()
+
+  if (data.success === false) {
+    throw new Error(`Re-synthesis failed: ${data.error || "Unknown error"}`)
+  }
+
+  return data as { success: boolean; error?: string }
 }
 
 async function queueBatchEnrichment(params: {

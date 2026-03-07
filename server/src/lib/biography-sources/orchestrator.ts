@@ -842,6 +842,7 @@ export class BiographyEnrichmentOrchestrator {
 
     // Filter to biography sources with successful responses containing text
     const rawSources: RawBiographySourceData[] = []
+    const sourceEntries: BiographySourceEntry[] = []
     for (const entry of cachedEntries) {
       // Only include biography source types
       if (!bioSourceTypes.has(entry.sourceType as string)) continue
@@ -854,6 +855,7 @@ export class BiographyEnrichmentOrchestrator {
       if (!lookupResult.data.text || lookupResult.data.text.trim().length === 0) continue
 
       rawSources.push(lookupResult.data)
+      sourceEntries.push(lookupResult.source)
     }
 
     if (rawSources.length === 0) {
@@ -888,7 +890,7 @@ export class BiographyEnrichmentOrchestrator {
       return {
         actorId: actor.id,
         data: null,
-        sources: [],
+        sources: sourceEntries,
         rawSources,
         stats: {
           sourcesAttempted: rawSources.length,
@@ -907,7 +909,7 @@ export class BiographyEnrichmentOrchestrator {
     return {
       actorId: actor.id,
       data: synthesisResult.data,
-      sources: [],
+      sources: sourceEntries,
       rawSources,
       cleanedData: synthesisResult.data ?? undefined,
       stats: {

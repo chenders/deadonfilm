@@ -67,7 +67,7 @@ async function queryActorsByIds(pool: Pool, ids: number[]): Promise<ActorForBiog
   const placeholders = ids.map((_, i) => `$${i + 1}`).join(", ")
   const result = await pool.query(
     `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-            wikipedia_url, biography AS biography_raw_tmdb, biography
+            wikipedia_url, biography_raw_tmdb, biography
      FROM actors
      WHERE id IN (${placeholders})`,
     ids
@@ -216,7 +216,6 @@ async function run(options: {
   version?: string
   limit: number
   dryRun: boolean
-  concurrency: number
   compare: boolean
   yes: boolean
 }): Promise<void> {
@@ -248,7 +247,6 @@ async function run(options: {
     // Show what we're about to do
     console.log(`\nRe-synthesis plan:`)
     console.log(`  Actors:      ${actors.length}`)
-    console.log(`  Concurrency: ${options.concurrency}`)
     console.log(`  Dry run:     ${options.dryRun}`)
     console.log(`  Compare:     ${options.compare}`)
     console.log(`\n  Actors:`)
@@ -258,17 +256,14 @@ async function run(options: {
 
     await waitForConfirmation(options.yes)
 
-    const orchestrator = new BiographyEnrichmentOrchestrator({
-      concurrency: options.concurrency,
-    })
+    const orchestrator = new BiographyEnrichmentOrchestrator()
 
     let processed = 0
     let succeeded = 0
     let failed = 0
     let totalCost = 0
 
-    // Process actors with concurrency via simple sequential loop
-    // (concurrency matters for source fetching but re-synthesis is just Claude calls)
+    // Process actors sequentially (re-synthesis is just a Claude API call per actor)
     for (const actor of actors) {
       processed++
       console.log(`\n[${processed}/${actors.length}] Processing ${actor.name}...`)
@@ -340,7 +335,6 @@ const program = new Command()
   .option("--version <ver>", "Re-synthesize all actors with this biography_version")
   .option("--limit <n>", "Max actors to process (used with --version)", parsePositiveInt, 50)
   .option("-n, --dry-run", "Output results without writing to DB", false)
-  .option("--concurrency <n>", "Parallel processing (default 3)", parsePositiveInt, 3)
   .option("--compare", "Output side-by-side old vs new comparison", false)
   .option("-y, --yes", "Skip confirmation prompt", false)
   .action(async (opts) => {

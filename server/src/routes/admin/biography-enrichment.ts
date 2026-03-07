@@ -194,7 +194,7 @@ router.post("/re-synthesize", async (req: Request, res: Response): Promise<void>
     // Fetch actor
     const actorResult = await pool.query(
       `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-              wikipedia_url, biography AS biography_raw_tmdb, biography
+              wikipedia_url, biography_raw_tmdb, biography
        FROM actors WHERE id = $1`,
       [actorId]
     )
@@ -220,17 +220,27 @@ router.post("/re-synthesize", async (req: Request, res: Response): Promise<void>
     const orchestrator = new BiographyEnrichmentOrchestrator()
     const result = await orchestrator.resynthesizeFromCache(actor)
 
+    if (result.error) {
+      res.status(422).json({
+        success: false,
+        error: result.error,
+        stats: result.stats,
+        previousNarrative,
+        newNarrative: null,
+      })
+      return
+    }
+
     if (result.data && result.data.hasSubstantiveContent) {
       await writeBiographyToProduction(pool, actorId, result.data, result.sources)
     }
 
     res.json({
-      success: !result.error,
+      success: true,
       data: result.data,
       stats: result.stats,
       previousNarrative,
       newNarrative: result.data?.narrative ?? null,
-      error: result.error,
     })
   } catch (error) {
     logger.error({ error, actorId }, "Failed to re-synthesize actor biography")
