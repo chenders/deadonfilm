@@ -241,6 +241,7 @@ export default function ActorPage() {
             profilePath: actor.profilePath,
             placeOfBirth: actor.placeOfBirth,
             tmdbId: actor.tmdbId,
+            knownForDepartment: actor.knownForDepartment,
             causeOfDeath: deathInfo?.causeOfDeath,
             alternateNames: data.biographyDetails?.alternateNames,
             gender: data.biographyDetails?.gender,

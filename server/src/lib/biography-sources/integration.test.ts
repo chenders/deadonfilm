@@ -758,8 +758,15 @@ describe("Biography Enrichment Integration Test", () => {
       expect(upsertParams[10]).toContain("Josephine Saenz") // relationships
       expect(upsertParams[11]).toHaveLength(4) // lesserKnownFacts
 
+      // SEO fields
+      expect(upsertParams[12]).toBeNull() // alternateNames (empty array → null)
+      expect(upsertParams[13]).toBeNull() // gender
+      expect(upsertParams[14]).toBeNull() // nationality
+      expect(upsertParams[15]).toBeNull() // occupations (empty array → null)
+      expect(upsertParams[16]).toBeNull() // awards (empty array → null)
+
       // Sources JSON
-      const sourcesJson = upsertParams[12]
+      const sourcesJson = upsertParams[17]
       const parsedSources = JSON.parse(sourcesJson) as BiographySourceEntry[]
       expect(parsedSources).toHaveLength(2)
       expect(parsedSources.map((s) => s.type)).toContain(BiographySourceType.WIKIDATA_BIO)

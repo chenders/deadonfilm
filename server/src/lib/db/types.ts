@@ -29,6 +29,7 @@ export interface ActorRecord {
   deathday_precision?: DatePrecision | null // null/undefined means 'day' (full precision)
   profile_path: string | null
   fallback_profile_url: string | null // Non-TMDB profile image fallback
+  known_for_department: string | null // TMDB department: "Acting", "Directing", "Writing", etc.
   tmdb_popularity: number | null // Renamed from 'popularity' for clarity
 
   // DOF popularity scoring

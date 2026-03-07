@@ -101,6 +101,7 @@ describe("getEpisode route", () => {
             biography: "",
             place_of_birth: null,
             imdb_id: null,
+            known_for_department: "Acting",
           },
         ],
         [
@@ -115,6 +116,7 @@ describe("getEpisode route", () => {
             biography: "",
             place_of_birth: null,
             imdb_id: null,
+            known_for_department: "Acting",
           },
         ],
       ])
@@ -185,6 +187,7 @@ describe("getEpisode route", () => {
               biography: "",
               place_of_birth: null,
               imdb_id: null,
+              known_for_department: "Acting",
             },
           ],
         ])

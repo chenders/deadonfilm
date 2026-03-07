@@ -344,6 +344,7 @@ export class SyncTMDBPeopleHandler extends BaseJobHandler<
       deathday_confidence: confidence,
       deathday_verification_source: source,
       deathday_verified_at: new Date().toISOString(),
+      known_for_department: person.known_for_department ?? null,
     }
 
     await upsertActor(record)

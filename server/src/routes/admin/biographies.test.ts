@@ -373,6 +373,7 @@ describe("Admin Biographies Routes", () => {
         popularity: 10.5,
         profile_path: "/path.jpg",
         imdb_id: "nm0000078",
+        known_for_department: "Acting",
       })
 
       // Mock biography generation
@@ -463,6 +464,7 @@ describe("Admin Biographies Routes", () => {
         popularity: 1.0,
         profile_path: null,
         imdb_id: null,
+        known_for_department: null,
       })
 
       // Mock database update for no-content case

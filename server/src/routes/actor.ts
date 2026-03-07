@@ -27,6 +27,7 @@ interface ActorProfileResponse {
     biographySourceType: "wikipedia" | "tmdb" | "imdb" | "enriched" | null
     profilePath: string | null
     placeOfBirth: string | null
+    knownForDepartment: string | null
   }
   analyzedFilmography: Array<{
     movieId: number
@@ -285,6 +286,7 @@ export async function getActor(req: Request, res: Response) {
         biographySourceType,
         profilePath: person.profile_path,
         placeOfBirth: person.place_of_birth,
+        knownForDepartment: actorRecord.known_for_department ?? person.known_for_department ?? null,
       },
       analyzedFilmography: filmography,
       analyzedTVFilmography: tvFilmography,

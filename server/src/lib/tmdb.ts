@@ -83,6 +83,7 @@ export interface TMDBPerson {
   place_of_birth: string | null
   imdb_id: string | null
   popularity: number
+  known_for_department: string | null
 }
 
 // TV Show Types

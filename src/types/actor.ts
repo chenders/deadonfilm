@@ -136,6 +136,7 @@ export interface ActorProfileResponse {
     biographySourceType: "wikipedia" | "tmdb" | "imdb" | "enriched" | null
     profilePath: string | null
     placeOfBirth: string | null
+    knownForDepartment: string | null
   }
   analyzedFilmography: ActorFilmographyMovie[]
   analyzedTVFilmography: ActorFilmographyShow[]

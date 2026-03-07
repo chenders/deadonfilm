@@ -75,6 +75,7 @@ export async function getShow(req: Request, res: Response) {
       character: actor.roles[0]?.character || "Unknown",
       totalEpisodes: actor.total_episode_count,
       order: actor.order,
+      known_for_department: actor.known_for_department,
     }))
 
     // Get season numbers for fetching episode details
@@ -161,6 +162,7 @@ export async function getShow(req: Request, res: Response) {
             age_at_death: yearsLostResult?.ageAtDeath ?? null,
             expected_lifespan: yearsLostResult?.expectedLifespan ?? null,
             years_lost: yearsLostResult?.yearsLost ?? null,
+            known_for_department: castMember.known_for_department ?? null,
           })
         }
       } else {

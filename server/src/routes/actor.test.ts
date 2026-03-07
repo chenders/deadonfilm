@@ -64,6 +64,7 @@ describe("getActor", () => {
     place_of_birth: "Los Angeles, CA",
     imdb_id: "nm1234567",
     popularity: 5.5,
+    known_for_department: "Acting",
   }
 
   const mockDeceasedPerson = {
@@ -76,6 +77,7 @@ describe("getActor", () => {
     place_of_birth: "New York, NY",
     imdb_id: "nm7654321",
     popularity: 8.2,
+    known_for_department: "Acting",
   }
 
   const mockFilmography = [
@@ -117,6 +119,7 @@ describe("getActor", () => {
     wikipedia_url: null,
     profile_path: "/profile.jpg",
     fallback_profile_url: null,
+    known_for_department: "Acting",
     age_at_death: null,
     expected_lifespan: null,
     years_lost: null,
@@ -156,6 +159,7 @@ describe("getActor", () => {
     wikipedia_url: "https://en.wikipedia.org/wiki/Actor",
     profile_path: "/legacy.jpg",
     fallback_profile_url: null,
+    known_for_department: "Acting",
     age_at_death: 80,
     expected_lifespan: 75,
     years_lost: -5,
@@ -251,6 +255,7 @@ describe("getActor", () => {
         biographySourceType: "tmdb",
         profilePath: "/profile.jpg",
         placeOfBirth: "Los Angeles, CA",
+        knownForDepartment: "Acting",
       },
       analyzedFilmography: mockFilmography,
       analyzedTVFilmography: mockTVFilmography,
@@ -375,6 +380,7 @@ describe("getActor", () => {
         biographySourceType: "tmdb",
         profilePath: "/legacy.jpg",
         placeOfBirth: "New York, NY",
+        knownForDepartment: "Acting",
       },
       analyzedFilmography: mockFilmography,
       analyzedTVFilmography: [],
