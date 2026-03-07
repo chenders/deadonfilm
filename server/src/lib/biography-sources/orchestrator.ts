@@ -858,6 +858,7 @@ export class BiographyEnrichmentOrchestrator {
       const lookupResult = entry.responseRaw as BiographyLookupResult | null
       if (!lookupResult?.success || !lookupResult.data) continue
       if (!lookupResult.data.text || lookupResult.data.text.trim().length === 0) continue
+      if (!lookupResult.source) continue
 
       seenSourceTypes.add(entry.sourceType)
       rawSources.push(lookupResult.data)

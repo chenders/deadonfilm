@@ -3,6 +3,7 @@ import PersonIcon from "@/components/icons/PersonIcon"
 import HeartIcon from "@/components/icons/HeartIcon"
 import StarIcon from "@/components/icons/StarIcon"
 import SparkleIcon from "@/components/icons/SparkleIcon"
+import WarningIcon from "@/components/icons/WarningIcon"
 
 interface BiographyLifeDetailsProps {
   biographyDetails: BiographyDetails
@@ -12,6 +13,10 @@ interface DetailField {
   key: keyof BiographyDetails
   label: string
   icon: React.ReactNode
+}
+
+interface VisibleField extends DetailField {
+  value: string
 }
 
 const FIELDS: DetailField[] = [
@@ -74,7 +79,7 @@ const FIELDS: DetailField[] = [
   {
     key: "personalStruggles",
     label: "Personal Struggles",
-    icon: <HeartIcon className="h-4 w-4" />,
+    icon: <WarningIcon size={16} className="h-4 w-4" />,
   },
   {
     key: "relationships",
@@ -88,10 +93,13 @@ const FIELDS: DetailField[] = [
  * below the narrative when expanded. Only renders non-null fields.
  */
 export default function BiographyLifeDetails({ biographyDetails }: BiographyLifeDetailsProps) {
-  const visibleFields = FIELDS.filter((f) => {
+  const visibleFields: VisibleField[] = FIELDS.reduce<VisibleField[]>((acc, f) => {
     const value = biographyDetails[f.key]
-    return typeof value === "string" && value.trim().length > 0
-  })
+    if (typeof value === "string" && value.trim().length > 0) {
+      acc.push({ ...f, value })
+    }
+    return acc
+  }, [])
 
   if (visibleFields.length === 0) return null
 
@@ -105,9 +113,7 @@ export default function BiographyLifeDetails({ biographyDetails }: BiographyLife
           <span className="mt-0.5 shrink-0 text-brown-medium">{field.icon}</span>
           <div>
             <span className="text-sm font-medium text-brown-dark">{field.label}: </span>
-            <span className="text-sm text-text-primary">
-              {biographyDetails[field.key] as string}
-            </span>
+            <span className="text-sm text-text-primary">{field.value}</span>
           </div>
         </div>
       ))}

@@ -383,6 +383,8 @@ export default function BiographyEnrichmentTab() {
     setEnrichingActorId(actorId)
     try {
       await enrichMutation.mutateAsync(actorId)
+    } catch {
+      // Error state handled by mutation
     } finally {
       setEnrichingActorId(null)
     }
@@ -392,6 +394,8 @@ export default function BiographyEnrichmentTab() {
     setResynthesizingActorId(actorId)
     try {
       await resynthMutation.mutateAsync(actorId)
+    } catch {
+      // Error state handled by mutation
     } finally {
       setResynthesizingActorId(null)
     }
@@ -688,6 +692,18 @@ export default function BiographyEnrichmentTab() {
 
       {/* Error State */}
       {error && <ErrorMessage message="Failed to load enrichment data. Please try again later." />}
+
+      {/* Per-actor mutation errors */}
+      {(enrichMutation.isError || resynthMutation.isError) && (
+        <div className="border-admin-error/30 bg-admin-error/10 rounded border p-3">
+          <p className="text-admin-error text-sm">
+            Error:{" "}
+            {(enrichMutation.error ?? resynthMutation.error) instanceof Error
+              ? (enrichMutation.error ?? resynthMutation.error)?.message
+              : "Unknown error"}
+          </p>
+        </div>
+      )}
 
       {/* Data Table */}
       {data && (
