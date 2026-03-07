@@ -159,16 +159,17 @@ function printComparison(
       "BAFTA",
       "SAG",
       "Pulitzer",
+      "Cannes",
+      "Venice",
     ]
 
-    const oldSuperlatives = superlatives.filter((s) =>
-      oldNarrative.toLowerCase().includes(s.toLowerCase())
-    )
-    const newSuperlatives = superlatives.filter((s) =>
-      newNarrative.toLowerCase().includes(s.toLowerCase())
-    )
-    const oldAwards = awards.filter((a) => oldNarrative.includes(a))
-    const newAwards = awards.filter((a) => newNarrative.includes(a))
+    const oldNarrativeLower = oldNarrative.toLowerCase()
+    const newNarrativeLower = newNarrative.toLowerCase()
+
+    const oldSuperlatives = superlatives.filter((s) => oldNarrativeLower.includes(s.toLowerCase()))
+    const newSuperlatives = superlatives.filter((s) => newNarrativeLower.includes(s.toLowerCase()))
+    const oldAwards = awards.filter((a) => oldNarrativeLower.includes(a.toLowerCase()))
+    const newAwards = awards.filter((a) => newNarrativeLower.includes(a.toLowerCase()))
 
     console.log(`\n  QUALITY CHECK:`)
     console.log(
