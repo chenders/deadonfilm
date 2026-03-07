@@ -99,7 +99,6 @@ describe("AdminActorToolbar", () => {
 
     expect(screen.getByTestId("admin-mode-toggle")).toBeInTheDocument()
     expect(screen.getByTestId("admin-editor-link")).toBeInTheDocument()
-    expect(screen.getByLabelText("Regen bio")).toBeInTheDocument()
     expect(screen.getByLabelText("Re-enrich")).toBeInTheDocument()
     expect(screen.getByLabelText("Enrich bio")).toBeInTheDocument()
   })

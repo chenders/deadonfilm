@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import { useParams, useLocation, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useActor } from "@/hooks/useActor"
-import { createMovieSlug, createShowSlug, createActorSlug, extractActorId } from "@/utils/slugify"
+import { createMovieSlug, createShowSlug, createActorSlug } from "@/utils/slugify"
 import { formatDate, calculateCurrentAge } from "@/utils/formatDate"
 import { toTitleCase } from "@/utils/formatText"
 import { getProfileUrl, getPosterUrl } from "@/services/api"
@@ -170,9 +170,8 @@ export default function ActorPage() {
   const [showAllFilmography, setShowAllFilmography] = useState(false)
   const FILMOGRAPHY_PREVIEW_COUNT = 5
 
-  // Extract internal actor ID from slug (not the TMDB person ID from the API response)
-  const actorId = slug ? extractActorId(slug) : 0
-  const relatedActors = useRelatedActors(actorId)
+  // Use internal DB id from API response (slug may contain TMDB person ID for old URLs)
+  const relatedActors = useRelatedActors(data?.actor.id ?? 0)
 
   if (!slug) {
     return <ErrorMessage message="Invalid actor URL" />
@@ -255,7 +254,7 @@ export default function ActorPage() {
 
       <div data-testid="actor-page" className="mx-auto max-w-3xl">
         <Breadcrumb items={[{ label: "Home", href: "/" }, { label: actor.name }]} />
-        <AdminActorToolbar actorId={actorId} />
+        <AdminActorToolbar actorId={actor.id} />
 
         {/* Header section */}
         <div className="mb-6 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
@@ -380,7 +379,7 @@ export default function ActorPage() {
           </div>
         </div>
 
-        <AdminActorMetadata actorId={actorId} />
+        <AdminActorMetadata actorId={actor.id} />
 
         {/* Death Summary Card */}
         {isDeceased && deathInfo && (
@@ -397,7 +396,7 @@ export default function ActorPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   pageType: "actor_death",
-                  entityId: actorId,
+                  entityId: actor.id,
                   path: `${location.pathname}/death`,
                 }),
               }).catch(() => {})
