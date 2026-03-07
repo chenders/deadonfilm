@@ -657,6 +657,26 @@ describe("ActorPage", () => {
     })
   })
 
+  it("uses internal actor.id for related actors even when slug has different numeric id", async () => {
+    // Simulate a URL with the TMDB ID (99001) instead of the internal DB ID (12345)
+    // The API response actor.id should be used, not the slug-extracted number
+    vi.mocked(api.getActor).mockResolvedValue(mockLivingActor)
+    vi.mocked(api.getRelatedActors).mockResolvedValue({ actors: [], matchType: "none" })
+
+    renderWithProviders(<ActorPage />, {
+      initialEntries: ["/actor/living-actor-99001"], // 99001 = TMDB ID, not internal ID
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId("actor-page")).toBeInTheDocument()
+    })
+
+    // Should call getRelatedActors with internal DB id (12345), not TMDB id (99001)
+    await waitFor(() => {
+      expect(api.getRelatedActors).toHaveBeenCalledWith(12345)
+    })
+  })
+
   describe("notable factor badges", () => {
     it("renders factor badges for deceased actors", async () => {
       vi.mocked(api.getActor).mockResolvedValue(mockDeceasedActor)
