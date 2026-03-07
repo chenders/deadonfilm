@@ -3,7 +3,7 @@
  * Shows enrichment status, allows single/batch enrichment, and displays golden test results.
  */
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Link } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import LoadingSpinner from "../../common/LoadingSpinner"
@@ -18,7 +18,6 @@ import { adminApi } from "../../../services/api"
 
 interface EnrichmentActor {
   id: number
-  tmdbId: number | null
   name: string
   popularity: number | null
   deathday: string
@@ -412,10 +411,10 @@ export default function BiographyEnrichmentTab() {
     }
   }
 
-  const handleBatchComplete = () => {
+  const handleBatchComplete = useCallback(() => {
     setActiveBatchJobId(null)
     queryClient.invalidateQueries({ queryKey: ["admin-biography-enrichment"] })
-  }
+  }, [queryClient])
 
   const stats = data?.stats
   const actors = data?.actors || []
