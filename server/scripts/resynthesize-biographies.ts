@@ -6,6 +6,8 @@ import { Command, InvalidArgumentError } from "commander"
 import { Pool } from "pg"
 import { BiographyEnrichmentOrchestrator } from "../src/lib/biography-sources/orchestrator.js"
 import { writeBiographyToProduction } from "../src/lib/biography-enrichment-db-writer.js"
+import { initRedis, closeRedis } from "../src/lib/redis.js"
+import { resetPool } from "../src/lib/db/pool.js"
 import type { ActorForBiography } from "../src/lib/biography-sources/types.js"
 
 /**
@@ -223,6 +225,10 @@ async function run(options: {
 }): Promise<void> {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
+  // Initialize Redis so cache invalidation works (getRedisClient() is lazy
+  // and returns null until connected, causing silent invalidation failures)
+  await initRedis()
+
   try {
     // Determine target actors
     let actors: ActorForBiography[]
@@ -320,6 +326,11 @@ async function run(options: {
     process.exitCode = 1
   } finally {
     await pool.end()
+    // Close shared singleton connections that keep the process alive:
+    // - getPool() is used by getCachedQueriesForActor() in the orchestrator
+    // - Redis is used by invalidateActorCache() in the DB writer
+    await resetPool()
+    await closeRedis()
   }
 }
 
