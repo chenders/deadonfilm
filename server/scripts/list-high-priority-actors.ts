@@ -1,4 +1,6 @@
 #!/usr/bin/env tsx
+import "dotenv/config" // MUST be first import
+
 /**
  * List high-priority actors (popularity >= 10) without death pages
  * Demonstrates the actorIds parameter for enrichment
