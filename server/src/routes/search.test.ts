@@ -539,6 +539,42 @@ describe("searchMovies route", () => {
       expect(queryCall[1][0]).toBe("%100\\%\\_match%") // wildcards escaped
     })
 
+    it("finds actors by alternate name", async () => {
+      mockQuery.mockResolvedValue({
+        rows: [
+          {
+            id: 4165,
+            name: "John Wayne",
+            birthday: "1907-05-26",
+            deathday: "1979-06-11",
+            profile_path: "/john-wayne.jpg",
+            tmdb_popularity: 25.5,
+          },
+        ],
+      })
+      mockReq = { query: { q: "Marion Morrison", type: "person" } }
+
+      await searchMovies(mockReq as Request, mockRes as Response)
+
+      // Verify the SQL includes alternate_names matching
+      const queryCall = mockQuery.mock.calls[0]
+      expect(queryCall[0]).toContain("alternate_names::text ILIKE")
+
+      const calledWith = jsonSpy.mock.calls[0][0]
+      expect(calledWith.results).toHaveLength(1)
+      expect(calledWith.results[0]).toEqual({
+        id: 4165,
+        title: "John Wayne",
+        release_date: "",
+        poster_path: "/john-wayne.jpg",
+        overview: "",
+        media_type: "person",
+        is_deceased: true,
+        death_year: 1979,
+        birth_year: 1907,
+      })
+    })
+
     it("does not call TMDB API for person search", async () => {
       mockQuery.mockResolvedValue({ rows: [] })
       mockReq = { query: { q: "Tom Hanks", type: "person" } }

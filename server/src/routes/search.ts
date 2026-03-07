@@ -142,7 +142,7 @@ async function searchActorsLocal(query: string, limit: number): Promise<SearchRe
   }>(
     `SELECT id, name, birthday, deathday, profile_path, tmdb_popularity
        FROM actors
-       WHERE name ILIKE $1 ESCAPE '\\'
+       WHERE (name ILIKE $1 ESCAPE '\\' OR alternate_names::text ILIKE $1 ESCAPE '\\')
          AND profile_path IS NOT NULL
        ORDER BY
          CASE WHEN LOWER(name) = LOWER($2) THEN 0 ELSE 1 END,
