@@ -200,6 +200,23 @@ async function getActorPageData(actorId: number): Promise<PrerenderPageData | nu
   const actor = await getActorById(actorId)
   if (!actor) return null
 
+  // Fetch SEO fields from biography details for structured data
+  const bioSeoRow = await getPool()
+    .query<{
+      alternate_names: string[] | null
+      gender: string | null
+      nationality: string | null
+      occupations: string[] | null
+      awards: string[] | null
+      education: string | null
+    }>(
+      `SELECT alternate_names, gender, nationality, occupations, awards, education
+       FROM actor_biography_details
+       WHERE actor_id = $1`,
+      [actor.id]
+    )
+    .then((r) => r.rows[0] ?? null)
+
   const slug = createActorSlug(actor.name, actor.id)
   const canonicalUrl = `${BASE_URL}/actor/${slug}`
 
@@ -218,6 +235,17 @@ async function getActorPageData(actorId: number): Promise<PrerenderPageData | nu
     ? `${BASE_URL}/og/actor/${actor.tmdb_id}.png`
     : tmdbProfile(actor.profile_path)
 
+  // Merge actor record with biography SEO fields for schema builder
+  const schemaInput = {
+    ...actor,
+    alternate_names: bioSeoRow?.alternate_names ?? null,
+    gender: bioSeoRow?.gender ?? null,
+    nationality: bioSeoRow?.nationality ?? null,
+    occupations: bioSeoRow?.occupations ?? null,
+    awards: bioSeoRow?.awards ?? null,
+    education: bioSeoRow?.education ?? null,
+  }
+
   return {
     title: `${actor.name} — Dead on Film`,
     description,
@@ -225,7 +253,7 @@ async function getActorPageData(actorId: number): Promise<PrerenderPageData | nu
     imageUrl,
     canonicalUrl,
     jsonLd: [
-      buildPersonSchema(actor, slug),
+      buildPersonSchema(schemaInput, slug),
       buildBreadcrumbSchema([
         { name: "Home", url: BASE_URL },
         { name: actor.name, url: canonicalUrl },

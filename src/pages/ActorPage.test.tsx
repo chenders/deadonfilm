@@ -744,6 +744,11 @@ describe("ActorPage", () => {
           relationships: null,
           lesserKnownFacts: [],
           sources: null,
+          alternateNames: [],
+          gender: null,
+          nationality: null,
+          occupations: [],
+          awards: [],
         },
       })
 
@@ -778,6 +783,11 @@ describe("ActorPage", () => {
           relationships: null,
           lesserKnownFacts: [],
           sources: null,
+          alternateNames: [],
+          gender: null,
+          nationality: null,
+          occupations: [],
+          awards: [],
         },
       })
 

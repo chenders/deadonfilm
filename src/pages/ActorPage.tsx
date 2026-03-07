@@ -240,7 +240,14 @@ export default function ActorPage() {
             biography: actor.biography,
             profilePath: actor.profilePath,
             placeOfBirth: actor.placeOfBirth,
+            tmdbId: actor.tmdbId,
             causeOfDeath: deathInfo?.causeOfDeath,
+            alternateNames: data.biographyDetails?.alternateNames,
+            gender: data.biographyDetails?.gender,
+            nationality: data.biographyDetails?.nationality,
+            occupations: data.biographyDetails?.occupations,
+            awards: data.biographyDetails?.awards,
+            education: data.biographyDetails?.education,
           },
           slug!
         )}

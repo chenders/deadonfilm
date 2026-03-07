@@ -114,6 +114,12 @@ export interface BiographyDetails {
   relationships: string | null
   lesserKnownFacts: string[]
   sources: BiographySource[] | null
+  // SEO fields
+  alternateNames: string[]
+  gender: string | null
+  nationality: string | null
+  occupations: string[]
+  awards: string[]
 }
 
 export interface ActorProfileResponse {

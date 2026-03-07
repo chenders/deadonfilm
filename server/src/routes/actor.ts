@@ -81,6 +81,11 @@ interface ActorProfileResponse {
     relationships: string | null
     lesserKnownFacts: string[]
     sources: Record<string, unknown> | null
+    alternateNames: string[]
+    gender: string | null
+    nationality: string | null
+    occupations: string[]
+    awards: string[]
   } | null
 }
 
@@ -175,12 +180,18 @@ export async function getActor(req: Request, res: Response) {
           relationships: string | null
           lesser_known_facts: string[] | null
           sources: Record<string, unknown> | null
+          alternate_names: string[] | null
+          gender: string | null
+          nationality: string | null
+          occupations: string[] | null
+          awards: string[] | null
         }>(
           `SELECT narrative, narrative_confidence,
                   life_notable_factors, birthplace_details, family_background,
                   education, pre_fame_life, fame_catalyst,
                   personal_struggles, relationships, lesser_known_facts,
-                  sources
+                  sources,
+                  alternate_names, gender, nationality, occupations, awards
            FROM actor_biography_details
            WHERE actor_id = $1`,
           [actorRecord.id]
@@ -292,6 +303,11 @@ export async function getActor(req: Request, res: Response) {
             relationships: bioRow.relationships || null,
             lesserKnownFacts: bioRow.lesser_known_facts || [],
             sources: bioRow.sources || null,
+            alternateNames: bioRow.alternate_names ?? [],
+            gender: bioRow.gender ?? null,
+            nationality: bioRow.nationality ?? null,
+            occupations: bioRow.occupations ?? [],
+            awards: bioRow.awards ?? [],
           }
         : null,
     }
