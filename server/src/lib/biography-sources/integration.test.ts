@@ -825,11 +825,12 @@ describe("Biography Enrichment Integration Test", () => {
 
       await writeBiographyToProduction(mockPool, testActor.id, data, sources)
 
-      // Should be 3 calls: SELECT, INSERT upsert, UPDATE actors (no archive step)
-      expect(mockQuery).toHaveBeenCalledTimes(3)
+      // Should be 4 calls: SELECT, INSERT upsert, UPDATE actors, UPDATE alternate_names (no archive step)
+      expect(mockQuery).toHaveBeenCalledTimes(4)
       expect(mockQuery.mock.calls[0][0]).toContain("SELECT biography, biography_legacy")
       expect(mockQuery.mock.calls[1][0]).toContain("INSERT INTO actor_biography_details")
       expect(mockQuery.mock.calls[2][0]).toContain("biography = $1")
+      expect(mockQuery.mock.calls[3][0]).toContain("alternate_names = $1")
     })
   })
 })

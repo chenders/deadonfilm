@@ -104,7 +104,7 @@ describe("buildPersonSchema", () => {
     expect(result.nationality).toBeUndefined()
   })
 
-  it("includes hasOccupation as Role array when occupations provided", () => {
+  it("includes hasOccupation as Occupation array when occupations provided", () => {
     const result = buildPersonSchema(
       { ...baseActor, occupations: ["Actor", "Producer", "Director"] },
       "john-wayne-4165"

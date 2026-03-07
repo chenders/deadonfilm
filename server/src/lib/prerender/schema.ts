@@ -32,6 +32,8 @@ export function buildMovieSchema(
   }
 }
 
+// Maps TMDB department to schema.org jobTitle.
+// Keep in sync with src/utils/schema.ts
 const DEPARTMENT_TO_TITLE: Record<string, string> = {
   Acting: "Actor",
   Directing: "Director",

@@ -123,8 +123,8 @@ describe("writeBiographyToProduction", () => {
     await writeBiographyToProduction(mockPool, 42, makeBiographyData(), makeSources())
 
     // Should go directly to upsert (no archive UPDATE)
-    // Calls: SELECT, INSERT upsert, UPDATE actors
-    expect(mockQuery).toHaveBeenCalledTimes(3)
+    // Calls: SELECT, INSERT upsert, UPDATE actors, UPDATE alternate_names
+    expect(mockQuery).toHaveBeenCalledTimes(4)
     expect(mockQuery.mock.calls[1][0]).toContain("INSERT INTO actor_biography_details")
   })
 
@@ -136,8 +136,8 @@ describe("writeBiographyToProduction", () => {
     await writeBiographyToProduction(mockPool, 42, makeBiographyData(), makeSources())
 
     // Should go directly to upsert (no archive UPDATE)
-    // Calls: SELECT, INSERT upsert, UPDATE actors
-    expect(mockQuery).toHaveBeenCalledTimes(3)
+    // Calls: SELECT, INSERT upsert, UPDATE actors, UPDATE alternate_names
+    expect(mockQuery).toHaveBeenCalledTimes(4)
     expect(mockQuery.mock.calls[1][0]).toContain("INSERT INTO actor_biography_details")
   })
 
@@ -266,16 +266,18 @@ describe("writeBiographyToProduction", () => {
     expect(mockQuery.mock.calls[altNamesCallIndex][1]).toEqual([["Marion Morrison", "Duke"], 42])
   })
 
-  it("skips alternate_names denormalization when array is empty", async () => {
+  it("sets alternate_names to null when array is empty", async () => {
     const data = makeBiographyData({ alternateNames: [] })
 
     await writeBiographyToProduction(mockPool, 42, data, makeSources())
 
-    const allQueries = mockQuery.mock.calls.map((c: unknown[]) => c[0] as string)
-    const altNamesCall = allQueries.find(
-      (q: string) => q.includes("alternate_names = $1") && !q.includes("INSERT") // Exclude the upsert query which also has alternate_names
+    const altNamesCallIndex = mockQuery.mock.calls.findIndex(
+      (c: unknown[]) =>
+        (c[0] as string).includes("alternate_names = $1") &&
+        (c[0] as string).includes("WHERE id = $2")
     )
-    expect(altNamesCall).toBeUndefined()
+    expect(altNamesCallIndex).not.toBe(-1)
+    expect(mockQuery.mock.calls[altNamesCallIndex][1]).toEqual([null, 42])
   })
 })
 

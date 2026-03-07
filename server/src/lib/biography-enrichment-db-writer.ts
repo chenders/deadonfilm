@@ -112,12 +112,10 @@ export async function writeBiographyToProduction(
     }
 
     // Step 4: Denormalize alternate_names to actors table for search
-    if (data.alternateNames.length > 0) {
-      await db.query(`UPDATE actors SET alternate_names = $1 WHERE id = $2`, [
-        data.alternateNames,
-        actorId,
-      ])
-    }
+    await db.query(`UPDATE actors SET alternate_names = $1 WHERE id = $2`, [
+      data.alternateNames.length > 0 ? data.alternateNames : null,
+      actorId,
+    ])
 
     // Step 5: Invalidate cache
     await invalidateActorCache(actorId)

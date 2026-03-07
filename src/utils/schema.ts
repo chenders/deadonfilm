@@ -72,6 +72,8 @@ interface PersonSchemaInput {
   education?: string | null
 }
 
+// Maps TMDB department to schema.org jobTitle.
+// Keep in sync with server/src/lib/prerender/schema.ts
 const DEPARTMENT_TO_TITLE: Record<string, string> = {
   Acting: "Actor",
   Directing: "Director",
