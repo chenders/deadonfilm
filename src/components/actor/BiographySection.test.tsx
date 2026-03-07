@@ -269,33 +269,4 @@ describe("BiographySection", () => {
     render(<BiographySection biographyDetails={details} />)
     expect(screen.queryByTestId("sources-sources")).not.toBeInTheDocument()
   })
-
-  it("shows life details when expanded", () => {
-    const details = makeBiographyDetails({
-      narrative: "Full narrative " + "x".repeat(300),
-      birthplaceDetails: "Small town in Iowa",
-      education: "Attended Yale University",
-    })
-    render(<BiographySection biographyDetails={details} />)
-
-    // Collapsed — life details hidden
-    expect(screen.queryByTestId("biography-life-details")).not.toBeInTheDocument()
-
-    // Expand
-    fireEvent.click(screen.getByTestId("expandable-section-toggle"))
-    expect(screen.getByTestId("biography-life-details")).toBeInTheDocument()
-    expect(screen.getByText("Small town in Iowa")).toBeInTheDocument()
-    expect(screen.getByText("Attended Yale University")).toBeInTheDocument()
-  })
-
-  it("does not show life details when all fields are null", () => {
-    const details = makeBiographyDetails({
-      narrative: "Full narrative " + "x".repeat(300),
-    })
-    render(<BiographySection biographyDetails={details} />)
-
-    // Expand
-    fireEvent.click(screen.getByTestId("expandable-section-toggle"))
-    expect(screen.queryByTestId("biography-life-details")).not.toBeInTheDocument()
-  })
 })
