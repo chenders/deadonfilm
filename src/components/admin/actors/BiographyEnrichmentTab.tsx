@@ -420,6 +420,14 @@ export default function BiographyEnrichmentTab() {
   const actors = data?.actors || []
   const pagination = data?.pagination
 
+  const mutationError = enrichMutation.isError
+    ? enrichMutation.error
+    : resynthMutation.isError
+      ? resynthMutation.error
+      : null
+  const mutationErrorMessage =
+    mutationError instanceof Error ? mutationError.message : mutationError ? "Unknown error" : null
+
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
@@ -693,21 +701,9 @@ export default function BiographyEnrichmentTab() {
       {error && <ErrorMessage message="Failed to load enrichment data. Please try again later." />}
 
       {/* Per-actor mutation errors */}
-      {(enrichMutation.isError || resynthMutation.isError) && (
+      {mutationErrorMessage && (
         <div className="border-admin-error/30 bg-admin-error/10 rounded border p-3">
-          <p className="text-admin-error text-sm">
-            {(() => {
-              const displayedError = enrichMutation.isError
-                ? enrichMutation.error
-                : resynthMutation.error
-
-              if (displayedError instanceof Error) {
-                return `Error: ${displayedError.message}`
-              }
-
-              return "Error: Unknown error"
-            })()}
-          </p>
+          <p className="text-admin-error text-sm">Error: {mutationErrorMessage}</p>
         </div>
       )}
 
@@ -773,6 +769,7 @@ export default function BiographyEnrichmentTab() {
                           disabled={resynthesizingActorId === actor.id || resynthMutation.isPending}
                           className="rounded bg-admin-interactive-secondary px-3 py-1.5 text-xs text-admin-text-primary hover:bg-admin-surface-overlay disabled:opacity-50"
                           title="Re-synthesize from cached sources"
+                          aria-label={`Re-synthesize biography for ${actor.name}`}
                         >
                           {resynthesizingActorId === actor.id ? "..." : "Re-synth"}
                         </button>
@@ -903,6 +900,7 @@ export default function BiographyEnrichmentTab() {
                               }
                               className="rounded bg-admin-interactive-secondary px-2 py-1 text-xs text-admin-text-primary transition-colors hover:bg-admin-surface-overlay disabled:cursor-not-allowed disabled:opacity-50"
                               title="Re-synthesize from cached sources (prompt only)"
+                              aria-label={`Re-synthesize biography for ${actor.name}`}
                             >
                               {resynthesizingActorId === actor.id ? "..." : "Re-synth"}
                             </button>

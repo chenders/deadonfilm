@@ -85,7 +85,6 @@ import dataQualityRoutes from "./routes/admin/data-quality.js"
 import popularityRoutes from "./routes/admin/popularity.js"
 import syncRoutes from "./routes/admin/sync.js"
 import logsRoutes from "./routes/admin/logs.js"
-import biographiesRoutes from "./routes/admin/biographies.js"
 import biographyEnrichmentRoutes from "./routes/admin/biography-enrichment.js"
 import gscRoutes from "./routes/admin/gsc.js"
 import causeMappingsRoutes from "./routes/admin/cause-mappings.js"
@@ -322,7 +321,6 @@ app.use("/admin/api/data-quality", adminRoutesLimiter, adminAuthMiddleware, data
 app.use("/admin/api/popularity", adminRoutesLimiter, adminAuthMiddleware, popularityRoutes)
 app.use("/admin/api/sync", adminRoutesLimiter, adminAuthMiddleware, syncRoutes)
 app.use("/admin/api/logs", adminRoutesLimiter, adminAuthMiddleware, logsRoutes)
-app.use("/admin/api/biographies", adminRoutesLimiter, adminAuthMiddleware, biographiesRoutes)
 app.use("/admin/api/gsc", adminRoutesLimiter, adminAuthMiddleware, gscRoutes)
 app.use("/admin/api/cause-mappings", adminRoutesLimiter, adminAuthMiddleware, causeMappingsRoutes)
 app.use(

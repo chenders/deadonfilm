@@ -239,7 +239,7 @@ async function run(options: Options): Promise<void> {
     console.log(`Duration: ${duration}s`)
   } catch (error) {
     console.error("Fatal error:", error)
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     await pool.end()
   }

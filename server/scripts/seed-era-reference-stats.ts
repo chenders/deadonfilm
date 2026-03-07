@@ -211,7 +211,7 @@ async function seedEraStats(options: SeedOptions): Promise<void> {
     console.log(`Updated ${yearStats.length} year records.\n`)
   } catch (error) {
     console.error("Fatal error:", error)
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     await db.end()
   }

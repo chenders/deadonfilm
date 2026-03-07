@@ -1227,7 +1227,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       }
     }
 
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     await resetPool()
   }

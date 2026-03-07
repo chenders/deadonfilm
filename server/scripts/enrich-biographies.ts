@@ -449,7 +449,7 @@ async function run(options: CliOptions): Promise<void> {
     })
   } catch (error) {
     console.error("Fatal error:", error)
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     await pool.end()
   }

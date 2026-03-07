@@ -151,7 +151,7 @@ async function runBackfill({ dryRun, batchSize, delay }: BackfillOptions) {
     console.log("\nDone!")
   } catch (error) {
     console.error("Fatal error:", error)
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     await db.end()
   }

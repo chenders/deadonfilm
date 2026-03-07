@@ -15,15 +15,9 @@
  *   npx tsx scripts/test-browser-auth.ts --actor <name>     # Test with actor lookup
  */
 
+import "dotenv/config" // MUST be first import
+
 import { Command } from "commander"
-import dotenv from "dotenv"
-import path from "path"
-import { fileURLToPath } from "url"
-
-// Load environment
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-dotenv.config({ path: path.join(__dirname, "..", ".env") })
-
 import { Pool } from "pg"
 import {
   browserFetchPage,
@@ -470,7 +464,7 @@ const program = new Command()
       await printSummary()
     } catch (error) {
       console.error("\n❌ Fatal error:", error)
-      process.exit(1)
+      process.exitCode = 1
     } finally {
       await shutdownBrowser()
     }

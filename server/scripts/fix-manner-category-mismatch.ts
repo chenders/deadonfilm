@@ -95,7 +95,7 @@ async function run(options: Options) {
     }
   } catch (error) {
     console.error("Fatal error:", error)
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     await pool.end()
   }
