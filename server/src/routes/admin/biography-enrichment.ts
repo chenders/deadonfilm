@@ -177,6 +177,69 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
 })
 
 // ============================================================================
+// POST /admin/api/biography-enrichment/re-synthesize
+// Re-synthesize a single actor's biography from cached source data
+// ============================================================================
+
+router.post("/re-synthesize", async (req: Request, res: Response): Promise<void> => {
+  const { actorId } = req.body
+  if (!actorId || typeof actorId !== "number") {
+    res.status(400).json({ error: { message: "actorId is required and must be a number" } })
+    return
+  }
+
+  try {
+    const pool = getPool()
+
+    // Fetch actor
+    const actorResult = await pool.query(
+      `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
+              wikipedia_url, biography AS biography_raw_tmdb, biography
+       FROM actors WHERE id = $1`,
+      [actorId]
+    )
+
+    const actor = actorResult.rows[0]
+    if (!actor) {
+      res.status(404).json({ error: { message: "Actor not found" } })
+      return
+    }
+
+    // Get current narrative for comparison
+    const currentResult = await pool.query<{ narrative: string | null }>(
+      `SELECT narrative FROM actor_biography_details WHERE actor_id = $1`,
+      [actorId]
+    )
+    const previousNarrative = currentResult.rows[0]?.narrative ?? null
+
+    const { BiographyEnrichmentOrchestrator } =
+      await import("../../lib/biography-sources/orchestrator.js")
+    const { writeBiographyToProduction } =
+      await import("../../lib/biography-enrichment-db-writer.js")
+
+    const orchestrator = new BiographyEnrichmentOrchestrator()
+    const result = await orchestrator.resynthesizeFromCache(actor)
+
+    if (result.data && result.data.hasSubstantiveContent) {
+      await writeBiographyToProduction(pool, actorId, result.data, result.sources)
+    }
+
+    res.json({
+      success: !result.error,
+      data: result.data,
+      stats: result.stats,
+      previousNarrative,
+      newNarrative: result.data?.narrative ?? null,
+      error: result.error,
+    })
+  } catch (error) {
+    logger.error({ error, actorId }, "Failed to re-synthesize actor biography")
+    const errorMsg = error instanceof Error ? error.message : "Unknown error"
+    res.status(500).json({ error: { message: errorMsg } })
+  }
+})
+
+// ============================================================================
 // POST /admin/api/biography-enrichment/enrich-batch
 // Queue a batch enrichment job
 // ============================================================================

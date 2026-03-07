@@ -109,6 +109,25 @@ async function enrichSingleActor(actorId: number): Promise<{ success: boolean; m
   return response.json()
 }
 
+async function resynthesizeSingleActor(
+  actorId: number
+): Promise<{ success: boolean; error?: string }> {
+  const response = await fetch(adminApi("/biography-enrichment/re-synthesize"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ actorId }),
+  })
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null)
+    const serverMsg = data?.error?.message || data?.error || `HTTP ${response.status}`
+    throw new Error(`Re-synthesis failed: ${serverMsg}`)
+  }
+
+  return response.json()
+}
+
 async function queueBatchEnrichment(params: {
   limit?: number
   minPopularity?: number
@@ -294,6 +313,7 @@ export default function BiographyEnrichmentTab() {
   const [needsEnrichment, setNeedsEnrichment] = useState(true)
   const [batchLimit, setBatchLimit] = useState(10)
   const [enrichingActorId, setEnrichingActorId] = useState<number | null>(null)
+  const [resynthesizingActorId, setResynthesizingActorId] = useState<number | null>(null)
   const [activeBatchJobId, setActiveBatchJobId] = useState<string | null>(null)
   const pageSize = 50
 
@@ -342,6 +362,13 @@ export default function BiographyEnrichmentTab() {
     },
   })
 
+  const resynthMutation = useMutation({
+    mutationFn: resynthesizeSingleActor,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-biography-enrichment"] })
+    },
+  })
+
   const goldenTestMutation = useMutation({
     mutationFn: runGoldenTests,
   })
@@ -352,6 +379,15 @@ export default function BiographyEnrichmentTab() {
       await enrichMutation.mutateAsync(actorId)
     } finally {
       setEnrichingActorId(null)
+    }
+  }
+
+  const handleResynthSingle = async (actorId: number) => {
+    setResynthesizingActorId(actorId)
+    try {
+      await resynthMutation.mutateAsync(actorId)
+    } finally {
+      setResynthesizingActorId(null)
     }
   }
 
@@ -703,6 +739,16 @@ export default function BiographyEnrichmentTab() {
                       >
                         {enrichingActorId === actor.id ? "..." : "Enrich"}
                       </button>
+                      {actor.hasEnrichment && (
+                        <button
+                          onClick={() => handleResynthSingle(actor.id)}
+                          disabled={resynthesizingActorId === actor.id || resynthMutation.isPending}
+                          className="rounded bg-admin-interactive-secondary px-3 py-1.5 text-xs text-admin-text-primary hover:bg-admin-surface-overlay disabled:opacity-50"
+                          title="Re-synthesize from cached sources"
+                        >
+                          {resynthesizingActorId === actor.id ? "..." : "Re-synth"}
+                        </button>
+                      )}
                       <a
                         href={`/actor/${createActorSlug(actor.name, actor.id)}`}
                         target="_blank"
@@ -821,6 +867,18 @@ export default function BiographyEnrichmentTab() {
                           >
                             {enrichingActorId === actor.id ? "..." : "Enrich"}
                           </button>
+                          {actor.hasEnrichment && (
+                            <button
+                              onClick={() => handleResynthSingle(actor.id)}
+                              disabled={
+                                resynthesizingActorId === actor.id || resynthMutation.isPending
+                              }
+                              className="rounded bg-admin-interactive-secondary px-2 py-1 text-xs text-admin-text-primary transition-colors hover:bg-admin-surface-overlay disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Re-synthesize from cached sources (prompt only)"
+                            >
+                              {resynthesizingActorId === actor.id ? "..." : "Re-synth"}
+                            </button>
+                          )}
                           <a
                             href={`/actor/${createActorSlug(actor.name, actor.id)}`}
                             target="_blank"

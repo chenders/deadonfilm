@@ -143,7 +143,13 @@ NARRATIVE STRUCTURE:
   "the early seeds of" anything.
 - End with something human and specific, not a career summary. But do NOT circle back to a
   childhood image or theme to create literary closure. Just stop at a natural resting point.
-- VARY openings
+- NEVER open with "Born in [city]" or "Growing up in [place]" — these are the two most
+  overused patterns. Instead, try one of these approaches:
+  1. A specific childhood anecdote or scene ("The smell of his father's hardware store...")
+  2. A defining relationship or family dynamic ("His mother raised five children alone...")
+  3. A formative challenge or turning point ("At fourteen, he was sent to reform school...")
+  4. A lesser-known early passion or hobby ("Before anyone knew her name, she was...")
+  5. A quote or characteristic behavior ("He once told a friend...")
 
 TONE:
 - Write like a well-researched retrospective, not a magazine profile. You are working from
@@ -151,7 +157,9 @@ TONE:
   person might have felt or thought.
 - Factual but warm — let vivid, specific details carry the emotional weight instead of
   dramatic adjectives
-- No superlatives: avoid "renowned", "acclaimed", "legendary", "beloved", "masterful"
+- NEVER use these words: renowned, acclaimed, legendary, iconic, beloved, celebrated,
+  distinguished, prolific, seminal, groundbreaking, trailblazing, masterful, definitive.
+  This applies to ALL people mentioned in the biography, not just the subject.
 - No Wikipedia-isms: avoid "is widely regarded as", "is best known for"
 - No purple prose: avoid "profound", "devastating", "fierce", "relentless", "unwavering",
   "tumultuous", "indomitable". If you need an adjective, choose one that is specific and
@@ -197,12 +205,27 @@ WHEN SOURCES CONFLICT:
 - If a fact appears in only one low-reliability source, mark narrative_confidence as "medium" or "low"
 - Never present disputed facts as certain
 
+LESSER-KNOWN FACTS RULES:
+- Each fact MUST reveal something NOT mentioned or implied anywhere in the narrative above.
+- If a fact restates what the narrative already covers, replace it with something genuinely
+  different or omit it entirely. Fewer unique facts are better than redundant ones.
+  BAD: Narrative says "he grew up on a farm" → fact says "He was raised on a farm in Iowa"
+  BAD: Narrative mentions his Navy service → fact says "He served in the U.S. Navy"
+  GOOD: Narrative covers childhood → fact reveals "He held a patent for a barbecue grill design"
+  GOOD: Narrative covers career → fact reveals "He was a licensed pilot who owned three planes"
+
 CRITICAL:
 - Do NOT list filmography, awards, box office numbers
 - Do NOT include birth/death dates (displayed separately on the page)
 - Do NOT describe how or when the person died — death circumstances have their own dedicated section on the page. End the narrative before the death event.
 - Mention their career only as context for their personal story
-- If sources are thin, write a shorter biography rather than padding with career achievements
+- NEVER mention specific award names (Oscar, Academy Award, Emmy, Tony, Grammy, Golden Globe,
+  BAFTA, SAG, Pulitzer, Cannes, Venice). Instead of "She won an Academy Award," say "she was
+  recognized for her work" or simply omit the reference entirely.
+- If sources are thin, write a SHORTER biography rather than padding with career achievements
+  or vague generalities. A 3-paragraph biography with specific details is better than a
+  6-paragraph biography padded with phrases like "was known for dedication to craft" or
+  "continued to work in the industry for decades."
 - Set has_substantive_content to false if you can only produce a generic career summary with no personal details
 - Do NOT impose a thematic arc. Real lives are not stories with a thesis. Events can be
   presented chronologically without arguing they all connect to one defining quality.

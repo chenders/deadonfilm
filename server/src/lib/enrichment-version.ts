@@ -10,4 +10,4 @@
 export const DEATH_ENRICHMENT_VERSION = "5.0.0"
 
 /** Current biography enrichment version. */
-export const BIO_ENRICHMENT_VERSION = "5.0.0"
+export const BIO_ENRICHMENT_VERSION = "5.1.0"

@@ -2,6 +2,7 @@ import { useState, useMemo } from "react"
 import type { BiographyDetails } from "@/types/actor"
 import ExpandableSection from "@/components/common/ExpandableSection"
 import SourceList from "@/components/death/SourceList"
+import BiographyLifeDetails from "./BiographyLifeDetails"
 import type { SourceEntry } from "@/types"
 
 interface BiographySectionProps {
@@ -112,6 +113,11 @@ export default function BiographySection({
             <p key={i}>{paragraph}</p>
           ))}
         </div>
+
+        {/* Structured details (visible when expanded) */}
+        {isExpanded && biographyDetails && (
+          <BiographyLifeDetails biographyDetails={biographyDetails} />
+        )}
 
         {/* Sources (visible when expanded) */}
         {isExpanded && <SourceList sources={sourceEntries} title="Sources" />}

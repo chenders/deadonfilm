@@ -26,8 +26,10 @@ import type {
 } from "./types.js"
 import { DEFAULT_BIOGRAPHY_CONFIG, BiographySourceType } from "./types.js"
 import { BaseBiographySource } from "./base-source.js"
+import type { BiographyLookupResult } from "./base-source.js"
 import { BiographyWebSearchBase } from "./sources/web-search-base.js"
 import { synthesizeBiography } from "./claude-cleanup.js"
+import { getCachedQueriesForActor } from "../death-sources/cache.js"
 import {
   SourceRateLimiter,
   SourcePhase,
@@ -816,6 +818,107 @@ export class BiographyEnrichmentOrchestrator {
     await this.runLogger?.flush()
 
     return results
+  }
+
+  /**
+   * Re-synthesize a biography from cached source data without re-fetching.
+   *
+   * Retrieves previously cached source query results for the actor, extracts
+   * the raw biography text from each, and runs Claude synthesis with the
+   * current prompt. This allows prompt improvements to be applied to existing
+   * data without incurring source-fetching costs.
+   *
+   * @param actor - Actor to re-synthesize biography for
+   * @returns BiographyResult with new synthesis, or error if no cached data
+   */
+  async resynthesizeFromCache(actor: ActorForBiography): Promise<BiographyResult> {
+    const startTime = Date.now()
+
+    // Build set of valid biography source types for filtering
+    const bioSourceTypes = new Set(Object.values(BiographySourceType) as string[])
+
+    // Retrieve all cached queries for this actor
+    const cachedEntries = await getCachedQueriesForActor(actor.id)
+
+    // Filter to biography sources with successful responses containing text
+    const rawSources: RawBiographySourceData[] = []
+    for (const entry of cachedEntries) {
+      // Only include biography source types
+      if (!bioSourceTypes.has(entry.sourceType as string)) continue
+      // Skip errors
+      if (entry.errorMessage) continue
+
+      // Extract data from cached BiographyLookupResult
+      const lookupResult = entry.responseRaw as BiographyLookupResult | null
+      if (!lookupResult?.success || !lookupResult.data) continue
+      if (!lookupResult.data.text || lookupResult.data.text.trim().length === 0) continue
+
+      rawSources.push(lookupResult.data)
+    }
+
+    if (rawSources.length === 0) {
+      return {
+        actorId: actor.id,
+        data: null,
+        sources: [],
+        rawSources: [],
+        stats: {
+          sourcesAttempted: 0,
+          sourcesSucceeded: 0,
+          totalCostUsd: 0,
+          sourceCostUsd: 0,
+          synthesisCostUsd: 0,
+          processingTimeMs: Date.now() - startTime,
+        },
+        error: "No cached biography source data found for this actor",
+      }
+    }
+
+    console.log(`  Re-synthesizing ${actor.name} from ${rawSources.length} cached sources...`)
+
+    // Run Claude synthesis with current prompt
+    const synthesisResult = await synthesizeBiography(actor, rawSources, {
+      model: this.config.synthesisModel,
+    })
+
+    const processingTimeMs = Date.now() - startTime
+
+    if (synthesisResult.error) {
+      console.log(`    Re-synthesis error: ${synthesisResult.error}`)
+      return {
+        actorId: actor.id,
+        data: null,
+        sources: [],
+        rawSources,
+        stats: {
+          sourcesAttempted: rawSources.length,
+          sourcesSucceeded: rawSources.length,
+          totalCostUsd: synthesisResult.costUsd,
+          sourceCostUsd: 0,
+          synthesisCostUsd: synthesisResult.costUsd,
+          processingTimeMs,
+        },
+        error: synthesisResult.error,
+      }
+    }
+
+    console.log(`    Re-synthesis complete, cost: $${synthesisResult.costUsd.toFixed(4)}`)
+
+    return {
+      actorId: actor.id,
+      data: synthesisResult.data,
+      sources: [],
+      rawSources,
+      cleanedData: synthesisResult.data ?? undefined,
+      stats: {
+        sourcesAttempted: rawSources.length,
+        sourcesSucceeded: rawSources.length,
+        totalCostUsd: synthesisResult.costUsd,
+        sourceCostUsd: 0,
+        synthesisCostUsd: synthesisResult.costUsd,
+        processingTimeMs,
+      },
+    }
   }
 
   /**
