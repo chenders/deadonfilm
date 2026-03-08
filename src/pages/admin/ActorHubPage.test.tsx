@@ -30,6 +30,9 @@ vi.mock("../../components/admin/actors/DataQualityTab", () => ({
 vi.mock("../../components/admin/actors/PopularityTab", () => ({
   default: () => <div data-testid="popularity-tab">Popularity Content</div>,
 }))
+vi.mock("../../components/admin/actors/RejectedFactorsTab", () => ({
+  default: () => <div data-testid="rejected-factors-tab">Rejected Factors Content</div>,
+}))
 
 describe("ActorHubPage", () => {
   let queryClient: QueryClient
@@ -104,6 +107,13 @@ describe("ActorHubPage", () => {
     fireEvent.click(screen.getByRole("tab", { name: /popularity/i }))
     expect(screen.queryByTestId("management-tab")).not.toBeInTheDocument()
     expect(screen.getByTestId("popularity-tab")).toBeInTheDocument()
+  })
+
+  it("switches to rejected factors tab on click", () => {
+    renderPage()
+    fireEvent.click(screen.getByRole("tab", { name: /rejected factors/i }))
+    expect(screen.queryByTestId("management-tab")).not.toBeInTheDocument()
+    expect(screen.getByTestId("rejected-factors-tab")).toBeInTheDocument()
   })
 
   it("opens correct tab when URL has ?tab=diagnostic", () => {

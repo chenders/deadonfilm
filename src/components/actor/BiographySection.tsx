@@ -19,6 +19,8 @@ function getSourceDisplayName(type: "wikipedia" | "tmdb" | "imdb" | "enriched" |
       return "TMDB"
     case "imdb":
       return "IMDb"
+    case "enriched":
+      return "our enrichment sources"
     default:
       return "source"
   }

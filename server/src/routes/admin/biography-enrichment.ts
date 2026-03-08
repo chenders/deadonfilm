@@ -81,7 +81,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
        LEFT JOIN actor_biography_details abd ON abd.actor_id = a.id
        WHERE ${whereClause}
        ORDER BY a.dof_popularity DESC NULLS LAST, a.id ASC
-       LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
+       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
       dataParams
     )
 
