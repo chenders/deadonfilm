@@ -139,24 +139,30 @@ describe("buildPersonSchema", () => {
     expect(result.award).toBeUndefined()
   })
 
-  it("includes alumniOf as EducationalOrganization when education provided", () => {
+  it("includes alumniOf as EducationalOrganization array when educationInstitutions provided", () => {
     const result = buildPersonSchema(
-      { ...baseActor, education: "University of Southern California" },
+      {
+        ...baseActor,
+        educationInstitutions: ["University of Southern California", "Yale School of Drama"],
+      },
       "john-wayne-4165"
     )
-    expect(result.alumniOf).toEqual({
-      "@type": "EducationalOrganization",
-      name: "University of Southern California",
-    })
+    expect(result.alumniOf).toEqual([
+      { "@type": "EducationalOrganization", name: "University of Southern California" },
+      { "@type": "EducationalOrganization", name: "Yale School of Drama" },
+    ])
   })
 
-  it("omits alumniOf when education is null", () => {
-    const result = buildPersonSchema({ ...baseActor, education: null }, "john-wayne-4165")
+  it("omits alumniOf when educationInstitutions is null", () => {
+    const result = buildPersonSchema(
+      { ...baseActor, educationInstitutions: null },
+      "john-wayne-4165"
+    )
     expect(result.alumniOf).toBeUndefined()
   })
 
-  it("omits alumniOf when education is empty string", () => {
-    const result = buildPersonSchema({ ...baseActor, education: "" }, "john-wayne-4165")
+  it("omits alumniOf when educationInstitutions is empty array", () => {
+    const result = buildPersonSchema({ ...baseActor, educationInstitutions: [] }, "john-wayne-4165")
     expect(result.alumniOf).toBeUndefined()
   })
 

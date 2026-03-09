@@ -34,6 +34,7 @@ function makeBiographyData(overrides: Partial<BiographyData> = {}): BiographyDat
     birthplaceDetails: "Born in a small town in Iowa.",
     familyBackground: "Son of a farmer and a schoolteacher.",
     education: "Attended the University of Iowa.",
+    educationInstitutions: ["University of Iowa"],
     preFameLife: "Worked as a radio announcer before acting.",
     fameCatalyst: "Discovered by a talent scout in a school play.",
     personalStruggles: "Battled alcoholism throughout the 1960s.",

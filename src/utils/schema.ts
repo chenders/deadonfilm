@@ -69,7 +69,7 @@ interface PersonSchemaInput {
   nationality?: string | null
   occupations?: string[] | null
   awards?: string[] | null
-  education?: string | null
+  educationInstitutions?: string[] | null
 }
 
 // Maps TMDB department to schema.org jobTitle.
@@ -119,8 +119,11 @@ export function buildPersonSchema(actor: PersonSchemaInput, slug: string): Recor
       ? actor.occupations.map((o) => ({ "@type": "Occupation", name: o }))
       : undefined,
     award: actor.awards?.length ? actor.awards : undefined,
-    alumniOf: actor.education
-      ? { "@type": "EducationalOrganization", name: actor.education }
+    alumniOf: actor.educationInstitutions?.length
+      ? actor.educationInstitutions.map((name) => ({
+          "@type": "EducationalOrganization",
+          name,
+        }))
       : undefined,
   }
 

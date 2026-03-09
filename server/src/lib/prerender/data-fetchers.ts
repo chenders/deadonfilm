@@ -209,8 +209,9 @@ async function getActorPageData(actorId: number): Promise<PrerenderPageData | nu
       occupations: string[] | null
       awards: string[] | null
       education: string | null
+      education_institutions: string[] | null
     }>(
-      `SELECT alternate_names, gender, nationality, occupations, awards, education
+      `SELECT alternate_names, gender, nationality, occupations, awards, education, education_institutions
        FROM actor_biography_details
        WHERE actor_id = $1`,
       [actor.id]
@@ -244,6 +245,7 @@ async function getActorPageData(actorId: number): Promise<PrerenderPageData | nu
     occupations: bioSeoRow?.occupations ?? null,
     awards: bioSeoRow?.awards ?? null,
     education: bioSeoRow?.education ?? null,
+    education_institutions: bioSeoRow?.education_institutions ?? null,
   }
 
   return {

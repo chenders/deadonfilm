@@ -792,6 +792,7 @@ describe("Biography Enrichment Integration Test", () => {
         birthplaceDetails: null,
         familyBackground: null,
         education: null,
+        educationInstitutions: [],
         preFameLife: null,
         fameCatalyst: null,
         personalStruggles: null,
