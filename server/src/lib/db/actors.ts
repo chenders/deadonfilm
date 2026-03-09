@@ -430,7 +430,7 @@ export async function getActorById(id: number): Promise<ActorRecord | null> {
 export async function getActorByEitherIdWithSlug(
   id: number,
   slugFromUrl: string
-): Promise<{ actor: ActorRecord; matchedBy: "id" | "tmdb_id" } | null> {
+): Promise<{ actor: ActorRecord; matchedBy: "id" | "tmdb_id" | "slug_mismatch" } | null> {
   const db = getPool()
 
   // Query for actors where EITHER id or tmdb_id matches
@@ -448,19 +448,20 @@ export async function getActorByEitherIdWithSlug(
     const actor = result.rows[0]
     const matchedBy = actor.id === id ? "id" : "tmdb_id"
 
-    // Still validate slug to catch name changes or bad URLs
+    // Validate slug — if it doesn't match, return slug_mismatch so
+    // the route handler can 301 redirect to the canonical URL
     const expectedSlug = createActorSlug(actor.name, id)
     if (!slugMatches(slugFromUrl, expectedSlug)) {
-      logger.warn(
+      logger.info(
         {
           id,
           slugFromUrl,
           expectedSlug,
           actorName: actor.name,
         },
-        "[SLUG MISMATCH] Single match but slug invalid"
+        "[SLUG MISMATCH] Redirecting to canonical slug"
       )
-      return null // Treat as not found
+      return { actor, matchedBy: "slug_mismatch" }
     }
 
     return { actor, matchedBy }
