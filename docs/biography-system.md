@@ -97,7 +97,8 @@ Sources within each phase run concurrently, respecting per-domain rate limits vi
 | `lifeNotableFactors` | string[] | Life circumstance tags (see below) |
 | `birthplaceDetails` | string | Rich context about where they grew up |
 | `familyBackground` | string | Parents, siblings, family circumstances |
-| `education` | string | Schools, degrees, scholarships |
+| `education` | string | Schools, degrees, scholarships (narrative) |
+| `educationInstitutions` | string[] | Formal institution names for schema.org `alumniOf` |
 | `preFameLife` | string | What they did before public recognition |
 | `fameCatalyst` | string | What launched them into public life |
 | `personalStruggles` | string | Addiction, legal issues, health challenges |

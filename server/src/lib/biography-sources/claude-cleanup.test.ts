@@ -83,6 +83,7 @@ function makeValidClaudeResponse(overrides: Record<string, unknown> = {}) {
       "His father Clyde was a pharmacist; his mother Mary was demanding and often critical.",
     education:
       "Attended Glendale Union High School where he played football. Won a football scholarship to USC.",
+    education_institutions: ["Glendale Union High School", "University of Southern California"],
     pre_fame_life:
       "Worked as a prop boy at Fox Film Corporation during summers. Lost his football scholarship after a bodysurfing accident.",
     fame_catalyst:
@@ -330,6 +331,10 @@ describe("claude-cleanup (biography)", () => {
       expect(result.data!.birthplaceDetails).toContain("Winterset, Iowa")
       expect(result.data!.familyBackground).toContain("pharmacist")
       expect(result.data!.education).toContain("USC")
+      expect(result.data!.educationInstitutions).toEqual([
+        "Glendale Union High School",
+        "University of Southern California",
+      ])
       expect(result.data!.preFameLife).toContain("prop boy")
       expect(result.data!.fameCatalyst).toContain("John Ford")
       expect(result.data!.personalStruggles).toContain("alcohol")
@@ -463,6 +468,7 @@ describe("claude-cleanup (biography)", () => {
         birthplace_details: null,
         family_background: null,
         education: null,
+        education_institutions: null,
         pre_fame_life: null,
         fame_catalyst: null,
         personal_struggles: null,
@@ -479,6 +485,7 @@ describe("claude-cleanup (biography)", () => {
       expect(result.data!.birthplaceDetails).toBeNull()
       expect(result.data!.familyBackground).toBeNull()
       expect(result.data!.education).toBeNull()
+      expect(result.data!.educationInstitutions).toEqual([])
       expect(result.data!.preFameLife).toBeNull()
       expect(result.data!.fameCatalyst).toBeNull()
       expect(result.data!.personalStruggles).toBeNull()
