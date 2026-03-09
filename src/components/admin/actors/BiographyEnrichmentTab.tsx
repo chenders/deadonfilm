@@ -329,6 +329,13 @@ export default function BiographyEnrichmentTab() {
     resetPageOnChange: true,
   })
 
+  // Reset local page state when debounced search changes.
+  // resetPageOnChange only clears the URL ?page= param; this component
+  // manages page via useState so it needs an explicit reset.
+  useEffect(() => {
+    setPage(1)
+  }, [searchName])
+
   const { data, isLoading, error } = useQuery({
     queryKey: [
       "admin-biography-enrichment",
