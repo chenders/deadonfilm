@@ -61,7 +61,6 @@ export function buildPersonSchema(
     nationality?: string | null
     occupations?: string[] | null
     awards?: string[] | null
-    education?: string | null
     education_institutions?: string[] | null
   },
   slug: string
