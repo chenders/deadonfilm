@@ -140,6 +140,12 @@ describe("ActorHubPage", () => {
     expect(screen.queryByTestId("management-tab")).not.toBeInTheDocument()
   })
 
+  it("opens correct tab when URL has ?tab=rejected-factors", () => {
+    renderPage("/admin/actors?tab=rejected-factors")
+    expect(screen.getByTestId("rejected-factors-tab")).toBeInTheDocument()
+    expect(screen.queryByTestId("management-tab")).not.toBeInTheDocument()
+  })
+
   it("falls back to management tab for removed ?tab=biographies", () => {
     renderPage("/admin/actors?tab=biographies")
     expect(screen.getByTestId("management-tab")).toBeInTheDocument()
