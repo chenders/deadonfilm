@@ -124,6 +124,7 @@ Return JSON only:
   "birthplace_details": "Rich context about where they grew up...",
   "family_background": "Parents, siblings, family circumstances...",
   "education": "Schools, degrees, scholarships...",
+  "education_institutions": ["Array of formal institution names only — e.g., 'Harvard University', 'Royal Academy of Dramatic Art'. No descriptions, no narratives. Empty array if no institutions are documented."],
   "pre_fame_life": "What they did before the public knew them...",
   "fame_catalyst": "What single thing catapulted them...",
   "personal_struggles": "Addiction, legal issues, health...",
@@ -390,6 +391,9 @@ export async function synthesizeBiography(
     familyBackground:
       typeof parsed.family_background === "string" ? parsed.family_background : null,
     education: typeof parsed.education === "string" ? parsed.education : null,
+    educationInstitutions: Array.isArray(parsed.education_institutions)
+      ? parsed.education_institutions.filter((f: unknown): f is string => typeof f === "string")
+      : [],
     preFameLife: typeof parsed.pre_fame_life === "string" ? parsed.pre_fame_life : null,
     fameCatalyst: typeof parsed.fame_catalyst === "string" ? parsed.fame_catalyst : null,
     personalStruggles:
