@@ -267,9 +267,19 @@ async function run(options: {
     let succeeded = 0
     let failed = 0
     let totalCost = 0
+    let shuttingDown = false
+
+    process.on("SIGINT", () => {
+      shuttingDown = true
+      console.log("\nReceived Ctrl-C, will stop after current actor completes...")
+    })
 
     // Process actors sequentially (re-synthesis is just a Claude API call per actor)
     for (const actor of actors) {
+      if (shuttingDown) {
+        console.log("Shutting down gracefully...")
+        break
+      }
       processed++
       console.log(`\n[${processed}/${actors.length}] Processing ${actor.name}...`)
 

@@ -329,7 +329,9 @@ export default function BiographyEnrichmentTab() {
     resetPageOnChange: true,
   })
 
-  // Reset page when search changes
+  // Reset local page state when debounced search changes.
+  // resetPageOnChange only clears the URL ?page= param; this component
+  // manages page via useState so it needs an explicit reset.
   useEffect(() => {
     setPage(1)
   }, [searchName])
@@ -911,6 +913,7 @@ export default function BiographyEnrichmentTab() {
                             rel="noopener noreferrer"
                             className="inline-flex items-center justify-center rounded p-1 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary"
                             title="View public actor page"
+                            aria-label={`View public page for ${actor.name}`}
                           >
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
