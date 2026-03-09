@@ -34,6 +34,7 @@ function makeBiographyData(overrides: Partial<BiographyData> = {}): BiographyDat
     birthplaceDetails: "Born in a small town in Iowa.",
     familyBackground: "Son of a farmer and a schoolteacher.",
     education: "Attended the University of Iowa.",
+    educationInstitutions: ["University of Iowa"],
     preFameLife: "Worked as a radio announcer before acting.",
     fameCatalyst: "Discovered by a talent scout in a school play.",
     personalStruggles: "Battled alcoholism throughout the 1960s.",
@@ -86,17 +87,18 @@ describe("writeBiographyToProduction", () => {
     expect(params[4]).toBe(data.birthplaceDetails)
     expect(params[5]).toBe(data.familyBackground)
     expect(params[6]).toBe(data.education)
-    expect(params[7]).toBe(data.preFameLife)
-    expect(params[8]).toBe(data.fameCatalyst)
-    expect(params[9]).toBe(data.personalStruggles)
-    expect(params[10]).toBe(data.relationships)
-    expect(params[11]).toEqual(["Played college football", "Was a chess champion"])
-    expect(params[12]).toBeNull() // alternateNames (empty → null)
-    expect(params[13]).toBeNull() // gender
-    expect(params[14]).toBeNull() // nationality
-    expect(params[15]).toBeNull() // occupations (empty → null)
-    expect(params[16]).toBeNull() // awards (empty → null)
-    expect(params[17]).toBe(JSON.stringify(sources))
+    expect(params[7]).toEqual(["University of Iowa"]) // educationInstitutions
+    expect(params[8]).toBe(data.preFameLife)
+    expect(params[9]).toBe(data.fameCatalyst)
+    expect(params[10]).toBe(data.personalStruggles)
+    expect(params[11]).toBe(data.relationships)
+    expect(params[12]).toEqual(["Played college football", "Was a chess champion"])
+    expect(params[13]).toBeNull() // alternateNames (empty → null)
+    expect(params[14]).toBeNull() // gender
+    expect(params[15]).toBeNull() // nationality
+    expect(params[16]).toBeNull() // occupations (empty → null)
+    expect(params[17]).toBeNull() // awards (empty → null)
+    expect(params[18]).toBe(JSON.stringify(sources))
   })
 
   it("archives old biography on first enrichment", async () => {
@@ -183,6 +185,7 @@ describe("writeBiographyToProduction", () => {
       birthplaceDetails: null,
       familyBackground: null,
       education: null,
+      educationInstitutions: [],
       preFameLife: null,
       fameCatalyst: null,
       personalStruggles: null,
@@ -199,16 +202,18 @@ describe("writeBiographyToProduction", () => {
     expect(upsertParams[4]).toBeNull() // birthplaceDetails
     expect(upsertParams[5]).toBeNull() // familyBackground
     expect(upsertParams[6]).toBeNull() // education
-    expect(upsertParams[7]).toBeNull() // preFameLife
-    expect(upsertParams[8]).toBeNull() // fameCatalyst
-    expect(upsertParams[9]).toBeNull() // personalStruggles
-    expect(upsertParams[10]).toBeNull() // relationships
+    expect(upsertParams[7]).toBeNull() // educationInstitutions (empty → null)
+    expect(upsertParams[8]).toBeNull() // preFameLife
+    expect(upsertParams[9]).toBeNull() // fameCatalyst
+    expect(upsertParams[10]).toBeNull() // personalStruggles
+    expect(upsertParams[11]).toBeNull() // relationships
   })
 
   it("passes null for empty arrays", async () => {
     const data = makeBiographyData({
       lifeNotableFactors: [],
       lesserKnownFacts: [],
+      educationInstitutions: [],
       alternateNames: [],
       occupations: [],
       awards: [],
@@ -218,10 +223,11 @@ describe("writeBiographyToProduction", () => {
 
     const upsertParams = mockQuery.mock.calls[1][1]
     expect(upsertParams[3]).toBeNull() // lifeNotableFactors (empty → null)
-    expect(upsertParams[11]).toBeNull() // lesserKnownFacts (empty → null)
-    expect(upsertParams[12]).toBeNull() // alternateNames (empty → null)
-    expect(upsertParams[15]).toBeNull() // occupations (empty → null)
-    expect(upsertParams[16]).toBeNull() // awards (empty → null)
+    expect(upsertParams[7]).toBeNull() // educationInstitutions (empty → null)
+    expect(upsertParams[12]).toBeNull() // lesserKnownFacts (empty → null)
+    expect(upsertParams[13]).toBeNull() // alternateNames (empty → null)
+    expect(upsertParams[16]).toBeNull() // occupations (empty → null)
+    expect(upsertParams[17]).toBeNull() // awards (empty → null)
   })
 
   it("writes SEO fields with non-empty values", async () => {
@@ -236,11 +242,11 @@ describe("writeBiographyToProduction", () => {
     await writeBiographyToProduction(mockPool, 42, data, makeSources())
 
     const upsertParams = mockQuery.mock.calls[1][1]
-    expect(upsertParams[12]).toEqual(["Marion Morrison", "Duke"])
-    expect(upsertParams[13]).toBe("Male")
-    expect(upsertParams[14]).toBe("American")
-    expect(upsertParams[15]).toEqual(["Actor", "Director", "Producer"])
-    expect(upsertParams[16]).toEqual(["Academy Award for Best Actor"])
+    expect(upsertParams[13]).toEqual(["Marion Morrison", "Duke"])
+    expect(upsertParams[14]).toBe("Male")
+    expect(upsertParams[15]).toBe("American")
+    expect(upsertParams[16]).toEqual(["Actor", "Director", "Producer"])
+    expect(upsertParams[17]).toEqual(["Academy Award for Best Actor"])
   })
 
   it("denormalizes alternate_names to actors table when non-empty", async () => {

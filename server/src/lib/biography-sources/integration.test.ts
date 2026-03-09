@@ -752,21 +752,22 @@ describe("Biography Enrichment Integration Test", () => {
       expect(upsertParams[4]).toContain("Winterset, Iowa") // birthplaceDetails
       expect(upsertParams[5]).toContain("Clyde Leonard Morrison") // familyBackground
       expect(upsertParams[6]).toContain("University of Southern California") // education
-      expect(upsertParams[7]).toContain("Fox Film") // preFameLife
-      expect(upsertParams[8]).toContain("John Ford") // fameCatalyst
-      expect(upsertParams[9]).toContain("alcoholism") // personalStruggles
-      expect(upsertParams[10]).toContain("Josephine Saenz") // relationships
-      expect(upsertParams[11]).toHaveLength(4) // lesserKnownFacts
+      expect(upsertParams[7]).toBeNull() // educationInstitutions (empty array → null for COALESCE)
+      expect(upsertParams[8]).toContain("Fox Film") // preFameLife
+      expect(upsertParams[9]).toContain("John Ford") // fameCatalyst
+      expect(upsertParams[10]).toContain("alcoholism") // personalStruggles
+      expect(upsertParams[11]).toContain("Josephine Saenz") // relationships
+      expect(upsertParams[12]).toHaveLength(4) // lesserKnownFacts
 
       // SEO fields
-      expect(upsertParams[12]).toBeNull() // alternateNames (empty array → null)
-      expect(upsertParams[13]).toBeNull() // gender
-      expect(upsertParams[14]).toBeNull() // nationality
-      expect(upsertParams[15]).toBeNull() // occupations (empty array → null)
-      expect(upsertParams[16]).toBeNull() // awards (empty array → null)
+      expect(upsertParams[13]).toBeNull() // alternateNames (empty array → null)
+      expect(upsertParams[14]).toBeNull() // gender
+      expect(upsertParams[15]).toBeNull() // nationality
+      expect(upsertParams[16]).toBeNull() // occupations (empty array → null)
+      expect(upsertParams[17]).toBeNull() // awards (empty array → null)
 
       // Sources JSON
-      const sourcesJson = upsertParams[17]
+      const sourcesJson = upsertParams[18]
       const parsedSources = JSON.parse(sourcesJson) as BiographySourceEntry[]
       expect(parsedSources).toHaveLength(2)
       expect(parsedSources.map((s) => s.type)).toContain(BiographySourceType.WIKIDATA_BIO)
@@ -792,6 +793,7 @@ describe("Biography Enrichment Integration Test", () => {
         birthplaceDetails: null,
         familyBackground: null,
         education: null,
+        educationInstitutions: [],
         preFameLife: null,
         fameCatalyst: null,
         personalStruggles: null,

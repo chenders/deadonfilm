@@ -61,7 +61,7 @@ export function buildPersonSchema(
     nationality?: string | null
     occupations?: string[] | null
     awards?: string[] | null
-    education?: string | null
+    education_institutions?: string[] | null
   },
   slug: string
 ): Record<string, unknown> {
@@ -90,8 +90,11 @@ export function buildPersonSchema(
       ? actor.occupations.map((o) => ({ "@type": "Occupation", name: o }))
       : undefined,
     award: actor.awards?.length ? actor.awards : undefined,
-    alumniOf: actor.education
-      ? { "@type": "EducationalOrganization", name: actor.education }
+    alumniOf: actor.education_institutions?.length
+      ? actor.education_institutions.map((name) => ({
+          "@type": "EducationalOrganization",
+          name,
+        }))
       : undefined,
   }
 }

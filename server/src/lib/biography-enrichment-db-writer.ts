@@ -52,11 +52,11 @@ export async function writeBiographyToProduction(
       `INSERT INTO actor_biography_details (
         actor_id, narrative, narrative_confidence,
         life_notable_factors, birthplace_details, family_background,
-        education, pre_fame_life, fame_catalyst,
+        education, education_institutions, pre_fame_life, fame_catalyst,
         personal_struggles, relationships, lesser_known_facts,
         alternate_names, gender, nationality, occupations, awards,
         sources, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW())
       ON CONFLICT (actor_id) DO UPDATE SET
         narrative = COALESCE(EXCLUDED.narrative, actor_biography_details.narrative),
         narrative_confidence = COALESCE(EXCLUDED.narrative_confidence, actor_biography_details.narrative_confidence),
@@ -64,6 +64,7 @@ export async function writeBiographyToProduction(
         birthplace_details = COALESCE(EXCLUDED.birthplace_details, actor_biography_details.birthplace_details),
         family_background = COALESCE(EXCLUDED.family_background, actor_biography_details.family_background),
         education = COALESCE(EXCLUDED.education, actor_biography_details.education),
+        education_institutions = COALESCE(EXCLUDED.education_institutions, actor_biography_details.education_institutions),
         pre_fame_life = COALESCE(EXCLUDED.pre_fame_life, actor_biography_details.pre_fame_life),
         fame_catalyst = COALESCE(EXCLUDED.fame_catalyst, actor_biography_details.fame_catalyst),
         personal_struggles = COALESCE(EXCLUDED.personal_struggles, actor_biography_details.personal_struggles),
@@ -84,6 +85,7 @@ export async function writeBiographyToProduction(
         data.birthplaceDetails,
         data.familyBackground,
         data.education,
+        data.educationInstitutions.length > 0 ? data.educationInstitutions : null,
         data.preFameLife,
         data.fameCatalyst,
         data.personalStruggles,

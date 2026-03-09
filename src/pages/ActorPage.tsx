@@ -248,7 +248,7 @@ export default function ActorPage() {
             nationality: data.biographyDetails?.nationality,
             occupations: data.biographyDetails?.occupations,
             awards: data.biographyDetails?.awards,
-            education: data.biographyDetails?.education,
+            educationInstitutions: data.biographyDetails?.educationInstitutions,
           },
           slug!
         )}

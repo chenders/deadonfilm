@@ -332,6 +332,7 @@ function createSynthesisResult(
             birthplaceDetails: null,
             familyBackground: null,
             education: null,
+            educationInstitutions: [],
             preFameLife: null,
             fameCatalyst: null,
             personalStruggles: null,

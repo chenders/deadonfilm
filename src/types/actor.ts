@@ -108,6 +108,7 @@ export interface BiographyDetails {
   birthplaceDetails: string | null
   familyBackground: string | null
   education: string | null
+  educationInstitutions: string[]
   preFameLife: string | null
   fameCatalyst: string | null
   personalStruggles: string | null

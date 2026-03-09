@@ -207,7 +207,8 @@ The biography system is designed to produce **personal narratives**, not career 
 | `lifeNotableFactors` | string[] | Tags: orphaned, military_service, immigrant, etc. |
 | `birthplaceDetails` | string | Rich context about where they grew up |
 | `familyBackground` | string | Parents, siblings, family circumstances |
-| `education` | string | Schools, degrees, scholarships |
+| `education` | string | Schools, degrees, scholarships (narrative) |
+| `educationInstitutions` | string[] | Formal institution names for schema.org `alumniOf` |
 | `preFameLife` | string | What they did before public recognition |
 | `fameCatalyst` | string | What launched them into public life |
 | `personalStruggles` | string | Addiction, legal issues, health challenges |

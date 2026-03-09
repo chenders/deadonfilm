@@ -76,6 +76,7 @@ interface ActorProfileResponse {
     birthplaceDetails: string | null
     familyBackground: string | null
     education: string | null
+    educationInstitutions: string[]
     preFameLife: string | null
     fameCatalyst: string | null
     personalStruggles: string | null
@@ -186,10 +187,11 @@ export async function getActor(req: Request, res: Response) {
           nationality: string | null
           occupations: string[] | null
           awards: string[] | null
+          education_institutions: string[] | null
         }>(
           `SELECT narrative, narrative_confidence,
                   life_notable_factors, birthplace_details, family_background,
-                  education, pre_fame_life, fame_catalyst,
+                  education, education_institutions, pre_fame_life, fame_catalyst,
                   personal_struggles, relationships, lesser_known_facts,
                   sources,
                   alternate_names, gender, nationality, occupations, awards
@@ -299,6 +301,7 @@ export async function getActor(req: Request, res: Response) {
             birthplaceDetails: bioRow.birthplace_details || null,
             familyBackground: bioRow.family_background || null,
             education: bioRow.education || null,
+            educationInstitutions: bioRow.education_institutions || [],
             preFameLife: bioRow.pre_fame_life || null,
             fameCatalyst: bioRow.fame_catalyst || null,
             personalStruggles: bioRow.personal_struggles || null,
