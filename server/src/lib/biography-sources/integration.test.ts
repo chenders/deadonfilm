@@ -752,7 +752,7 @@ describe("Biography Enrichment Integration Test", () => {
       expect(upsertParams[4]).toContain("Winterset, Iowa") // birthplaceDetails
       expect(upsertParams[5]).toContain("Clyde Leonard Morrison") // familyBackground
       expect(upsertParams[6]).toContain("University of Southern California") // education
-      expect(upsertParams[7]).toEqual(expect.any(Array)) // educationInstitutions
+      expect(upsertParams[7]).toBeNull() // educationInstitutions (empty array → null for COALESCE)
       expect(upsertParams[8]).toContain("Fox Film") // preFameLife
       expect(upsertParams[9]).toContain("John Ford") // fameCatalyst
       expect(upsertParams[10]).toContain("alcoholism") // personalStruggles
