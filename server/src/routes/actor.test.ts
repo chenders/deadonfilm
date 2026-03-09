@@ -769,5 +769,56 @@ describe("getActor", () => {
         })
       )
     })
+
+    it("redirects with 301 when slug name doesn't match (slug_mismatch)", async () => {
+      const actor = {
+        ...mockActorRecord,
+        id: 1024322,
+        tmdb_id: 9999,
+        name: "Kyōko Okada",
+      }
+
+      // URL has ky-ko-okada but canonical slug is kyoko-okada
+      mockReq.params = { slug: "ky-ko-okada-1024322" }
+      vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+        actor,
+        matchedBy: "slug_mismatch",
+      })
+
+      await getActor(mockReq as Request, mockRes as Response)
+
+      // Should redirect to canonical URL
+      expect(redirectSpy).toHaveBeenCalledWith(301, "/api/actor/kyoko-okada-1024322")
+
+      // Should NOT fetch TMDB data or set cache
+      expect(tmdb.getPersonDetails).not.toHaveBeenCalled()
+      expect(setCached).not.toHaveBeenCalled()
+      expect(jsonSpy).not.toHaveBeenCalled()
+    })
+
+    it("records slug_mismatch match type in redirect event", async () => {
+      const actor = {
+        ...mockActorRecord,
+        id: 1024322,
+        tmdb_id: null,
+        name: "Kyōko Okada",
+      }
+
+      mockReq.params = { slug: "ky-ko-okada-1024322" }
+      vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+        actor,
+        matchedBy: "slug_mismatch",
+      })
+
+      await getActor(mockReq as Request, mockRes as Response)
+
+      expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
+        "ActorUrlRedirect",
+        expect.objectContaining({
+          matchType: "slug_mismatch",
+          endpoint: "profile",
+        })
+      )
+    })
   })
 })

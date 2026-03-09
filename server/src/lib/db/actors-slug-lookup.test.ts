@@ -83,13 +83,13 @@ describe("getActorByEitherIdWithSlug", () => {
       expect(result).toEqual({ actor, matchedBy: "tmdb_id" })
     })
 
-    it("returns null when slug doesn't match actor name", async () => {
+    it("returns slug_mismatch when slug doesn't match actor name", async () => {
       const actor = createMockActor(100, null, "John Wayne")
       mockQuery.mockResolvedValue({ rows: [actor] })
 
       const result = await getActorByEitherIdWithSlug(100, "wrong-name-100")
 
-      expect(result).toBeNull()
+      expect(result).toEqual({ actor, matchedBy: "slug_mismatch" })
     })
 
     it("handles slug with special characters that get normalized", async () => {
@@ -180,13 +180,13 @@ describe("getActorByEitherIdWithSlug", () => {
       expect(result).toEqual({ actor, matchedBy: "id" })
     })
 
-    it("handles empty slug gracefully", async () => {
+    it("handles empty slug with slug_mismatch", async () => {
       const actor = createMockActor(100, null, "John Wayne")
       mockQuery.mockResolvedValue({ rows: [actor] })
 
       const result = await getActorByEitherIdWithSlug(100, "")
 
-      expect(result).toBeNull()
+      expect(result).toEqual({ actor, matchedBy: "slug_mismatch" })
     })
 
     it("handles case-insensitive slug matching", async () => {

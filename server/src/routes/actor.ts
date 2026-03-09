@@ -122,8 +122,8 @@ export async function getActor(req: Request, res: Response) {
 
     const { actor: actorRecord, matchedBy } = actorLookup
 
-    // If matched by tmdb_id, redirect to canonical URL with actor.id
-    if (matchedBy === "tmdb_id") {
+    // If matched by tmdb_id or slug mismatch, redirect to canonical URL
+    if (matchedBy === "tmdb_id" || matchedBy === "slug_mismatch") {
       // Track redirect event for migration monitoring
       const userAgent = req.headers["user-agent"]
       const referer = req.headers["referer"] || req.headers["referrer"]
@@ -132,7 +132,7 @@ export async function getActor(req: Request, res: Response) {
         ...(actorRecord.tmdb_id !== null && { tmdbId: actorRecord.tmdb_id }),
         actorName: actorRecord.name,
         slug: slug,
-        matchType: "tmdb_id",
+        matchType: matchedBy,
         endpoint: "profile",
         ...(userAgent && { userAgent }),
         ...(referer && { referer: Array.isArray(referer) ? referer[0] : referer }),

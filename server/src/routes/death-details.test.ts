@@ -1371,4 +1371,26 @@ describe("getActorDeathDetails - URL redirect handling (legacy tmdb_id URLs)", (
       })
     )
   })
+
+  it("redirects with 301 when slug name doesn't match (slug_mismatch)", async () => {
+    const actor = {
+      ...mockActorWithTmdbId,
+      id: 1024322,
+      tmdb_id: 9999,
+      name: "Kyōko Okada",
+    }
+
+    mockReq.params = { slug: "ky-ko-okada-1024322" }
+    vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
+    vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+      actor,
+      matchedBy: "slug_mismatch",
+    })
+
+    await getActorDeathDetails(mockReq as Request, mockRes as Response)
+
+    expect(redirectSpy).toHaveBeenCalledWith(301, "/api/actor/kyoko-okada-1024322/death")
+    expect(db.getActorDeathCircumstancesByActorId).not.toHaveBeenCalled()
+    expect(jsonSpy).not.toHaveBeenCalled()
+  })
 })
