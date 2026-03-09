@@ -4,6 +4,8 @@ node_modules/
 # Build output
 dist/
 server/dist/
+server/src/**/*.js
+server/scripts/**/*.js
 
 # Environment files
 .env
