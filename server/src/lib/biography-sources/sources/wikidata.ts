@@ -358,12 +358,9 @@ export class WikidataBiographySource extends BaseBiographySource {
       return true
     }
 
-    // Check if last names match
-    const tmdbParts = tmdbName.toLowerCase().split(/\s+/)
-    const wikiParts = wikidataName.toLowerCase().split(/\s+/)
-    const tmdbLast = tmdbParts[tmdbParts.length - 1]
-    const wikiLast = wikiParts[wikiParts.length - 1]
-
-    return tmdbLast === wikiLast
+    // Last-name-only matching removed: too many false positives for common
+    // surnames (Smith, Jones, Brown) born in the same year. The normalized
+    // full-name and substring checks above handle legitimate name variations.
+    return false
   }
 }

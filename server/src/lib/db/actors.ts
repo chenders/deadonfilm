@@ -326,7 +326,11 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<Map<numbe
         ]
       )
 
-      tmdbIdToActorId.set(actor.tmdb_id, result.rows[0].id)
+      const returnedId = result.rows[0]?.id
+      if (!returnedId) {
+        throw new Error(`batchUpsertActors: no row returned for tmdb_id ${actor.tmdb_id}`)
+      }
+      tmdbIdToActorId.set(actor.tmdb_id, returnedId)
     }
 
     await client.query("COMMIT")
