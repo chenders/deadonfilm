@@ -185,6 +185,7 @@ describe("writeBiographyToProduction", () => {
       birthplaceDetails: null,
       familyBackground: null,
       education: null,
+      educationInstitutions: [],
       preFameLife: null,
       fameCatalyst: null,
       personalStruggles: null,
@@ -201,7 +202,7 @@ describe("writeBiographyToProduction", () => {
     expect(upsertParams[4]).toBeNull() // birthplaceDetails
     expect(upsertParams[5]).toBeNull() // familyBackground
     expect(upsertParams[6]).toBeNull() // education
-    expect(upsertParams[7]).toEqual(["University of Iowa"]) // educationInstitutions (from mock default)
+    expect(upsertParams[7]).toBeNull() // educationInstitutions (empty → null)
     expect(upsertParams[8]).toBeNull() // preFameLife
     expect(upsertParams[9]).toBeNull() // fameCatalyst
     expect(upsertParams[10]).toBeNull() // personalStruggles
