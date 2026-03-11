@@ -432,16 +432,22 @@ export class EnrichmentRunner {
 
         const totalActorCost = debriefResult.totalCostUsd + cleanupCostUsd
 
-        // Accumulate cost by source type — attribute per unique sourceType
-        if (cleanupCostUsd > 0) {
-          costBySource["claude_cleanup"] = (costBySource["claude_cleanup"] ?? 0) + cleanupCostUsd
-        }
+        // Compute per-actor cost attribution by source type (used for per-actor DB rows)
+        const actorCostBySource: Record<string, number> = {}
         if (debriefResult.rawSources.length > 0 && debriefResult.totalCostUsd > 0) {
           const uniqueTypes = new Set(debriefResult.rawSources.map((rs) => rs.sourceType))
           const perTypeCost = debriefResult.totalCostUsd / Math.max(uniqueTypes.size, 1)
           for (const sourceType of uniqueTypes) {
-            costBySource[sourceType] = (costBySource[sourceType] ?? 0) + perTypeCost
+            actorCostBySource[sourceType] = perTypeCost
           }
+        }
+
+        // Accumulate into batch-level costBySource for final summary
+        if (cleanupCostUsd > 0) {
+          costBySource["claude_cleanup"] = (costBySource["claude_cleanup"] ?? 0) + cleanupCostUsd
+        }
+        for (const [sourceType, cost] of Object.entries(actorCostBySource)) {
+          costBySource[sourceType] = (costBySource[sourceType] ?? 0) + cost
         }
 
         // Require successful Claude cleanup before proceeding down the enriched path.
@@ -458,7 +464,7 @@ export class EnrichmentRunner {
             const sourcesAttempted = [...uniqueTypes].map((sourceType) => ({
               source: sourceType,
               success: false,
-              costUsd: costBySource[sourceType] ?? 0,
+              costUsd: actorCostBySource[sourceType] ?? 0,
               error: "actor_not_enriched",
             }))
 
@@ -621,15 +627,18 @@ export class EnrichmentRunner {
           const sourcesAttempted = [...enrichedUniqueTypes].map((sourceType) => ({
             source: sourceType,
             success: true,
-            costUsd: costBySource[sourceType] ?? 0,
+            costUsd: actorCostBySource[sourceType] ?? 0,
             error: null,
           }))
 
-          // Use the best raw source's confidence
-          const bestConfidence =
+          // Find the highest-confidence raw source for confidence and winning_source
+          const bestSource =
             debriefResult.rawSources.length > 0
-              ? Math.max(...debriefResult.rawSources.map((s) => s.confidence))
+              ? debriefResult.rawSources.reduce((best, s) =>
+                  s.confidence > best.confidence ? s : best
+                )
               : null
+          const bestConfidence = bestSource?.confidence ?? null
 
           const eraResult = await db.query<{ id: number }>(
             `INSERT INTO enrichment_run_actors (
@@ -656,7 +665,7 @@ export class EnrichmentRunner {
               hasDetailedDeathInfo || false,
               bestConfidence,
               JSON.stringify(sourcesAttempted),
-              debriefResult.rawSources[0]?.sourceType || null,
+              bestSource?.sourceType || null,
               debriefResult.durationMs,
               totalActorCost,
               JSON.stringify([]),
