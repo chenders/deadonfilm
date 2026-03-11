@@ -15,68 +15,84 @@ vi.mock("./db.js", () => ({
   })),
 }))
 
-// Default enrichment result (enriched path: has circumstances)
-const defaultEnrichResult = {
-  date: "2020-01-15",
-  location: "Los Angeles, California, USA",
-  causeOfDeath: "heart attack",
-  circumstances: "Died peacefully at home",
-  confidence: 0.9,
-  sources: ["wikipedia", "imdb"],
-  cost: 0.1,
+// Default debriefer adapter result
+const defaultDebriefResult = {
+  rawSources: [
+    {
+      sourceName: "Wikipedia",
+      sourceType: "wikipedia",
+      text: "The actor died of a heart attack on January 15, 2020 at home in Los Angeles.",
+      url: "https://en.wikipedia.org/wiki/Actor",
+      confidence: 0.9,
+      reliabilityTier: "secondary",
+      reliabilityScore: 0.85,
+    },
+  ],
+  totalCostUsd: 0.05,
+  sourcesAttempted: 5,
+  sourcesSucceeded: 1,
+  durationMs: 1500,
 }
 
-// Module-level variable tests can override to control enrichActor return value
-let mockEnrichResult: Record<string, unknown> = { ...defaultEnrichResult }
+// Default Claude cleanup result
+const defaultCleanupResult = {
+  cleaned: {
+    cause: "heart attack",
+    causeConfidence: "high" as const,
+    details: "Died peacefully at home after a heart attack.",
+    detailsConfidence: "high" as const,
+    birthdayConfidence: null,
+    deathdayConfidence: null,
+    circumstances:
+      "The actor died of a heart attack on January 15, 2020 at his home in Los Angeles. He was found by family members.",
+    circumstancesConfidence: "high" as const,
+    rumoredCircumstances: null,
+    locationOfDeath: "Los Angeles, California, USA",
+    notableFactors: [],
+    categories: null,
+    relatedDeaths: null,
+    relatedCelebrities: null,
+    additionalContext: null,
+    lastProject: null,
+    careerStatusAtDeath: null,
+    posthumousReleases: null,
+    manner: "natural" as const,
+    hasSubstantiveContent: true,
+    cleanupSource: "claude-opus-4.5" as const,
+    cleanupTimestamp: new Date().toISOString(),
+  },
+  costUsd: 0.05,
+  prompt: "test prompt",
+  responseText: "{}",
+  inputTokens: 1000,
+  outputTokens: 200,
+}
 
-// Track mock orchestrator instances for test assertions
-let lastOrchestratorInstance: {
-  setRunLogger: ReturnType<typeof vi.fn>
-  enrichActor: ReturnType<typeof vi.fn>
-  getStats: ReturnType<typeof vi.fn>
-} | null = null
+// Module-level variables tests can override
+let mockDebriefResult = { ...defaultDebriefResult }
+let mockCleanupResult: typeof defaultCleanupResult | null = { ...defaultCleanupResult }
 
-// Mock orchestrator as a proper class
-vi.mock("./death-sources/orchestrator.js", () => {
-  return {
-    DeathEnrichmentOrchestrator: class MockOrchestrator {
-      private actorsProcessed = 0
-      private actorsEnriched = 0
-      private totalCost = 0
+// Mock debriefer adapter
+vi.mock("./death-sources/debriefer/adapter.js", () => ({
+  debriefActor: vi.fn().mockImplementation(async () => ({ ...mockDebriefResult })),
+}))
 
-      setRunLogger = vi.fn()
+// Mock Claude cleanup
+vi.mock("./death-sources/claude-cleanup.js", () => ({
+  cleanupWithClaude: vi.fn().mockImplementation(async () => mockCleanupResult),
+  isViolentDeath: vi
+    .fn()
+    .mockImplementation(
+      (manner: string | null) =>
+        manner === "homicide" || manner === "suicide" || manner === "accident"
+    ),
+}))
 
-      constructor() {
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        lastOrchestratorInstance = this as unknown as typeof lastOrchestratorInstance
-      }
-
-      enrichActor = vi.fn().mockImplementation(async () => {
-        this.actorsProcessed++
-        const hasSubstantiveEnrichment =
-          mockEnrichResult != null &&
-          Object.values(mockEnrichResult).some((value) => value !== null && value !== undefined)
-        if (hasSubstantiveEnrichment) {
-          this.actorsEnriched++
-        }
-        this.totalCost += 0.1
-        return mockEnrichResult
-      })
-
-      getStats = vi.fn().mockImplementation(() => ({
-        actorsProcessed: this.actorsProcessed,
-        actorsEnriched: this.actorsEnriched,
-        fillRate: this.actorsProcessed > 0 ? (this.actorsEnriched / this.actorsProcessed) * 100 : 0,
-        totalCostUsd: this.totalCost,
-        totalTimeMs: 1000,
-        sourceHitRates: {},
-        costBySource: {},
-        errors: [],
-      }))
-    },
-    CostLimitExceededError: class CostLimitExceededError extends Error {},
-  }
-})
+// Mock death-sources/index.js (CostLimitExceededError + setIgnoreCache)
+vi.mock("./death-sources/index.js", () => ({
+  CostLimitExceededError: class CostLimitExceededError extends Error {},
+  setIgnoreCache: vi.fn(),
+}))
 
 // Track mock RunLogger instances for test assertions
 let lastRunLoggerInstance: { flush: ReturnType<typeof vi.fn> } | null = null
@@ -131,10 +147,10 @@ describe("EnrichmentRunner", () => {
     vi.clearAllMocks()
     // Reset mock query to return empty by default
     mockQuery.mockResolvedValue({ rows: [] })
-    // Reset enrichment result to default (enriched path)
-    mockEnrichResult = { ...defaultEnrichResult }
+    // Reset mock results to defaults
+    mockDebriefResult = { ...defaultDebriefResult }
+    mockCleanupResult = { ...defaultCleanupResult }
     // Reset tracked instances
-    lastOrchestratorInstance = null
     lastRunLoggerInstance = null
   })
 
@@ -375,17 +391,9 @@ describe("EnrichmentRunner", () => {
     })
 
     it("should use ON CONFLICT upsert for non-enriched actor INSERT to handle retries", async () => {
-      // Clear the fields that actually drive hasEnrichmentData to ensure
-      // we hit the non-enriched INSERT path regardless of future logic changes
-      mockEnrichResult = {
-        ...defaultEnrichResult,
-        date: null,
-        location: null,
-        causeOfDeath: null,
-        circumstances: null,
-        notableFactors: null,
-        cleanedDeathInfo: null,
-      }
+      // Return no raw sources to hit the non-enriched INSERT path
+      mockDebriefResult = { ...defaultDebriefResult, rawSources: [] }
+      mockCleanupResult = null
 
       mockQuery
         .mockResolvedValueOnce({
@@ -469,11 +477,11 @@ describe("EnrichmentRunner", () => {
 
       await runner.run()
 
-      expect(lastOrchestratorInstance).not.toBeNull()
-      expect(lastOrchestratorInstance!.setRunLogger).toHaveBeenCalledTimes(1)
+      // RunLogger is created when runId is provided
+      expect(lastRunLoggerInstance).not.toBeNull()
     })
 
-    it("should not call setRunLogger when runId is not provided", async () => {
+    it("should not create RunLogger when runId is not provided", async () => {
       mockQuery
         .mockResolvedValueOnce({
           rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
@@ -487,8 +495,8 @@ describe("EnrichmentRunner", () => {
 
       await runner.run()
 
-      expect(lastOrchestratorInstance).not.toBeNull()
-      expect(lastOrchestratorInstance!.setRunLogger).not.toHaveBeenCalled()
+      // No runId means no RunLogger created
+      expect(lastRunLoggerInstance).toBeNull()
     })
 
     it("should flush RunLogger after enrichment completes", async () => {
@@ -511,10 +519,13 @@ describe("EnrichmentRunner", () => {
     })
 
     it("should track actorsWithDeathPage counter and phase in progress callbacks", async () => {
-      // Use circumstances longer than MIN_CIRCUMSTANCES_LENGTH (200) so
-      // hasDetailedDeathInfo is true and actorsWithDeathPage increments
+      // Set Claude cleanup to return circumstances longer than MIN_CIRCUMSTANCES_LENGTH (200)
+      // so hasDetailedDeathInfo is true and actorsWithDeathPage increments
       const longCircumstances = "A".repeat(201)
-      mockEnrichResult = { ...defaultEnrichResult, circumstances: longCircumstances }
+      mockCleanupResult = {
+        ...defaultCleanupResult,
+        cleaned: { ...defaultCleanupResult.cleaned, circumstances: longCircumstances },
+      }
 
       mockQuery
         .mockResolvedValueOnce({
