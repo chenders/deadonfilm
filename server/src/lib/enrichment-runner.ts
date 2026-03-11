@@ -345,6 +345,9 @@ export class EnrichmentRunner {
         try {
           debriefResult = await processActorWithDebriefer(actor)
         } catch (error) {
+          // Note: debriefer's orchestrator handles cost limits internally by stopping
+          // rather than throwing, so this catch is currently unreachable. Kept as
+          // defensive code in case future debriefer versions change this behavior.
           if (error instanceof CostLimitExceededError) {
             this.log.warn(
               { actorName: actor.name, limit: error.limit, currentCost: error.currentCost },
@@ -919,7 +922,8 @@ export class EnrichmentRunner {
         a.deathday,
         a.cause_of_death,
         a.cause_of_death_details,
-        a.tmdb_popularity as popularity,
+        a.tmdb_popularity,
+        a.dof_popularity,
         c.circumstances,
         c.notable_factors,
         (
