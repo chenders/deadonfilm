@@ -461,12 +461,29 @@ export class EnrichmentRunner {
             // Mark sources as unsuccessful for non-enriched actors so admin
             // analytics (success rates, error reporting) behave correctly
             const uniqueTypes = new Set(debriefResult.rawSources.map((s) => s.sourceType))
-            const sourcesAttempted = [...uniqueTypes].map((sourceType) => ({
-              source: sourceType,
-              success: false,
-              costUsd: actorCostBySource[sourceType] ?? 0,
-              error: "actor_not_enriched",
-            }))
+            const sourcesAttempted: Array<{
+              source: string
+              success: boolean
+              costUsd: number
+              error: string | null
+            }> = [
+              ...[...uniqueTypes].map((sourceType) => ({
+                source: sourceType,
+                success: false,
+                costUsd: actorCostBySource[sourceType] ?? 0,
+                error: "actor_not_enriched",
+              })),
+            ]
+            const nonEnrichedFailedCount =
+              debriefResult.sourcesAttempted - debriefResult.sourcesSucceeded
+            if (nonEnrichedFailedCount > 0) {
+              sourcesAttempted.push({
+                source: "_failed_sources",
+                success: false,
+                costUsd: 0,
+                error: `${nonEnrichedFailedCount} source(s) returned no findings`,
+              })
+            }
 
             await db.query(
               `INSERT INTO enrichment_run_actors (
@@ -624,12 +641,29 @@ export class EnrichmentRunner {
         if (runId) {
           // Deduplicate by sourceType and attribute real costs
           const enrichedUniqueTypes = new Set(debriefResult.rawSources.map((s) => s.sourceType))
-          const sourcesAttempted = [...enrichedUniqueTypes].map((sourceType) => ({
-            source: sourceType,
-            success: true,
-            costUsd: actorCostBySource[sourceType] ?? 0,
-            error: null,
-          }))
+          const sourcesAttempted: Array<{
+            source: string
+            success: boolean
+            costUsd: number
+            error: string | null
+          }> = [
+            ...[...enrichedUniqueTypes].map((sourceType) => ({
+              source: sourceType,
+              success: true,
+              costUsd: actorCostBySource[sourceType] ?? 0,
+              error: null,
+            })),
+          ]
+          // Include failed sources so per-run analytics reflect actual attempts
+          const actorFailedCount = debriefResult.sourcesAttempted - debriefResult.sourcesSucceeded
+          if (actorFailedCount > 0) {
+            sourcesAttempted.push({
+              source: "_failed_sources",
+              success: false,
+              costUsd: 0,
+              error: `${actorFailedCount} source(s) returned no findings`,
+            })
+          }
 
           // Find the highest-confidence raw source for confidence and winning_source
           const bestSource =
