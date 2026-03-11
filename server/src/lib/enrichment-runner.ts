@@ -460,6 +460,8 @@ export class EnrichmentRunner {
           if (runId) {
             // Mark sources as unsuccessful for non-enriched actors so admin
             // analytics (success rates, error reporting) behave correctly
+            // Sources that returned findings are marked success: true (they did their job).
+            // Cleanup failure is tracked separately via the _cleanup_failed bucket.
             const uniqueTypes = new Set(debriefResult.rawSources.map((s) => s.sourceType))
             const sourcesAttempted: Array<{
               source: string
@@ -469,11 +471,12 @@ export class EnrichmentRunner {
             }> = [
               ...[...uniqueTypes].map((sourceType) => ({
                 source: sourceType,
-                success: false,
+                success: true,
                 costUsd: actorCostBySource[sourceType] ?? 0,
-                error: "actor_not_enriched",
+                error: null,
               })),
             ]
+            // Track sources that returned no findings
             const nonEnrichedFailedCount =
               debriefResult.sourcesAttempted - debriefResult.sourcesSucceeded
             if (nonEnrichedFailedCount > 0) {
@@ -482,6 +485,15 @@ export class EnrichmentRunner {
                 success: false,
                 costUsd: 0,
                 error: `${nonEnrichedFailedCount} source(s) returned no findings`,
+              })
+            }
+            // Track cleanup failure as a separate entry
+            if (debriefResult.rawSources.length > 0 && !cleaned) {
+              sourcesAttempted.push({
+                source: "claude_cleanup",
+                success: false,
+                costUsd: cleanupCostUsd,
+                error: claudeCleanup ? "cleanup_failed" : "cleanup_disabled",
               })
             }
 
