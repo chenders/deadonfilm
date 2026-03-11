@@ -12,7 +12,6 @@
 
 import { BaseResearchSource, type ReliabilityTier as DebrieferTier } from "debriefer"
 import type { ResearchSubject, RawFinding } from "debriefer"
-import { getReliabilityScore } from "debriefer"
 import type { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment } from "../types.js"
 

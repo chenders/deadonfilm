@@ -208,11 +208,8 @@ export class EnrichmentRunner {
       staging = false,
       // Source reliability threshold
       useReliabilityThreshold = true,
-      // Wikipedia-specific options
-      wikipediaUseAISectionSelection = false,
-      wikipediaFollowLinkedArticles = false,
-      wikipediaMaxLinkedArticles = 2,
-      wikipediaMaxSections = 10,
+      // Wikipedia-specific options (not yet supported by debriefer adapter)
+      // wikipediaUseAISectionSelection, wikipediaFollowLinkedArticles, etc.
     } = this.config
 
     // Configure cache behavior for this run
