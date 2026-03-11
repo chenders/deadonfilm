@@ -19,7 +19,7 @@ import {
   type ActorForEnrichment,
 } from "./death-sources/index.js"
 import { cleanupWithClaude, isViolentDeath } from "./death-sources/claude-cleanup.js"
-import { debriefActor } from "./death-sources/debriefer/adapter.js"
+import { createDebriefOrchestrator } from "./death-sources/debriefer/adapter.js"
 import type { DebrieferAdapterResult } from "./death-sources/debriefer/adapter.js"
 import {
   normalizeDateToString,
@@ -33,7 +33,6 @@ import {
   type DeathCircumstancesData,
 } from "./enrichment-db-writer.js"
 import { linkMultipleFields, hasEntityLinks } from "./entity-linker/index.js"
-import { RunLogger } from "./run-logger.js"
 import { logger } from "./logger.js"
 import { DEATH_ENRICHMENT_VERSION } from "./enrichment-version.js"
 import { ParallelBatchRunner, BatchCostTracker } from "./shared/concurrency.js"
@@ -191,7 +190,7 @@ export class EnrichmentRunner {
       actorIds,
       tmdbIds,
       free = true,
-      paid = true,
+      // paid is accepted for config compat but not yet used by debriefer adapter
       ai = false,
       confidence: confidenceThreshold = 0.5,
       maxCostPerActor,
@@ -292,10 +291,9 @@ export class EnrichmentRunner {
         }
       }
 
-      // Configure the debriefer adapter
+      // Configure the debriefer adapter and create orchestrator once for the batch
       const debrieferConfig = {
         free,
-        paid,
         ai,
         books: true,
         maxCostPerActor,
@@ -304,14 +302,9 @@ export class EnrichmentRunner {
         confidenceThreshold,
         reliabilityThreshold: useReliabilityThreshold ? 0.6 : undefined,
       }
+      const processActorWithDebriefer = createDebriefOrchestrator(debrieferConfig)
 
-      // Wire up RunLogger for DB log capture if we have a run ID
-      let runLogger: RunLogger | null = null
-      if (runId) {
-        runLogger = new RunLogger("death", runId)
-      }
-
-      // Track batch-level stats (previously tracked by the orchestrator)
+      // Track batch-level stats
       let batchActorsProcessed = 0
       let batchActorsEnriched = 0
 
@@ -346,7 +339,7 @@ export class EnrichmentRunner {
       const processActor = async (actor: ActorForEnrichment): Promise<{ costUsd: number }> => {
         let debriefResult: DebrieferAdapterResult
         try {
-          debriefResult = await debriefActor(actor, debrieferConfig)
+          debriefResult = await processActorWithDebriefer(actor)
         } catch (error) {
           if (error instanceof CostLimitExceededError) {
             this.log.warn(
@@ -395,13 +388,15 @@ export class EnrichmentRunner {
 
         batchActorsProcessed++
 
-        // Aggregate source hit rates from debriefer results
-        for (const rs of debriefResult.rawSources) {
-          if (!sourceHitRates[rs.sourceType]) {
-            sourceHitRates[rs.sourceType] = { attempts: 0, successes: 0 }
+        // Aggregate source hit rates — deduplicate by sourceType per actor
+        // so a source returning multiple findings counts as one attempt/success
+        const actorSourceTypes = new Set(debriefResult.rawSources.map((rs) => rs.sourceType))
+        for (const sourceType of actorSourceTypes) {
+          if (!sourceHitRates[sourceType]) {
+            sourceHitRates[sourceType] = { attempts: 0, successes: 0 }
           }
-          sourceHitRates[rs.sourceType].attempts++
-          sourceHitRates[rs.sourceType].successes++
+          sourceHitRates[sourceType].attempts++
+          sourceHitRates[sourceType].successes++
         }
 
         // Run Claude cleanup if enabled and we have raw sources
@@ -422,8 +417,11 @@ export class EnrichmentRunner {
 
         const totalActorCost = debriefResult.totalCostUsd + cleanupCostUsd
 
-        // Check if actor has substantive enrichment data
-        const hasEnrichmentData = !!(debriefResult.rawSources.length > 0 && cleaned)
+        // Check if actor has substantive enrichment data.
+        // When Claude cleanup is disabled, having raw sources is enough to proceed.
+        // When cleanup is enabled, require a successful cleanup result.
+        const hasEnrichmentData =
+          debriefResult.rawSources.length > 0 && (!claudeCleanup || !!cleaned)
 
         if (!hasEnrichmentData) {
           // Record non-enriched actor row so it appears in the Actor Results table
@@ -679,24 +677,11 @@ export class EnrichmentRunner {
         signal: this.abortSignal,
       })
 
-      try {
-        await runner.run(actorsToEnrich, processActor)
-      } catch (error) {
-        // Flush run logs before re-throwing so error-path logs aren't lost
-        if (runLogger) {
-          await runLogger.flush()
-        }
-        throw error
-      }
+      await runner.run(actorsToEnrich, processActor)
 
       // Check if cost limit was hit
       if (!costLimitReached) {
         costLimitReached = costTracker.isLimitExceeded()
-      }
-
-      // Flush remaining run logs
-      if (runLogger) {
-        await runLogger.flush()
       }
 
       // Rebuild caches if we updated anything (only in production mode)

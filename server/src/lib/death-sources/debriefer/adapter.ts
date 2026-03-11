@@ -75,13 +75,13 @@ import { PerplexitySource } from "../ai-providers/perplexity.js"
 
 export interface DebrieferAdapterConfig {
   free?: boolean
-  paid?: boolean
   ai?: boolean
   books?: boolean
   maxCostPerActor?: number
   maxTotalCost?: number
   earlyStopThreshold?: number
   confidenceThreshold?: number
+  /** Set to a number to enforce reliability threshold, or undefined to disable */
   reliabilityThreshold?: number
 }
 
@@ -95,20 +95,20 @@ export interface DebrieferAdapterResult {
 }
 
 /**
- * Runs death enrichment for a single actor using debriefer's orchestrator.
+ * Creates a reusable orchestrator for a batch of actors.
  *
- * Returns RawSourceData[] ready for deadonfilm's cleanupWithClaude().
+ * Call this once per enrichment run, then pass the returned function
+ * to process each actor. This shares rate limiting and caching across actors.
  */
-export async function debriefActor(
-  actor: ActorForEnrichment,
+export function createDebriefOrchestrator(
   config: DebrieferAdapterConfig
-): Promise<DebrieferAdapterResult> {
+): (actor: ActorForEnrichment) => Promise<DebrieferAdapterResult> {
   const phases = buildPhases(config)
 
   const orchestratorConfig: ResearchConfig = {
     earlyStopThreshold: config.earlyStopThreshold ?? 3,
     confidenceThreshold: config.confidenceThreshold ?? 0.5,
-    reliabilityThreshold: config.reliabilityThreshold ?? 0.6,
+    reliabilityThreshold: config.reliabilityThreshold,
     costLimits: {
       maxCostPerSubject: config.maxCostPerActor,
       maxTotalCost: config.maxTotalCost,
@@ -121,30 +121,47 @@ export async function debriefActor(
     orchestratorConfig
   )
 
-  const subject: ResearchSubject = {
-    id: actor.id,
-    name: actor.name,
-    context: {
-      tmdbId: actor.tmdbId,
-      imdbPersonId: actor.imdbPersonId,
-      birthday: actor.birthday,
-      deathday: actor.deathday,
-      causeOfDeath: actor.causeOfDeath,
-      causeOfDeathDetails: actor.causeOfDeathDetails,
-      popularity: actor.popularity,
-    },
-  }
+  return async (actor: ActorForEnrichment): Promise<DebrieferAdapterResult> => {
+    const subject: ResearchSubject = {
+      id: actor.id,
+      name: actor.name,
+      context: {
+        tmdbId: actor.tmdbId,
+        imdbPersonId: actor.imdbPersonId,
+        birthday: actor.birthday,
+        deathday: actor.deathday,
+        causeOfDeath: actor.causeOfDeath,
+        causeOfDeathDetails: actor.causeOfDeathDetails,
+        popularity: actor.popularity,
+      },
+    }
 
-  const result = await orchestrator.debrief(subject)
+    const result = await orchestrator.debrief(subject)
 
-  return {
-    rawSources: mapFindings(result.findings),
-    totalCostUsd: result.totalCostUsd,
-    sourcesAttempted: result.sourcesAttempted,
-    sourcesSucceeded: result.sourcesSucceeded,
-    durationMs: result.durationMs,
-    stoppedAtPhase: result.stoppedAtPhase,
+    return {
+      rawSources: mapFindings(result.findings),
+      totalCostUsd: result.totalCostUsd,
+      sourcesAttempted: result.sourcesAttempted,
+      sourcesSucceeded: result.sourcesSucceeded,
+      durationMs: result.durationMs,
+      stoppedAtPhase: result.stoppedAtPhase,
+    }
   }
+}
+
+/**
+ * Runs death enrichment for a single actor using debriefer's orchestrator.
+ *
+ * Convenience wrapper that creates a new orchestrator per call.
+ * For batch processing, prefer createDebriefOrchestrator() to share
+ * rate limiting and caching across actors.
+ */
+export async function debriefActor(
+  actor: ActorForEnrichment,
+  config: DebrieferAdapterConfig
+): Promise<DebrieferAdapterResult> {
+  const processActor = createDebriefOrchestrator(config)
+  return processActor(actor)
 }
 
 /**

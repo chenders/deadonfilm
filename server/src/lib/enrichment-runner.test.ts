@@ -72,9 +72,11 @@ const defaultCleanupResult = {
 let mockDebriefResult = { ...defaultDebriefResult }
 let mockCleanupResult: typeof defaultCleanupResult | null = { ...defaultCleanupResult }
 
-// Mock debriefer adapter
+// Mock debriefer adapter — createDebriefOrchestrator returns a function
 vi.mock("./death-sources/debriefer/adapter.js", () => ({
-  debriefActor: vi.fn().mockImplementation(async () => ({ ...mockDebriefResult })),
+  createDebriefOrchestrator: vi
+    .fn()
+    .mockReturnValue(vi.fn().mockImplementation(async () => ({ ...mockDebriefResult }))),
 }))
 
 // Mock Claude cleanup
@@ -94,24 +96,7 @@ vi.mock("./death-sources/index.js", () => ({
   setIgnoreCache: vi.fn(),
 }))
 
-// Track mock RunLogger instances for test assertions
-let lastRunLoggerInstance: { flush: ReturnType<typeof vi.fn> } | null = null
-
-// Mock RunLogger
-vi.mock("./run-logger.js", () => ({
-  RunLogger: class MockRunLogger {
-    info = vi.fn()
-    warn = vi.fn()
-    error = vi.fn()
-    debug = vi.fn()
-    flush = vi.fn().mockResolvedValue(undefined)
-
-    constructor() {
-      // eslint-disable-next-line @typescript-eslint/no-this-alias
-      lastRunLoggerInstance = this as unknown as typeof lastRunLoggerInstance
-    }
-  },
-}))
+// RunLogger is no longer used by EnrichmentRunner (debriefer handles orchestration)
 
 // Mock cache
 vi.mock("./cache.js", () => ({
@@ -151,7 +136,6 @@ describe("EnrichmentRunner", () => {
     mockDebriefResult = { ...defaultDebriefResult }
     mockCleanupResult = { ...defaultCleanupResult }
     // Reset tracked instances
-    lastRunLoggerInstance = null
   })
 
   describe("constructor", () => {
@@ -462,61 +446,8 @@ describe("EnrichmentRunner", () => {
       expect(productionWriteCall).toBeDefined()
     })
 
-    it("should call setRunLogger on orchestrator when runId is provided", async () => {
-      mockQuery
-        .mockResolvedValueOnce({
-          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
-        })
-        .mockResolvedValue({ rows: [{ id: 123 }] })
-
-      const runner = new EnrichmentRunner({
-        actorIds: [1],
-        runId: 42,
-        staging: false,
-      })
-
-      await runner.run()
-
-      // RunLogger is created when runId is provided
-      expect(lastRunLoggerInstance).not.toBeNull()
-    })
-
-    it("should not create RunLogger when runId is not provided", async () => {
-      mockQuery
-        .mockResolvedValueOnce({
-          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
-        })
-        .mockResolvedValue({ rows: [] })
-
-      const runner = new EnrichmentRunner({
-        actorIds: [1],
-        staging: false,
-      })
-
-      await runner.run()
-
-      // No runId means no RunLogger created
-      expect(lastRunLoggerInstance).toBeNull()
-    })
-
-    it("should flush RunLogger after enrichment completes", async () => {
-      mockQuery
-        .mockResolvedValueOnce({
-          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
-        })
-        .mockResolvedValue({ rows: [{ id: 123 }] })
-
-      const runner = new EnrichmentRunner({
-        actorIds: [1],
-        runId: 42,
-        staging: false,
-      })
-
-      await runner.run()
-
-      expect(lastRunLoggerInstance).not.toBeNull()
-      expect(lastRunLoggerInstance!.flush).toHaveBeenCalled()
-    })
+    // RunLogger tests removed — RunLogger is no longer used by EnrichmentRunner
+    // (debriefer handles orchestration and logging internally)
 
     it("should track actorsWithDeathPage counter and phase in progress callbacks", async () => {
       // Set Claude cleanup to return circumstances longer than MIN_CIRCUMSTANCES_LENGTH (200)

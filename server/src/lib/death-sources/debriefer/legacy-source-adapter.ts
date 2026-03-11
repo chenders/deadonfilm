@@ -88,7 +88,7 @@ export class LegacySourceAdapter extends BaseResearchSource<ResearchSubject> {
 function subjectToActor(subject: ResearchSubject): ActorForEnrichment {
   const ctx = (subject.context ?? {}) as Record<string, unknown>
   return {
-    id: typeof subject.id === "number" ? subject.id : 0,
+    id: typeof subject.id === "number" ? subject.id : parseInt(String(subject.id), 10) || 0,
     tmdbId: (ctx.tmdbId as number) ?? null,
     imdbPersonId: (ctx.imdbPersonId as string) ?? null,
     name: subject.name,
