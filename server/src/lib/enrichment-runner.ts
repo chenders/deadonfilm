@@ -603,7 +603,7 @@ export class EnrichmentRunner {
           relatedDeaths,
           sources: {
             // All fields now come from Claude synthesis — no per-source tracking
-            cleanupSource: cleaned ? "claude-opus-4.5" : null,
+            cleanupSource: cleaned?.cleanupSource ?? null,
           },
           rawResponse:
             debriefResult.rawSources.length > 0
