@@ -45,8 +45,6 @@
     "@tanstack/react-query": "^5.62.0",
     "@types/react-datepicker": "^6.2.0",
     "date-fns": "^4.1.0",
-    "debriefer": "file:../debriefer/packages/core",
-    "debriefer-sources": "file:../debriefer/packages/sources",
     "diff": "^8.0.3",
     "react": "^18.3.1",
     "react-datepicker": "^9.1.0",
