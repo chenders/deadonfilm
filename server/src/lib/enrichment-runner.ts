@@ -14,12 +14,13 @@ import { getPool, getDeceasedActorsFromTopMovies } from "./db.js"
 import { batchGetPersonDetails } from "./tmdb.js"
 import { rebuildDeathCaches } from "./cache.js"
 import {
-  DeathEnrichmentOrchestrator,
   CostLimitExceededError,
   setIgnoreCache,
-  type EnrichmentConfig,
   type ActorForEnrichment,
 } from "./death-sources/index.js"
+import { cleanupWithClaude, isViolentDeath } from "./death-sources/claude-cleanup.js"
+import { debriefActor } from "./death-sources/debriefer/adapter.js"
+import type { DebrieferAdapterResult } from "./death-sources/debriefer/adapter.js"
 import {
   normalizeDateToString,
   MIN_CIRCUMSTANCES_LENGTH,
@@ -31,7 +32,6 @@ import {
   type EnrichmentData,
   type DeathCircumstancesData,
 } from "./enrichment-db-writer.js"
-import { isViolentDeath } from "./death-sources/claude-cleanup.js"
 import { linkMultipleFields, hasEntityLinks } from "./entity-linker/index.js"
 import { RunLogger } from "./run-logger.js"
 import { logger } from "./logger.js"
@@ -295,46 +295,28 @@ export class EnrichmentRunner {
         }
       }
 
-      // Configure the orchestrator
-      const config: Partial<EnrichmentConfig> = {
-        sourceCategories: {
-          free,
-          paid,
-          ai,
-        },
+      // Configure the debriefer adapter
+      const debrieferConfig = {
+        free,
+        paid,
+        ai,
+        books: true,
+        maxCostPerActor,
+        maxTotalCost,
+        earlyStopThreshold: 3,
         confidenceThreshold,
-        costLimits: {
-          maxCostPerActor,
-          maxTotalCost,
-        },
-        claudeCleanup: claudeCleanup
-          ? {
-              enabled: true,
-              model: "claude-opus-4-5-20251101",
-              gatherAllSources: true,
-            }
-          : undefined,
-        // Wikipedia-specific options for AI section selection and link following
-        wikipediaOptions:
-          wikipediaUseAISectionSelection || wikipediaFollowLinkedArticles
-            ? {
-                useAISectionSelection: wikipediaUseAISectionSelection,
-                followLinkedArticles: wikipediaFollowLinkedArticles,
-                maxLinkedArticles: wikipediaMaxLinkedArticles,
-                maxSections: wikipediaMaxSections,
-              }
-            : undefined,
-        useReliabilityThreshold,
+        reliabilityThreshold: useReliabilityThreshold ? 0.6 : undefined,
       }
-
-      const orchestrator = new DeathEnrichmentOrchestrator(config)
 
       // Wire up RunLogger for DB log capture if we have a run ID
       let runLogger: RunLogger | null = null
       if (runId) {
         runLogger = new RunLogger("death", runId)
-        orchestrator.setRunLogger(runLogger)
       }
+
+      // Track batch-level stats (previously tracked by the orchestrator)
+      let batchActorsProcessed = 0
+      let batchActorsEnriched = 0
 
       // Convert to ActorForEnrichment format
       const actorsToEnrich: ActorForEnrichment[] = actors.map((a) => ({
@@ -365,9 +347,9 @@ export class EnrichmentRunner {
 
       // Define per-actor processor
       const processActor = async (actor: ActorForEnrichment): Promise<{ costUsd: number }> => {
-        let enrichment
+        let debriefResult: DebrieferAdapterResult
         try {
-          enrichment = await orchestrator.enrichActor(actor)
+          debriefResult = await debriefActor(actor, debrieferConfig)
         } catch (error) {
           if (error instanceof CostLimitExceededError) {
             this.log.warn(
@@ -414,39 +396,47 @@ export class EnrichmentRunner {
           return { costUsd: 0 }
         }
 
-        // Aggregate source hit rates from actorStats
-        if (enrichment.actorStats?.sourcesAttempted) {
-          for (const attempt of enrichment.actorStats.sourcesAttempted) {
-            if (!sourceHitRates[attempt.source]) {
-              sourceHitRates[attempt.source] = { attempts: 0, successes: 0 }
-            }
-            sourceHitRates[attempt.source].attempts++
-            if (attempt.success) {
-              sourceHitRates[attempt.source].successes++
-            }
+        batchActorsProcessed++
+
+        // Aggregate source hit rates from debriefer results
+        for (const rs of debriefResult.rawSources) {
+          if (!sourceHitRates[rs.sourceType]) {
+            sourceHitRates[rs.sourceType] = { attempts: 0, successes: 0 }
+          }
+          sourceHitRates[rs.sourceType].attempts++
+          sourceHitRates[rs.sourceType].successes++
+        }
+
+        // Run Claude cleanup if enabled and we have raw sources
+        let cleaned: import("./death-sources/types.js").CleanedDeathInfo | undefined
+        let cleanupCostUsd = 0
+        if (claudeCleanup && debriefResult.rawSources.length > 0) {
+          try {
+            const cleanupResult = await cleanupWithClaude(actor, debriefResult.rawSources)
+            cleaned = cleanupResult.cleaned
+            cleanupCostUsd = cleanupResult.costUsd
+          } catch (error) {
+            this.log.error(
+              { actorId: actor.id, actorName: actor.name, err: error },
+              "Claude cleanup failed"
+            )
           }
         }
 
+        const totalActorCost = debriefResult.totalCostUsd + cleanupCostUsd
+
         // Check if actor has substantive enrichment data
-        const hasEnrichmentData = !!(
-          enrichment.circumstances ||
-          enrichment.notableFactors?.length ||
-          enrichment.cleanedDeathInfo
-        )
+        const hasEnrichmentData = !!(debriefResult.rawSources.length > 0 && cleaned)
 
         if (!hasEnrichmentData) {
           // Record non-enriched actor row so it appears in the Actor Results table
           if (runId) {
-            const actorStats = enrichment.actorStats
-            const sourcesAttempted =
-              actorStats?.sourcesAttempted && actorStats.sourcesAttempted.length > 0
-                ? actorStats.sourcesAttempted.map((s) => ({
-                    source: s.source,
-                    success: s.success,
-                    costUsd: s.costUsd || 0,
-                    error: s.error || null,
-                  }))
-                : []
+            const sourcesAttempted = debriefResult.rawSources.map((s) => ({
+              source: s.sourceType,
+              success: true,
+              costUsd: 0,
+              error: null,
+            }))
 
             await db.query(
               `INSERT INTO enrichment_run_actors (
@@ -462,45 +452,40 @@ export class EnrichmentRunner {
                 runId,
                 actor.id,
                 false,
-                false, // created_death_page
+                false,
                 null,
                 JSON.stringify(sourcesAttempted),
                 null,
-                actorStats?.totalTimeMs || null,
-                actorStats?.totalCostUsd || 0,
-                JSON.stringify(enrichment.logEntries || []),
+                debriefResult.durationMs,
+                totalActorCost,
+                JSON.stringify([]),
               ]
             )
           }
 
-          return { costUsd: enrichment.actorStats?.totalCostUsd || 0 }
+          return { costUsd: totalActorCost }
         }
 
         // --- Write enrichment data to DB immediately ---
-        const cleaned = enrichment.cleanedDeathInfo
-        const circumstances = cleaned?.circumstances || enrichment.circumstances
-        const rumoredCircumstances =
-          cleaned?.rumoredCircumstances || enrichment.rumoredCircumstances
-        const locationOfDeath = cleaned?.locationOfDeath || enrichment.locationOfDeath
-        const notableFactors = cleaned?.notableFactors || enrichment.notableFactors
-        const additionalContext = cleaned?.additionalContext || enrichment.additionalContext
-        const relatedDeaths = cleaned?.relatedDeaths || enrichment.relatedDeaths || null
+        const circumstances = cleaned?.circumstances ?? null
+        const rumoredCircumstances = cleaned?.rumoredCircumstances ?? null
+        const locationOfDeath = cleaned?.locationOfDeath ?? null
+        const notableFactors = cleaned?.notableFactors ?? null
+        const additionalContext = cleaned?.additionalContext ?? null
+        const relatedDeaths = cleaned?.relatedDeaths ?? null
 
         // Extract cause of death from Claude cleanup (for actors missing it)
-        const causeOfDeath = cleaned?.cause || null
-        const causeOfDeathDetails = cleaned?.details || null
+        const causeOfDeath = cleaned?.cause ?? null
+        const causeOfDeathDetails = cleaned?.details ?? null
 
-        const causeConfidence = cleaned?.causeConfidence || null
-        const detailsConfidence = cleaned?.detailsConfidence || null
-        const birthdayConfidence = cleaned?.birthdayConfidence || null
-        const deathdayConfidence = cleaned?.deathdayConfidence || null
-        const lastProject = cleaned?.lastProject || enrichment.lastProject || null
-        const careerStatusAtDeath =
-          cleaned?.careerStatusAtDeath || enrichment.careerStatusAtDeath || null
-        const posthumousReleases =
-          cleaned?.posthumousReleases || enrichment.posthumousReleases || null
-        const relatedCelebrities =
-          cleaned?.relatedCelebrities || enrichment.relatedCelebrities || null
+        const causeConfidence = cleaned?.causeConfidence ?? null
+        const detailsConfidence = cleaned?.detailsConfidence ?? null
+        const birthdayConfidence = cleaned?.birthdayConfidence ?? null
+        const deathdayConfidence = cleaned?.deathdayConfidence ?? null
+        const lastProject = cleaned?.lastProject ?? null
+        const careerStatusAtDeath = cleaned?.careerStatusAtDeath ?? null
+        const posthumousReleases = cleaned?.posthumousReleases ?? null
+        const relatedCelebrities = cleaned?.relatedCelebrities ?? null
 
         // Look up related_celebrity_ids from actors table
         let relatedCelebrityIds: number[] | null = null
@@ -515,16 +500,8 @@ export class EnrichmentRunner {
           }
         }
 
-        // Determine confidence level
-        const circumstancesConfidence =
-          cleaned?.circumstancesConfidence ||
-          (enrichment.circumstancesSource?.confidence
-            ? enrichment.circumstancesSource.confidence >= 0.7
-              ? "high"
-              : enrichment.circumstancesSource.confidence >= 0.4
-                ? "medium"
-                : "low"
-            : null)
+        // Determine confidence level (from Claude cleanup, no per-source fallback needed)
+        const circumstancesConfidence = cleaned?.circumstancesConfidence ?? null
 
         // Determine if we have substantive death info
         // Check Claude's quality gate first - REQUIRE explicit true, not just "not false"
@@ -595,23 +572,16 @@ export class EnrichmentRunner {
           additionalContext,
           relatedDeaths,
           sources: {
-            circumstances: enrichment.circumstancesSource,
-            rumoredCircumstances: enrichment.rumoredCircumstancesSource,
-            notableFactors: enrichment.notableFactorsSource,
-            locationOfDeath: enrichment.locationOfDeathSource,
-            additionalContext: enrichment.additionalContextSource,
-            lastProject: enrichment.lastProjectSource,
-            careerStatusAtDeath: enrichment.careerStatusAtDeathSource,
-            posthumousReleases: enrichment.posthumousReleasesSource,
-            relatedCelebrities: enrichment.relatedCelebritiesSource,
+            // All fields now come from Claude synthesis — no per-source tracking
             cleanupSource: cleaned ? "claude-opus-4.5" : null,
           },
-          rawResponse: enrichment.rawSources
-            ? {
-                rawSources: enrichment.rawSources,
-                gatheredAt: new Date().toISOString(),
-              }
-            : null,
+          rawResponse:
+            debriefResult.rawSources.length > 0
+              ? {
+                  rawSources: debriefResult.rawSources,
+                  gatheredAt: new Date().toISOString(),
+                }
+              : null,
           entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
           enrichmentSource: "multi-source-enrichment",
           enrichmentVersion: useReliabilityThreshold
@@ -622,26 +592,18 @@ export class EnrichmentRunner {
         // Record per-actor results for all runs with a runId
         let enrichmentRunActorId: number | null = null
         if (runId) {
-          // Use actorStats for full tracking data (all sources attempted, total cost, timing)
-          const actorStats = enrichment.actorStats
-          const sourcesAttempted =
-            actorStats?.sourcesAttempted && actorStats.sourcesAttempted.length > 0
-              ? actorStats.sourcesAttempted.map((s) => ({
-                  source: s.source,
-                  success: s.success,
-                  costUsd: s.costUsd || 0,
-                  error: s.error || null,
-                }))
-              : enrichment.circumstancesSource?.type
-                ? [
-                    {
-                      source: enrichment.circumstancesSource.type,
-                      success: true,
-                      costUsd: enrichment.circumstancesSource.costUsd || 0,
-                      error: null,
-                    },
-                  ]
-                : []
+          const sourcesAttempted = debriefResult.rawSources.map((s) => ({
+            source: s.sourceType,
+            success: true,
+            costUsd: 0,
+            error: null,
+          }))
+
+          // Use the best raw source's confidence, or the cleaned confidence
+          const bestConfidence =
+            debriefResult.rawSources.length > 0
+              ? Math.max(...debriefResult.rawSources.map((s) => s.confidence))
+              : null
 
           const eraResult = await db.query<{ id: number }>(
             `INSERT INTO enrichment_run_actors (
@@ -665,17 +627,19 @@ export class EnrichmentRunner {
               runId,
               actor.id,
               true,
-              hasDetailedDeathInfo || false, // created_death_page
-              enrichment.circumstancesSource?.confidence || null,
+              hasDetailedDeathInfo || false,
+              bestConfidence,
               JSON.stringify(sourcesAttempted),
-              enrichment.circumstancesSource?.type || null,
-              actorStats?.totalTimeMs || null,
-              actorStats?.totalCostUsd || enrichment.circumstancesSource?.costUsd || 0,
-              JSON.stringify(enrichment.logEntries || []),
+              debriefResult.rawSources[0]?.sourceType || null,
+              debriefResult.durationMs,
+              totalActorCost,
+              JSON.stringify([]),
             ]
           )
           enrichmentRunActorId = eraResult.rows[0]?.id ?? null
         }
+
+        batchActorsEnriched++
 
         // Route to staging or production
         if (staging && enrichmentRunActorId) {
@@ -691,7 +655,7 @@ export class EnrichmentRunner {
 
         updated++
 
-        return { costUsd: enrichment.actorStats?.totalCostUsd || 0 }
+        return { costUsd: totalActorCost }
       }
 
       // Run actors in parallel
@@ -701,14 +665,13 @@ export class EnrichmentRunner {
         getCost: (result) => result.costUsd,
         onItemComplete: async (_actor, _result, progress) => {
           if (this.onProgress) {
-            const stats = orchestrator.getStats()
             await this.onProgress({
               currentActorIndex: progress.completed,
               currentActorName: `${progress.inFlight} actors in flight`,
               actorsInFlight: progress.inFlight,
               actorsCompleted: progress.completed,
               actorsQueried: actorsToEnrich.length,
-              actorsProcessed: stats.actorsProcessed,
+              actorsProcessed: batchActorsProcessed,
               actorsEnriched: enrichedCount,
               actorsWithDeathPage: deathPageCount,
               totalCostUsd: costTracker.getTotalCost(),
@@ -739,14 +702,15 @@ export class EnrichmentRunner {
         await runLogger.flush()
       }
 
-      // Get final stats
-      const stats = orchestrator.getStats()
-
       // Rebuild caches if we updated anything (only in production mode)
       if (updated > 0 && !staging) {
         await rebuildDeathCaches()
         this.log.info("Rebuilt death caches")
       }
+
+      const totalCostUsd = costTracker.getTotalCost()
+      const fillRate =
+        batchActorsProcessed > 0 ? (batchActorsEnriched / batchActorsProcessed) * 100 : 0
 
       const exitReason: "completed" | "cost_limit" | "interrupted" = costLimitReached
         ? "cost_limit"
@@ -756,23 +720,23 @@ export class EnrichmentRunner {
 
       this.log.info(
         {
-          actorsProcessed: stats.actorsProcessed,
-          actorsEnriched: stats.actorsEnriched,
-          fillRate: stats.fillRate,
+          actorsProcessed: batchActorsProcessed,
+          actorsEnriched: batchActorsEnriched,
+          fillRate,
           databaseUpdates: updated,
-          totalCostUsd: stats.totalCostUsd,
+          totalCostUsd,
           exitReason,
         },
         "Enrichment complete"
       )
 
       return {
-        actorsProcessed: stats.actorsProcessed,
-        actorsEnriched: stats.actorsEnriched,
-        fillRate: stats.fillRate,
-        totalCostUsd: stats.totalCostUsd,
-        totalTimeMs: stats.totalTimeMs,
-        costBySource: stats.costBySource,
+        actorsProcessed: batchActorsProcessed,
+        actorsEnriched: batchActorsEnriched,
+        fillRate,
+        totalCostUsd,
+        totalTimeMs: Date.now() - startTime,
+        costBySource: {},
         exitReason,
         updatedActors,
         sourceHitRates,

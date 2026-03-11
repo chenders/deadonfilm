@@ -11,7 +11,7 @@
  * RawSourceData[] ready for cleanupWithClaude().
  */
 
-import { ResearchOrchestrator, NoopSynthesizer, SourceRateLimiter } from "debriefer"
+import { ResearchOrchestrator, NoopSynthesizer } from "debriefer"
 import type { ResearchSubject, ScoredFinding, SourcePhaseGroup, ResearchConfig } from "debriefer"
 
 // Debriefer-sources: standard implementations
