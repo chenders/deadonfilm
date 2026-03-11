@@ -133,9 +133,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Clone and build debriefer (local path dependency)
+        env:
+          DEBRIEFER_SHA: 04a1cc168a3d8b75ad1fa07f59ee36a7bc7dfc03
         run: |
-          git clone --depth 1 https://github.com/chenders/debriefer.git ../../debriefer
-          cd ../../debriefer
+          git clone https://github.com/chenders/debriefer.git ../../debriefer
+          cd ../../debriefer && git checkout $DEBRIEFER_SHA
           npm ci
           npx turbo build --filter=debriefer --filter=debriefer-sources
 
@@ -189,9 +191,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Clone and build debriefer (local path dependency)
+        env:
+          DEBRIEFER_SHA: 04a1cc168a3d8b75ad1fa07f59ee36a7bc7dfc03
         run: |
-          git clone --depth 1 https://github.com/chenders/debriefer.git ../../debriefer
-          cd ../../debriefer
+          git clone https://github.com/chenders/debriefer.git ../../debriefer
+          cd ../../debriefer && git checkout $DEBRIEFER_SHA
           npm ci
           npx turbo build --filter=debriefer --filter=debriefer-sources
 

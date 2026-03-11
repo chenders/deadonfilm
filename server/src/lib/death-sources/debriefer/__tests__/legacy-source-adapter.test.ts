@@ -122,6 +122,50 @@ describe("LegacySourceAdapter", () => {
     expect(result).toBeNull()
   })
 
+  it("includes additionalResults text in the finding", async () => {
+    const legacy = makeLegacySource({
+      lookup: vi.fn().mockResolvedValue({
+        success: true,
+        source: {
+          type: DataSourceType.VARIETY,
+          url: "https://variety.com/article1",
+          retrievedAt: new Date(),
+          confidence: 0.8,
+          costUsd: 0.01,
+        },
+        data: { circumstances: "Primary article text." },
+        additionalResults: [
+          {
+            source: {
+              type: DataSourceType.VARIETY,
+              url: "https://variety.com/article2",
+              retrievedAt: new Date(),
+              confidence: 0.7,
+            },
+            data: { circumstances: "Additional article text." },
+          },
+          {
+            source: {
+              type: DataSourceType.VARIETY,
+              url: "https://variety.com/article3",
+              retrievedAt: new Date(),
+              confidence: 0.5,
+            },
+            data: { circumstances: "" }, // Empty — should be skipped
+          },
+        ],
+      }),
+    } as unknown as Partial<BaseDataSource>)
+    const adapter = new LegacySourceAdapter(legacy)
+
+    const result = await adapter.lookup(makeSubject(), AbortSignal.timeout(5000))
+
+    expect(result).not.toBeNull()
+    expect(result!.text).toContain("Primary article text.")
+    expect(result!.text).toContain("Additional article text.")
+    expect(result!.text).not.toContain("Empty")
+  })
+
   it("delegates isAvailable to legacy source", () => {
     const available = makeLegacySource({ isAvailable: () => true } as Partial<BaseDataSource>)
     const unavailable = makeLegacySource({

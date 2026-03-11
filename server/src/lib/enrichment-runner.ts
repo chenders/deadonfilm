@@ -190,7 +190,7 @@ export class EnrichmentRunner {
       actorIds,
       tmdbIds,
       free = true,
-      // paid is accepted for config compat but not yet used by debriefer adapter
+      paid = true,
       ai = false,
       confidence: confidenceThreshold = 0.5,
       maxCostPerActor,
@@ -294,6 +294,7 @@ export class EnrichmentRunner {
       // Configure the debriefer adapter and create orchestrator once for the batch
       const debrieferConfig = {
         free,
+        paid,
         ai,
         books: true,
         maxCostPerActor,
@@ -307,6 +308,7 @@ export class EnrichmentRunner {
       // Track batch-level stats
       let batchActorsProcessed = 0
       let batchActorsEnriched = 0
+      const costBySource: Record<string, number> = {}
 
       // Convert to ActorForEnrichment format
       const actorsToEnrich: ActorForEnrichment[] = actors.map((a) => ({
@@ -388,15 +390,25 @@ export class EnrichmentRunner {
 
         batchActorsProcessed++
 
-        // Aggregate source hit rates — deduplicate by sourceType per actor
-        // so a source returning multiple findings counts as one attempt/success
-        const actorSourceTypes = new Set(debriefResult.rawSources.map((rs) => rs.sourceType))
-        for (const sourceType of actorSourceTypes) {
+        // Aggregate source hit rates — deduplicate by sourceType per actor.
+        // Track successful source types from raw sources, and use the delta
+        // between sourcesAttempted and sourcesSucceeded to account for failures.
+        const successfulTypes = new Set(debriefResult.rawSources.map((rs) => rs.sourceType))
+        for (const sourceType of successfulTypes) {
           if (!sourceHitRates[sourceType]) {
             sourceHitRates[sourceType] = { attempts: 0, successes: 0 }
           }
           sourceHitRates[sourceType].attempts++
           sourceHitRates[sourceType].successes++
+        }
+        // Track failed attempts as a single "debriefer_failed" bucket since we
+        // don't know which individual source types failed (debriefer only reports counts)
+        const failedCount = debriefResult.sourcesAttempted - debriefResult.sourcesSucceeded
+        if (failedCount > 0) {
+          if (!sourceHitRates["_failed_sources"]) {
+            sourceHitRates["_failed_sources"] = { attempts: 0, successes: 0 }
+          }
+          sourceHitRates["_failed_sources"].attempts += failedCount
         }
 
         // Run Claude cleanup if enabled and we have raw sources
@@ -416,6 +428,16 @@ export class EnrichmentRunner {
         }
 
         const totalActorCost = debriefResult.totalCostUsd + cleanupCostUsd
+
+        // Accumulate cost by source type
+        if (cleanupCostUsd > 0) {
+          costBySource["claude_cleanup"] = (costBySource["claude_cleanup"] ?? 0) + cleanupCostUsd
+        }
+        for (const rs of debriefResult.rawSources) {
+          costBySource[rs.sourceType] =
+            (costBySource[rs.sourceType] ?? 0) +
+            debriefResult.totalCostUsd / Math.max(debriefResult.rawSources.length, 1)
+        }
 
         // Check if actor has substantive enrichment data.
         // When Claude cleanup is disabled, having raw sources is enough to proceed.
@@ -718,7 +740,7 @@ export class EnrichmentRunner {
         fillRate,
         totalCostUsd,
         totalTimeMs: Date.now() - startTime,
-        costBySource: {},
+        costBySource,
         exitReason,
         updatedActors,
         sourceHitRates,

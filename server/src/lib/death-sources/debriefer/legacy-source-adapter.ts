@@ -61,14 +61,26 @@ export class LegacySourceAdapter extends BaseResearchSource<ResearchSubject> {
       return null
     }
 
-    // Extract text content — legacy sources put narrative text in data.circumstances
-    const text = result.data.circumstances ?? ""
-    if (!text.trim()) {
+    // Collect text from primary result and any additional results (multi-story sources
+    // like Guardian/NYTimes return multiple articles per actor via additionalResults)
+    const texts: string[] = []
+    if (result.data.circumstances?.trim()) {
+      texts.push(result.data.circumstances)
+    }
+    if (result.additionalResults) {
+      for (const additional of result.additionalResults) {
+        if (additional.data?.circumstances?.trim()) {
+          texts.push(additional.data.circumstances)
+        }
+      }
+    }
+
+    if (texts.length === 0) {
       return null
     }
 
     return {
-      text,
+      text: texts.join("\n\n---\n\n"),
       url: result.source.url ?? undefined,
       confidence: result.source.confidence,
       costUsd: result.source.costUsd ?? 0,

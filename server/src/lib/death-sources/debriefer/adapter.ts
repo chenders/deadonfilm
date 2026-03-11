@@ -75,6 +75,8 @@ import { PerplexitySource } from "../ai-providers/perplexity.js"
 
 export interface DebrieferAdapterConfig {
   free?: boolean
+  /** Enable paid API sources (Guardian API, NYTimes API, NewsAPI) */
+  paid?: boolean
   ai?: boolean
   books?: boolean
   maxCostPerActor?: number
@@ -189,39 +191,37 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
     })
 
     // Phase 3: News
-    phases.push({
-      phase: 3,
-      name: "News",
-      sources: [
-        // Debriefer-sources (site-search based)
-        apNews(),
-        bbcNews(),
-        reuters(),
-        washingtonPost(),
-        laTimes(),
-        rollingStone(),
-        telegraph(),
-        independent(),
-        npr(),
-        time(),
-        pbs(),
-        newYorker(),
-        nationalGeographic(),
-        people(),
-        // Debriefer-sources (API-based, may need keys)
-        guardian(),
-        nytimes(),
-        // Legacy deadonfilm-only sources
-        ...adaptLegacySources([
-          new NewsAPISource(),
-          new DeadlineSource(),
-          new VarietySource(),
-          new HollywoodReporterSource(),
-          new TMZSource(),
-          new GoogleNewsRSSSource(),
-        ]),
-      ],
-    })
+    const newsSources = [
+      // Debriefer-sources (site-search based, free)
+      apNews(),
+      bbcNews(),
+      reuters(),
+      washingtonPost(),
+      laTimes(),
+      rollingStone(),
+      telegraph(),
+      independent(),
+      npr(),
+      time(),
+      pbs(),
+      newYorker(),
+      nationalGeographic(),
+      people(),
+      // Legacy deadonfilm-only sources (free, site-search based)
+      ...adaptLegacySources([
+        new DeadlineSource(),
+        new VarietySource(),
+        new HollywoodReporterSource(),
+        new TMZSource(),
+        new GoogleNewsRSSSource(),
+      ]),
+    ]
+    // Paid API sources — only included when paid flag is enabled
+    if (config.paid !== false) {
+      newsSources.push(guardian(), nytimes())
+      newsSources.push(...adaptLegacySources([new NewsAPISource()]))
+    }
+    phases.push({ phase: 3, name: "News", sources: newsSources })
 
     // Phase 4: Obituary
     phases.push({
@@ -257,25 +257,32 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
     }
   }
 
-  // Phase 8: AI Models (legacy only, if enabled)
+  // Phase 8+: AI Models (legacy only, if enabled)
+  // Each AI model gets its own phase so they run SEQUENTIALLY (debriefer runs
+  // sources within a phase concurrently). This matches the old orchestrator's
+  // cost-ordered sequential behavior — stop at first success.
   if (config.ai) {
-    const aiSources = adaptLegacySources([
-      new GeminiFlashSource(),
-      new GroqLlamaSource(),
-      new GPT4oMiniSource(),
+    const aiModelClasses = [
+      new GeminiFlashSource(), // ~$0.0001
+      new GroqLlamaSource(), // ~$0.0002
+      new GPT4oMiniSource(), // ~$0.0003
       new DeepSeekSource(),
       new MistralSource(),
       new GeminiProSource(),
       new GrokSource(),
       new PerplexitySource(),
-      new GPT4oSource(),
-    ])
-    if (aiSources.length > 0) {
-      phases.push({
-        phase: 8,
-        name: "AI Models",
-        sources: aiSources,
-      })
+      new GPT4oSource(), // ~$0.01
+    ]
+    let aiPhase = 8
+    for (const aiSource of aiModelClasses) {
+      const adapted = adaptLegacySources([aiSource])
+      if (adapted.length > 0) {
+        phases.push({
+          phase: aiPhase++,
+          name: `AI: ${aiSource.name}`,
+          sources: adapted,
+        })
+      }
     }
   }
 
