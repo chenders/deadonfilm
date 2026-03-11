@@ -139,7 +139,7 @@ jobs:
 
       - name: Clone and build debriefer (local path dependency)
         env:
-          DEBRIEFER_SHA: 04a1cc168a3d8b75ad1fa07f59ee36a7bc7dfc03
+          DEBRIEFER_SHA: eb8232d
         run: |
           git clone https://github.com/chenders/debriefer.git ../../debriefer
           cd ../../debriefer && git checkout $DEBRIEFER_SHA
@@ -197,7 +197,7 @@ jobs:
 
       - name: Clone and build debriefer (local path dependency)
         env:
-          DEBRIEFER_SHA: 04a1cc168a3d8b75ad1fa07f59ee36a7bc7dfc03
+          DEBRIEFER_SHA: eb8232d
         run: |
           git clone https://github.com/chenders/debriefer.git ../../debriefer
           cd ../../debriefer && git checkout $DEBRIEFER_SHA

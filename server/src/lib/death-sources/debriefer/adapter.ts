@@ -267,14 +267,11 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
     phases.push({ phase: 3, name: "News", sources: newsSources })
   }
 
-  // Phase 8+: AI Models (legacy only, if enabled)
-  // Each AI model gets its own phase so they run sequentially (debriefer runs
-  // sources within a phase concurrently). This achieves cost-ordered execution
-  // with early stopping — cheapest models first, stop at first success.
-  // TODO: Switch to single phase with `sequential: true` once debriefer is
-  // updated and the pinned CI SHA includes that feature.
+  // Phase 8: AI Models (legacy only, if enabled)
+  // Uses sequential: true so models run one at a time in cost order,
+  // stopping at first success to minimize API costs.
   if (config.ai) {
-    const aiModelClasses = [
+    const aiSources = adaptLegacySources([
       new GeminiFlashSource(), // ~$0.0001
       new GroqLlamaSource(), // ~$0.0002
       new GPT4oMiniSource(), // ~$0.0003
@@ -284,17 +281,14 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
       new GrokSource(),
       new PerplexitySource(),
       new GPT4oSource(), // ~$0.01
-    ]
-    let aiPhase = 8
-    for (const aiSource of aiModelClasses) {
-      const adapted = adaptLegacySources([aiSource])
-      if (adapted.length > 0) {
-        phases.push({
-          phase: aiPhase++,
-          name: `AI: ${aiSource.name}`,
-          sources: adapted,
-        })
-      }
+    ])
+    if (aiSources.length > 0) {
+      phases.push({
+        phase: 8,
+        name: "AI Models",
+        sources: aiSources,
+        sequential: true,
+      })
     }
   }
 
