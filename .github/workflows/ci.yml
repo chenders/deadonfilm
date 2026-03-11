@@ -132,14 +132,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Clone debriefer (local path dependency)
-        uses: actions/checkout@v4
-        with:
-          repository: chenders/debriefer
-          path: ../debriefer
-
-      - name: Build debriefer packages
+      - name: Clone and build debriefer (local path dependency)
         run: |
+          git clone --depth 1 https://github.com/chenders/debriefer.git ../../debriefer
           cd ../../debriefer
           npm ci
           npx turbo build --filter=debriefer --filter=debriefer-sources
@@ -193,14 +188,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Clone debriefer (local path dependency)
-        uses: actions/checkout@v4
-        with:
-          repository: chenders/debriefer
-          path: ../debriefer
-
-      - name: Build debriefer packages
+      - name: Clone and build debriefer (local path dependency)
         run: |
+          git clone --depth 1 https://github.com/chenders/debriefer.git ../../debriefer
           cd ../../debriefer
           npm ci
           npx turbo build --filter=debriefer --filter=debriefer-sources
