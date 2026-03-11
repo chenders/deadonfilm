@@ -2,9 +2,9 @@
  * Maps debriefer ScoredFinding[] to deadonfilm RawSourceData[].
  *
  * This is the bridge between debriefer's orchestrator output and deadonfilm's
- * claude-cleanup input. The formats are nearly identical since debriefer was
- * extracted from deadonfilm — both use the same string values for reliability
- * tiers and source types.
+ * claude-cleanup input. Debriefer uses hyphenated source type strings
+ * (e.g., "ap-news", "google-search") while deadonfilm uses underscored enum
+ * values (e.g., "ap_news", "google_search"). This module handles the mapping.
  */
 
 import type { ScoredFinding } from "debriefer"
@@ -18,12 +18,49 @@ const VALID_SOURCE_TYPES = new Set<string>(Object.values(DataSourceType))
 const VALID_RELIABILITY_TIERS = new Set<string>(Object.values(ReliabilityTier))
 
 /**
+ * Maps debriefer's hyphenated source type strings to deadonfilm's DataSourceType enum.
+ * Sources that match directly (e.g., "wikipedia", "wikidata", "reuters") don't need
+ * an entry here — they pass through via the VALID_SOURCE_TYPES check.
+ */
+const DEBRIEFER_TO_DEADONFILM: Record<string, DataSourceType> = {
+  // Web search
+  "google-search": DataSourceType.GOOGLE_SEARCH,
+  "bing-search": DataSourceType.BING_SEARCH,
+  "brave-search": DataSourceType.BRAVE_SEARCH,
+  "duckduckgo-search": DataSourceType.DUCKDUCKGO,
+  // News (hyphenated → underscored)
+  "ap-news": DataSourceType.AP_NEWS,
+  "bbc-news": DataSourceType.BBC_NEWS,
+  "washington-post": DataSourceType.WASHINGTON_POST,
+  "la-times": DataSourceType.LA_TIMES,
+  "rolling-stone": DataSourceType.ROLLING_STONE,
+  "new-yorker": DataSourceType.NEW_YORKER,
+  "national-geographic": DataSourceType.NATIONAL_GEOGRAPHIC,
+  // News (name differences)
+  time: DataSourceType.TIME_MAGAZINE,
+  people: DataSourceType.PEOPLE_MAGAZINE,
+  // Books
+  "google-books": DataSourceType.GOOGLE_BOOKS,
+  "open-library": DataSourceType.OPEN_LIBRARY,
+  // Archives
+  "chronicling-america": DataSourceType.CHRONICLING_AMERICA,
+  "internet-archive": DataSourceType.INTERNET_ARCHIVE,
+  // Obituary
+  "find-a-grave": DataSourceType.FINDAGRAVE,
+}
+
+/**
  * Maps a debriefer source type string to deadonfilm's DataSourceType enum.
- * Returns the value as-is if it's a valid enum member, otherwise falls back
- * to DUCKDUCKGO as a generic "web source" fallback (since unknown sources
- * from debriefer are typically web-search-based).
+ *
+ * 1. Check the explicit mapping table (handles hyphen→underscore and name differences)
+ * 2. Check if the value directly exists in DataSourceType (handles matching names like "wikipedia")
+ * 3. Fall back to DUCKDUCKGO for truly unknown types
  */
 export function mapSourceType(sourceType: string): DataSourceType {
+  const mapped = DEBRIEFER_TO_DEADONFILM[sourceType]
+  if (mapped) {
+    return mapped
+  }
   if (VALID_SOURCE_TYPES.has(sourceType)) {
     return sourceType as DataSourceType
   }

@@ -12,7 +12,13 @@
  */
 
 import { ResearchOrchestrator, NoopSynthesizer } from "debriefer"
-import type { ResearchSubject, ScoredFinding, SourcePhaseGroup, ResearchConfig } from "debriefer"
+import type {
+  ResearchSubject,
+  ScoredFinding,
+  SourcePhaseGroup,
+  ResearchConfig,
+  MinimalSource,
+} from "debriefer"
 
 // Debriefer-sources: standard implementations
 import {
@@ -227,7 +233,7 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
   }
 
   // Phase 3: News — free and paid sources gated independently
-  const newsSources: ReturnType<typeof apNews>[] = []
+  const newsSources: MinimalSource<ResearchSubject>[] = []
   if (config.free !== false) {
     newsSources.push(
       apNews(),
@@ -261,12 +267,11 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
     phases.push({ phase: 3, name: "News", sources: newsSources })
   }
 
-  // Phase 8+: AI Models (legacy only, if enabled)
-  // Each AI model gets its own phase so they run SEQUENTIALLY (debriefer runs
-  // sources within a phase concurrently). This matches the old orchestrator's
-  // cost-ordered sequential behavior — stop at first success.
+  // Phase 8: AI Models (legacy only, if enabled)
+  // Uses sequential: true so models run one at a time in cost order,
+  // stopping at first success to minimize API costs.
   if (config.ai) {
-    const aiModelClasses = [
+    const aiSources = adaptLegacySources([
       new GeminiFlashSource(), // ~$0.0001
       new GroqLlamaSource(), // ~$0.0002
       new GPT4oMiniSource(), // ~$0.0003
@@ -276,17 +281,14 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
       new GrokSource(),
       new PerplexitySource(),
       new GPT4oSource(), // ~$0.01
-    ]
-    let aiPhase = 8
-    for (const aiSource of aiModelClasses) {
-      const adapted = adaptLegacySources([aiSource])
-      if (adapted.length > 0) {
-        phases.push({
-          phase: aiPhase++,
-          name: `AI: ${aiSource.name}`,
-          sources: adapted,
-        })
-      }
+    ])
+    if (aiSources.length > 0) {
+      phases.push({
+        phase: 8,
+        name: "AI Models",
+        sources: aiSources,
+        sequential: true,
+      })
     }
   }
 

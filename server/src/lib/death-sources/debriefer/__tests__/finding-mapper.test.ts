@@ -5,11 +5,36 @@ import type { ScoredFinding } from "debriefer"
 import { ReliabilityTier as DebrieferTier } from "debriefer"
 
 describe("mapSourceType", () => {
-  it("maps known source types directly", () => {
+  it("maps deadonfilm-native source types directly", () => {
     expect(mapSourceType("wikipedia")).toBe(DataSourceType.WIKIPEDIA)
-    expect(mapSourceType("google_search")).toBe(DataSourceType.GOOGLE_SEARCH)
-    expect(mapSourceType("ap_news")).toBe(DataSourceType.AP_NEWS)
-    expect(mapSourceType("findagrave")).toBe(DataSourceType.FINDAGRAVE)
+    expect(mapSourceType("wikidata")).toBe(DataSourceType.WIKIDATA)
+    expect(mapSourceType("reuters")).toBe(DataSourceType.REUTERS)
+    expect(mapSourceType("guardian")).toBe(DataSourceType.GUARDIAN)
+    expect(mapSourceType("nytimes")).toBe(DataSourceType.NYTIMES)
+  })
+
+  it("maps debriefer hyphenated source types via mapping table", () => {
+    expect(mapSourceType("google-search")).toBe(DataSourceType.GOOGLE_SEARCH)
+    expect(mapSourceType("bing-search")).toBe(DataSourceType.BING_SEARCH)
+    expect(mapSourceType("brave-search")).toBe(DataSourceType.BRAVE_SEARCH)
+    expect(mapSourceType("duckduckgo-search")).toBe(DataSourceType.DUCKDUCKGO)
+    expect(mapSourceType("ap-news")).toBe(DataSourceType.AP_NEWS)
+    expect(mapSourceType("bbc-news")).toBe(DataSourceType.BBC_NEWS)
+    expect(mapSourceType("washington-post")).toBe(DataSourceType.WASHINGTON_POST)
+    expect(mapSourceType("la-times")).toBe(DataSourceType.LA_TIMES)
+    expect(mapSourceType("rolling-stone")).toBe(DataSourceType.ROLLING_STONE)
+    expect(mapSourceType("new-yorker")).toBe(DataSourceType.NEW_YORKER)
+    expect(mapSourceType("national-geographic")).toBe(DataSourceType.NATIONAL_GEOGRAPHIC)
+    expect(mapSourceType("google-books")).toBe(DataSourceType.GOOGLE_BOOKS)
+    expect(mapSourceType("open-library")).toBe(DataSourceType.OPEN_LIBRARY)
+    expect(mapSourceType("chronicling-america")).toBe(DataSourceType.CHRONICLING_AMERICA)
+    expect(mapSourceType("internet-archive")).toBe(DataSourceType.INTERNET_ARCHIVE)
+    expect(mapSourceType("find-a-grave")).toBe(DataSourceType.FINDAGRAVE)
+  })
+
+  it("maps debriefer name-different source types", () => {
+    expect(mapSourceType("time")).toBe(DataSourceType.TIME_MAGAZINE)
+    expect(mapSourceType("people")).toBe(DataSourceType.PEOPLE_MAGAZINE)
   })
 
   it("falls back to DUCKDUCKGO for unknown source types", () => {
