@@ -339,6 +339,8 @@ export class EnrichmentRunner {
 
       // Define per-actor processor
       const processActor = async (actor: ActorForEnrichment): Promise<{ costUsd: number }> => {
+        batchActorsProcessed++
+
         let debriefResult: DebrieferAdapterResult
         try {
           debriefResult = await processActorWithDebriefer(actor)
@@ -387,8 +389,6 @@ export class EnrichmentRunner {
           }
           return { costUsd: 0 }
         }
-
-        batchActorsProcessed++
 
         // Aggregate source hit rates — deduplicate by sourceType per actor.
         // Track successful source types from raw sources, and use the delta
@@ -441,20 +441,22 @@ export class EnrichmentRunner {
           }
         }
 
-        // Check if actor has substantive enrichment data.
-        // When Claude cleanup is disabled, having raw sources is enough to proceed.
-        // When cleanup is enabled, require a successful cleanup result.
-        const hasEnrichmentData =
-          debriefResult.rawSources.length > 0 && (!claudeCleanup || !!cleaned)
+        // Require successful Claude cleanup before proceeding down the enriched path.
+        // Without cleanup, structured fields (circumstances, location, etc.) would all
+        // be null, so marking the actor as enriched would be misleading.
+        const hasEnrichmentData = debriefResult.rawSources.length > 0 && !!cleaned
 
         if (!hasEnrichmentData) {
           // Record non-enriched actor row so it appears in the Actor Results table
           if (runId) {
-            const sourcesAttempted = debriefResult.rawSources.map((s) => ({
-              source: s.sourceType,
-              success: true,
-              costUsd: 0,
-              error: null,
+            // Mark sources as unsuccessful for non-enriched actors so admin
+            // analytics (success rates, error reporting) behave correctly
+            const uniqueTypes = new Set(debriefResult.rawSources.map((s) => s.sourceType))
+            const sourcesAttempted = [...uniqueTypes].map((sourceType) => ({
+              source: sourceType,
+              success: false,
+              costUsd: costBySource[sourceType] ?? 0,
+              error: "actor_not_enriched",
             }))
 
             await db.query(
@@ -611,14 +613,16 @@ export class EnrichmentRunner {
         // Record per-actor results for all runs with a runId
         let enrichmentRunActorId: number | null = null
         if (runId) {
-          const sourcesAttempted = debriefResult.rawSources.map((s) => ({
-            source: s.sourceType,
+          // Deduplicate by sourceType and attribute real costs
+          const enrichedUniqueTypes = new Set(debriefResult.rawSources.map((s) => s.sourceType))
+          const sourcesAttempted = [...enrichedUniqueTypes].map((sourceType) => ({
+            source: sourceType,
             success: true,
-            costUsd: 0,
+            costUsd: costBySource[sourceType] ?? 0,
             error: null,
           }))
 
-          // Use the best raw source's confidence, or the cleaned confidence
+          // Use the best raw source's confidence
           const bestConfidence =
             debriefResult.rawSources.length > 0
               ? Math.max(...debriefResult.rawSources.map((s) => s.confidence))

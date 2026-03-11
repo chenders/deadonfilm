@@ -175,24 +175,61 @@ export async function debriefActor(
 function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchSubject>[] {
   const phases: SourcePhaseGroup<ResearchSubject>[] = []
 
+  // Free and paid source categories are gated independently so that
+  // `free: false, paid: true` runs only paid API sources (Guardian, NYT, NewsAPI)
   if (config.free !== false) {
-    // Phase 1: Structured Data
+    // Phase 1: Structured Data (free)
     phases.push({
       phase: 1,
       name: "Structured Data",
       sources: [wikidata(), wikipedia(), ...adaptLegacySources([new BFISightSoundSource()])],
     })
 
-    // Phase 2: Web Search
+    // Phase 2: Web Search (free)
     phases.push({
       phase: 2,
       name: "Web Search",
       sources: [googleSearch(), bingSearch(), duckduckgoSearch(), braveSearch()],
     })
 
-    // Phase 3: News
-    const newsSources = [
-      // Debriefer-sources (site-search based, free)
+    // Phase 4: Obituary (free)
+    phases.push({
+      phase: 4,
+      name: "Obituary",
+      sources: [findAGrave(), legacy()],
+    })
+
+    // Phase 5: Books (free, conditional)
+    if (config.books !== false) {
+      phases.push({
+        phase: 5,
+        name: "Books",
+        sources: [googleBooks(), openLibrary(), ...adaptLegacySources([new IABooksDeathSource()])],
+      })
+    }
+
+    // Phase 6: Archives (free)
+    phases.push({
+      phase: 6,
+      name: "Archives",
+      sources: [trove(), europeana(), internetArchive(), chroniclingAmerica()],
+    })
+
+    // Phase 7: Genealogy (free, legacy only)
+    const genealogySources = adaptLegacySources([new FamilySearchSource()])
+    if (genealogySources.length > 0) {
+      phases.push({
+        phase: 7,
+        name: "Genealogy",
+        sources: genealogySources,
+      })
+    }
+  }
+
+  // Phase 3: News — free and paid sources gated independently
+  const newsSources: ReturnType<typeof apNews>[] = []
+  if (config.free !== false) {
+    newsSources.push(
       apNews(),
       bbcNews(),
       reuters(),
@@ -207,54 +244,21 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
       newYorker(),
       nationalGeographic(),
       people(),
-      // Legacy deadonfilm-only sources (free, site-search based)
       ...adaptLegacySources([
         new DeadlineSource(),
         new VarietySource(),
         new HollywoodReporterSource(),
         new TMZSource(),
         new GoogleNewsRSSSource(),
-      ]),
-    ]
-    // Paid API sources — only included when paid flag is enabled
-    if (config.paid !== false) {
-      newsSources.push(guardian(), nytimes())
-      newsSources.push(...adaptLegacySources([new NewsAPISource()]))
-    }
+      ])
+    )
+  }
+  if (config.paid !== false) {
+    newsSources.push(guardian(), nytimes())
+    newsSources.push(...adaptLegacySources([new NewsAPISource()]))
+  }
+  if (newsSources.length > 0) {
     phases.push({ phase: 3, name: "News", sources: newsSources })
-
-    // Phase 4: Obituary
-    phases.push({
-      phase: 4,
-      name: "Obituary",
-      sources: [findAGrave(), legacy()],
-    })
-
-    // Phase 5: Books (conditional)
-    if (config.books !== false) {
-      phases.push({
-        phase: 5,
-        name: "Books",
-        sources: [googleBooks(), openLibrary(), ...adaptLegacySources([new IABooksDeathSource()])],
-      })
-    }
-
-    // Phase 6: Archives
-    phases.push({
-      phase: 6,
-      name: "Archives",
-      sources: [trove(), europeana(), internetArchive(), chroniclingAmerica()],
-    })
-
-    // Phase 7: Genealogy (legacy only)
-    const genealogySources = adaptLegacySources([new FamilySearchSource()])
-    if (genealogySources.length > 0) {
-      phases.push({
-        phase: 7,
-        name: "Genealogy",
-        sources: genealogySources,
-      })
-    }
   }
 
   // Phase 8+: AI Models (legacy only, if enabled)
