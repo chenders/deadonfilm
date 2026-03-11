@@ -44,8 +44,9 @@ export class LegacySourceAdapter extends BaseResearchSource<ResearchSubject> {
     this.name = legacySource.name
     this.type = legacySource.type
     this.reliabilityTier = mapTier(legacySource.reliabilityTier)
-    // Access the protected domain via the source's type as fallback
-    this.domain = (legacySource as unknown as { domain: string }).domain ?? legacySource.type
+    // Use source type as domain identifier — legacy sources handle their own
+    // rate limiting internally, so debriefer-level domain coordination is not needed
+    this.domain = legacySource.type
     this.isFree = legacySource.isFree
     this.estimatedCostPerQuery = legacySource.estimatedCostPerQuery
   }

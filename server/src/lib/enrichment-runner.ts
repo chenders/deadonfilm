@@ -429,14 +429,16 @@ export class EnrichmentRunner {
 
         const totalActorCost = debriefResult.totalCostUsd + cleanupCostUsd
 
-        // Accumulate cost by source type
+        // Accumulate cost by source type — attribute per unique sourceType
         if (cleanupCostUsd > 0) {
           costBySource["claude_cleanup"] = (costBySource["claude_cleanup"] ?? 0) + cleanupCostUsd
         }
-        for (const rs of debriefResult.rawSources) {
-          costBySource[rs.sourceType] =
-            (costBySource[rs.sourceType] ?? 0) +
-            debriefResult.totalCostUsd / Math.max(debriefResult.rawSources.length, 1)
+        if (debriefResult.rawSources.length > 0 && debriefResult.totalCostUsd > 0) {
+          const uniqueTypes = new Set(debriefResult.rawSources.map((rs) => rs.sourceType))
+          const perTypeCost = debriefResult.totalCostUsd / Math.max(uniqueTypes.size, 1)
+          for (const sourceType of uniqueTypes) {
+            costBySource[sourceType] = (costBySource[sourceType] ?? 0) + perTypeCost
+          }
         }
 
         // Check if actor has substantive enrichment data.
