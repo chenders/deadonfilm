@@ -43,16 +43,29 @@ jobs:
             type=sha,prefix=test-
             type=raw,value=test-latest
 
+      - name: Clone and build debriefer (local path dependency)
+        env:
+          DEBRIEFER_SHA: eb8232db95b7d53d29f135000f53922984d58f2e
+        run: |
+          git init debriefer
+          cd debriefer
+          git remote add origin https://github.com/chenders/debriefer.git
+          git fetch --depth 1 origin $DEBRIEFER_SHA
+          git checkout FETCH_HEAD
+          npm ci
+          npx turbo build --filter=debriefer --filter=debriefer-sources
+
       - name: Build and push app image
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: Dockerfile.test
           push: true
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           # No GA or New Relic browser build args — disabled in test
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-test
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-test,mode=max
 
       - name: Deploy to test environment
         run: |
