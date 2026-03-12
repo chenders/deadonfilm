@@ -93,6 +93,8 @@ export interface DebrieferAdapterConfig {
   confidenceThreshold?: number
   /** Set to a number to enforce reliability threshold, or undefined to disable */
   reliabilityThreshold?: number
+  /** Use Gemini Flash AI for Wikipedia person date validation. Default: true. */
+  useAIDateValidation?: boolean
 }
 
 export interface DebrieferAdapterResult {
@@ -194,7 +196,9 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
         wikidata(),
         wikipedia({
           asyncSectionFilter: createHaikuSectionFilter(),
-          validatePerson: createPersonValidator(),
+          validatePerson: createPersonValidator({
+            useAIDateValidation: config.useAIDateValidation,
+          }),
           disambiguationSuffixes: [
             "_(actor)",
             "_(actress)",

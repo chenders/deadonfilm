@@ -56,7 +56,7 @@ Changes made in the debriefer repo to support deadonfilm's needs.
 - [x] Wikipedia person validation (`validatePerson` callback) — for birth/death year verification
 - [x] Link following configuration (`maxLinksToFollow`, `linkSelector`, `fetchPage` callbacks) — debriefer PR #15
 
-**Pinned debriefer SHA**: `eb8232db95b7d53d29f135000f53922984d58f2e`
+**Pinned debriefer SHA**: See `.github/workflows/ci.yml` and `.github/workflows/deploy-test.yml` — update all references together when bumping.
 
 ---
 
@@ -65,7 +65,7 @@ Changes made in the debriefer repo to support deadonfilm's needs.
 These wire up debriefer features that exist but aren't connected yet in deadonfilm.
 
 ### C1: Wikipedia `validatePerson` Wiring
-**Priority**: High | **Effort**: Small | **Status**: Not started
+**Priority**: High | **Effort**: Small | **Status**: Done
 
 Debriefer's `WikipediaOptions.validatePerson` callback exists but deadonfilm doesn't pass one. The old orchestrator used Gemini Flash to validate birth/death years from Wikipedia intro text.
 
@@ -163,7 +163,7 @@ Once debriefer is stable, publish to npm and switch from `file:` path deps. This
 
 ### CI
 - Backend build/test jobs clone debriefer at pinned SHA before `npm ci`
-- Debriefer SHA: `eb8232db95b7d53d29f135000f53922984d58f2e`
+- Debriefer SHA is pinned in `.github/workflows/ci.yml` and `.github/workflows/deploy-test.yml` — update all references together when bumping
 
 ---
 

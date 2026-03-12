@@ -14,9 +14,9 @@
 
 import type { ResearchSubject } from "debriefer"
 import { extractDatesWithAI, isAIDateExtractionAvailable } from "../wikipedia-date-extractor.js"
-import pino from "pino"
+import { logger } from "../../logger.js"
 
-const log = pino({ name: "person-validator" })
+const log = logger.child({ module: "person-validator" })
 
 /**
  * Extract a 4-digit year from an ISO date string like "1979-06-11".
@@ -73,6 +73,11 @@ function extractYearsWithRegex(introText: string): {
   return { birthYear, deathYear }
 }
 
+export interface PersonValidatorOptions {
+  /** Use Gemini Flash AI for date extraction. Default: true. Falls back to regex when disabled or unavailable. */
+  useAIDateValidation?: boolean
+}
+
 /**
  * Creates a validatePerson callback for debriefer's WikipediaOptions.
  *
@@ -84,12 +89,14 @@ function extractYearsWithRegex(introText: string): {
  * Joseph Stalin's Wikipedia intro), with regex fallback when the AI API
  * key is not configured or the AI call fails.
  *
+ * @param options - Configuration options
  * @returns Async validatePerson callback
  */
-export function createPersonValidator(): (
-  articleText: string,
-  subject: ResearchSubject
-) => Promise<boolean> {
+export function createPersonValidator(
+  options: PersonValidatorOptions = {}
+): (articleText: string, subject: ResearchSubject) => Promise<boolean> {
+  const { useAIDateValidation = true } = options
+
   return async (articleText: string, subject: ResearchSubject): Promise<boolean> => {
     const ctx = (subject.context ?? {}) as Record<string, unknown>
     const actorBirthYear = yearFromDateString(ctx.birthday as string | null)
@@ -105,8 +112,8 @@ export function createPersonValidator(): (
     let wikiBirthYear: number | null = null
     let wikiDeathYear: number | null = null
 
-    // Try AI extraction first
-    if (isAIDateExtractionAvailable()) {
+    // Try AI extraction first (if enabled and available)
+    if (useAIDateValidation && isAIDateExtractionAvailable()) {
       const aiResult = await extractDatesWithAI(subject.name, introText)
       if (aiResult.usedAI && (aiResult.birthYear !== null || aiResult.deathYear !== null)) {
         log.debug(

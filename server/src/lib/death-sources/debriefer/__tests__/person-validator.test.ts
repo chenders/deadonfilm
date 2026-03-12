@@ -144,6 +144,19 @@ describe("createPersonValidator", () => {
     })
   })
 
+  describe("with useAIDateValidation disabled", () => {
+    beforeEach(() => {
+      mockIsAIAvailable.mockReturnValue(true) // AI is available but disabled by config
+      validate = createPersonValidator({ useAIDateValidation: false })
+    })
+
+    it("skips AI and uses regex even when AI is available", async () => {
+      const result = await validate(JOHN_WAYNE_INTRO, makeSubject())
+      expect(result).toBe(true)
+      expect(mockExtractDatesWithAI).not.toHaveBeenCalled()
+    })
+  })
+
   describe("with AI date extraction unavailable", () => {
     beforeEach(() => {
       mockIsAIAvailable.mockReturnValue(false)
