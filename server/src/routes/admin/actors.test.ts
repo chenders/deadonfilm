@@ -30,14 +30,12 @@ vi.mock("../../lib/logger.js", () => ({
   },
 }))
 
-const mockEnrichActor = vi.fn()
-vi.mock("../../lib/death-sources/orchestrator.js", () => {
-  return {
-    DeathEnrichmentOrchestrator: function MockOrchestrator() {
-      return { enrichActor: mockEnrichActor }
-    },
-  }
-})
+const mockRunnerRun = vi.fn()
+vi.mock("../../lib/enrichment-runner.js", () => ({
+  EnrichmentRunner: class {
+    run = mockRunnerRun
+  },
+}))
 
 vi.mock("../../lib/enrichment-db-writer.js", () => ({
   writeToProduction: vi.fn(() => Promise.resolve()),
@@ -56,8 +54,6 @@ vi.mock("../../lib/claude-batch/constants.js", () => ({
 import router from "./actors.js"
 import { getPool } from "../../lib/db/pool.js"
 import { logAdminAction } from "../../lib/admin-auth.js"
-import { writeToProduction } from "../../lib/enrichment-db-writer.js"
-
 describe("admin actors routes", () => {
   let app: Express
   let mockPool: {
@@ -713,13 +709,20 @@ describe("admin actors routes", () => {
       expect(res.body.error.message).toBe("Actor is not deceased")
     })
 
-    it("should return success with no data when orchestrator finds nothing", async () => {
+    it("should return success with no data when runner finds nothing", async () => {
       mockPool.query.mockResolvedValueOnce({ rows: [mockDeceasedActor] })
 
-      mockEnrichActor.mockResolvedValueOnce({
-        circumstances: null,
-        notableFactors: [],
-        cleanedDeathInfo: undefined,
+      mockRunnerRun.mockResolvedValueOnce({
+        actorsProcessed: 1,
+        actorsEnriched: 0,
+        fillRate: 0,
+        totalCostUsd: 0.01,
+        totalTimeMs: 1000,
+        costBySource: {},
+        exitReason: "completed",
+        updatedActors: [],
+        uniqueSourcesAttempted: [],
+        sourceHitRates: {},
       })
 
       const res = await request(app).post("/admin/api/actors/123/enrich-inline")
@@ -727,35 +730,42 @@ describe("admin actors routes", () => {
       expect(res.status).toBe(200)
       expect(res.body.success).toBe(true)
       expect(res.body.fieldsUpdated).toEqual([])
+      expect(res.body.sourcesUsed).toEqual([])
       expect(res.body.message).toBe("No new enrichment data found")
     })
 
-    it("should enrich actor and write to production", async () => {
+    it("should enrich actor and return updated fields", async () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [mockDeceasedActor] }) // fetch actor
-        .mockResolvedValueOnce({ rows: [] }) // related celebrities lookup
-
-      mockEnrichActor.mockResolvedValueOnce({
-        circumstances: "A".repeat(250), // Long enough to pass MIN_CIRCUMSTANCES_LENGTH
-        circumstancesSource: { sourceType: "claude", confidence: 0.9 },
-        notableFactors: ["cancer"],
-        notableFactorsSource: { sourceType: "claude", confidence: 0.8 },
-        locationOfDeath: "Los Angeles, CA",
-        locationOfDeathSource: { sourceType: "claude", confidence: 0.9 },
-        additionalContext: null,
-        rumoredCircumstances: null,
-        lastProject: null,
-        careerStatusAtDeath: null,
-        posthumousReleases: null,
-        relatedCelebrities: null,
-        relatedDeaths: null,
-        rawSources: null,
-        cleanedDeathInfo: undefined,
-        actorStats: {
-          sourcesAttempted: [
-            { source: "claude", success: true },
-            { source: "wikidata", success: false },
+        .mockResolvedValueOnce({
+          // query for updated circumstances
+          rows: [
+            {
+              circumstances: "John Wayne died of stomach cancer.",
+              location_of_death: "Los Angeles, CA",
+              notable_factors: ["cancer"],
+            },
           ],
+        })
+        .mockResolvedValueOnce({
+          // query for updated cause_of_death
+          rows: [{ cause_of_death: "Stomach cancer" }],
+        })
+
+      mockRunnerRun.mockResolvedValueOnce({
+        actorsProcessed: 1,
+        actorsEnriched: 1,
+        fillRate: 1,
+        totalCostUsd: 0.05,
+        totalTimeMs: 3000,
+        costBySource: { wikipedia: 0, claude_cleanup: 0.05 },
+        exitReason: "completed",
+        updatedActors: [{ name: "John Wayne", id: 123 }],
+        uniqueSourcesAttempted: ["wikipedia", "wikidata", "_failed_sources"],
+        sourceHitRates: {
+          wikipedia: { attempts: 1, successes: 1 },
+          wikidata: { attempts: 1, successes: 1 },
+          _failed_sources: { attempts: 3, successes: 0 },
         },
       })
 
@@ -766,9 +776,10 @@ describe("admin actors routes", () => {
       expect(res.body.fieldsUpdated).toContain("circumstances")
       expect(res.body.fieldsUpdated).toContain("locationOfDeath")
       expect(res.body.fieldsUpdated).toContain("notableFactors")
-      expect(res.body.sourcesUsed).toEqual(["claude"])
+      expect(res.body.fieldsUpdated).toContain("causeOfDeath")
+      expect(res.body.sourcesUsed).toEqual(expect.arrayContaining(["wikipedia", "wikidata"]))
+      expect(res.body.sourcesUsed).not.toContain("_failed_sources")
       expect(res.body.durationMs).toBeGreaterThanOrEqual(0)
-      expect(writeToProduction).toHaveBeenCalled()
       expect(logAdminAction).toHaveBeenCalledWith(
         expect.objectContaining({
           action: "inline-enrich",
@@ -778,10 +789,10 @@ describe("admin actors routes", () => {
       )
     })
 
-    it("should return 500 on orchestrator error", async () => {
+    it("should return 500 on runner error", async () => {
       mockPool.query.mockResolvedValueOnce({ rows: [mockDeceasedActor] })
 
-      mockEnrichActor.mockRejectedValueOnce(new Error("Orchestrator failed"))
+      mockRunnerRun.mockRejectedValueOnce(new Error("Runner failed"))
 
       const res = await request(app).post("/admin/api/actors/123/enrich-inline")
 
