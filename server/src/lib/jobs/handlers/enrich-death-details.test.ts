@@ -17,6 +17,16 @@ vi.mock("../../enrichment-runner.js", () => ({
   },
 }))
 
+vi.mock("newrelic", () => ({
+  default: {
+    startBackgroundTransaction: vi.fn((_name: string, fn: () => unknown) => fn()),
+    addCustomAttribute: vi.fn(),
+    startSegment: vi.fn((_name: string, _record: boolean, fn: () => unknown) => fn()),
+    recordCustomEvent: vi.fn(),
+    noticeError: vi.fn(),
+  },
+}))
+
 vi.mock("../../db.js", () => ({
   getPool: vi.fn(),
 }))

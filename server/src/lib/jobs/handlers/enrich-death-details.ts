@@ -49,7 +49,8 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
     // 1. Validate actor exists and is deceased
     const validation = await this.validateActor(db, actorId, forceRefresh)
     if (validation.skip) {
-      log.info({ actorId, reason: validation.reason }, validation.message)
+      const logFn = validation.success ? log.info.bind(log) : log.warn.bind(log)
+      logFn({ actorId, reason: validation.reason }, validation.message)
       return {
         success: validation.success,
         data: validation.data,
@@ -57,6 +58,9 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
         metadata: validation.metadata,
       }
     }
+
+    // Use canonical name from DB (payload name may be stale)
+    const canonicalName = validation.actorName ?? actorName
 
     // 2. Run enrichment via EnrichmentRunner (same engine as batch handler)
     const runner = new EnrichmentRunner({
@@ -76,7 +80,7 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
       log.info(
         {
           actorId,
-          actorName,
+          actorName: canonicalName,
           enriched: stats.actorsEnriched > 0,
           costUsd: stats.totalCostUsd,
         },
@@ -87,14 +91,14 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
         success: true,
         data: {
           actorId,
-          actorName,
+          actorName: canonicalName,
           enriched: stats.actorsEnriched > 0,
           costUsd: stats.totalCostUsd,
           stats,
         },
       }
     } catch (error) {
-      log.error({ actorId, actorName, error }, "Enrichment failed")
+      log.error({ actorId, actorName: canonicalName, error }, "Enrichment failed")
       throw error
     }
   }
@@ -111,6 +115,7 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
     skip: boolean
     success: boolean
     message: string
+    actorName?: string
     reason?: string
     error?: string
     data?: SingleActorEnrichmentResult
@@ -167,6 +172,6 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
       }
     }
 
-    return { skip: false, success: true, message: "Actor validated" }
+    return { skip: false, success: true, message: "Actor validated", actorName: actor.name }
   }
 }
