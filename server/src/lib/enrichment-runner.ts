@@ -480,13 +480,13 @@ export class EnrichmentRunner {
                 error: `${nonEnrichedFailedCount} source(s) returned no findings`,
               })
             }
-            // Track cleanup failure as a separate entry
-            if (debriefResult.rawSources.length > 0 && !cleaned) {
+            // Track cleanup failure — only when cleanup was enabled but failed
+            if (claudeCleanup && debriefResult.rawSources.length > 0 && !cleaned) {
               sourcesAttempted.push({
                 source: "claude_cleanup",
                 success: false,
                 costUsd: cleanupCostUsd,
-                error: claudeCleanup ? "cleanup_failed" : "cleanup_disabled",
+                error: "cleanup_failed",
               })
             }
 

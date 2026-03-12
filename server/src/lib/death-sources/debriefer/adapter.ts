@@ -57,6 +57,7 @@ import {
 // Legacy deadonfilm-only sources (wrapped via LegacySourceAdapter)
 import { adaptLegacySources } from "./legacy-source-adapter.js"
 import { mapFindings } from "./finding-mapper.js"
+import { createHaikuSectionFilter } from "./haiku-section-selector.js"
 import type { RawSourceData, ActorForEnrichment } from "../types.js"
 
 // Deadonfilm-only source classes (no debriefer-sources equivalents)
@@ -188,7 +189,13 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
     phases.push({
       phase: 1,
       name: "Structured Data",
-      sources: [wikidata(), wikipedia(), ...adaptLegacySources([new BFISightSoundSource()])],
+      sources: [
+        wikidata(),
+        wikipedia({
+          asyncSectionFilter: createHaikuSectionFilter(),
+        }),
+        ...adaptLegacySources([new BFISightSoundSource()]),
+      ],
     })
 
     // Phase 2: Web Search (free)
@@ -292,5 +299,6 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
     }
   }
 
-  return phases
+  // Sort by phase number — the orchestrator executes in array order
+  return phases.sort((a, b) => a.phase - b.phase)
 }
