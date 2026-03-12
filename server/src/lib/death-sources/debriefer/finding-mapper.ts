@@ -10,6 +10,9 @@
 import type { ScoredFinding } from "debriefer"
 import type { RawSourceData } from "../types.js"
 import { DataSourceType, ReliabilityTier } from "../types.js"
+import pino from "pino"
+
+const log = pino({ name: "finding-mapper" })
 
 /** Set of valid DataSourceType string values for O(1) lookup */
 const VALID_SOURCE_TYPES = new Set<string>(Object.values(DataSourceType))
@@ -49,12 +52,16 @@ const DEBRIEFER_TO_DEADONFILM: Record<string, DataSourceType> = {
   "find-a-grave": DataSourceType.FINDAGRAVE,
 }
 
+/** Tracks unknown source types we've already warned about (avoid log spam) */
+const warnedSourceTypes = new Set<string>()
+
 /**
  * Maps a debriefer source type string to deadonfilm's DataSourceType enum.
  *
  * 1. Check the explicit mapping table (handles hyphen→underscore and name differences)
  * 2. Check if the value directly exists in DataSourceType (handles matching names like "wikipedia")
- * 3. Fall back to DUCKDUCKGO for truly unknown types
+ * 3. Try underscore conversion (e.g., "ap-news" → "ap_news")
+ * 4. Log warning and return DUCKDUCKGO for truly unknown types
  */
 export function mapSourceType(sourceType: string): DataSourceType {
   const mapped = DEBRIEFER_TO_DEADONFILM[sourceType]
@@ -63,6 +70,18 @@ export function mapSourceType(sourceType: string): DataSourceType {
   }
   if (VALID_SOURCE_TYPES.has(sourceType)) {
     return sourceType as DataSourceType
+  }
+  // Try converting hyphens to underscores as a last automatic mapping
+  const underscored = sourceType.replace(/-/g, "_")
+  if (VALID_SOURCE_TYPES.has(underscored)) {
+    return underscored as DataSourceType
+  }
+  if (!warnedSourceTypes.has(sourceType)) {
+    warnedSourceTypes.add(sourceType)
+    log.warn(
+      { sourceType },
+      "Unmapped debriefer source type — add it to DEBRIEFER_TO_DEADONFILM in finding-mapper.ts"
+    )
   }
   return DataSourceType.DUCKDUCKGO
 }

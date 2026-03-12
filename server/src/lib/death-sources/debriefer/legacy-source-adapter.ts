@@ -93,6 +93,16 @@ export class LegacySourceAdapter extends BaseResearchSource<ResearchSubject> {
   }
 }
 
+/** Extracts a valid numeric actor ID, throwing on invalid values. */
+function toActorId(id: string | number): number {
+  if (typeof id === "number") return id
+  const parsed = parseInt(id, 10)
+  if (isNaN(parsed) || parsed <= 0) {
+    throw new Error(`Invalid actor ID in ResearchSubject: ${String(id)}`)
+  }
+  return parsed
+}
+
 /**
  * Reconstructs an ActorForEnrichment from a ResearchSubject.
  *
@@ -101,7 +111,7 @@ export class LegacySourceAdapter extends BaseResearchSource<ResearchSubject> {
 function subjectToActor(subject: ResearchSubject): ActorForEnrichment {
   const ctx = (subject.context ?? {}) as Record<string, unknown>
   return {
-    id: typeof subject.id === "number" ? subject.id : parseInt(String(subject.id), 10) || 0,
+    id: toActorId(subject.id),
     tmdbId: (ctx.tmdbId as number) ?? null,
     imdbPersonId: (ctx.imdbPersonId as string) ?? null,
     name: subject.name,
