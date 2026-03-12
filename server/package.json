@@ -67,8 +67,6 @@
     "backfill:external-ids": "tsx scripts/backfill-external-ids.ts",
     "//backfill:cause-of-death-batch": "Backfill cause of death using Claude Opus 4.5 Batch API",
     "backfill:cause-of-death-batch": "tsx scripts/backfill-cause-of-death-batch.ts",
-    "//enrich:death-details": "Enrich death details using multi-source fallbacks (free/paid/AI)",
-    "enrich:death-details": "tsx scripts/enrich-death-details.ts",
     "//enrich:biographies": "Enrich biographies with personal life info from multiple sources + Claude synthesis",
     "enrich:biographies": "tsx scripts/enrich-biographies.ts",
     "//ab-test:sources": "A/B test AI enrichment with/without source requirement ($10 budget)",
@@ -140,6 +138,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.1",
+    "debriefer": "file:../../debriefer/packages/core",
+    "debriefer-sources": "file:../../debriefer/packages/sources",
     "@bull-board/api": "^6.16.4",
     "@bull-board/express": "^6.16.4",
     "@extra/recaptcha": "^4.2.1-next.587",

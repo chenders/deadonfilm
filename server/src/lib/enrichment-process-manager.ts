@@ -128,11 +128,6 @@ export async function startEnrichmentRun(config: EnrichmentRunConfig): Promise<n
         sortBy: config.sortBy ?? "popularity",
         ignoreCache: config.ignoreCache ?? true, // Default: bypass cache for admin runs (reset at end of each run)
         staging: false,
-        // Wikipedia-specific options
-        wikipediaUseAISectionSelection: config.wikipedia?.useAISectionSelection ?? true,
-        wikipediaFollowLinkedArticles: config.wikipedia?.followLinkedArticles ?? false,
-        wikipediaMaxLinkedArticles: config.wikipedia?.maxLinkedArticles ?? 2,
-        wikipediaMaxSections: config.wikipedia?.maxSections ?? 10,
       },
       { createdBy: "admin-enrichment" }
     )

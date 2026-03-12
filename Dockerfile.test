@@ -1,3 +1,8 @@
+# Test build — same as Dockerfile but with debriefer packages available.
+# The only difference is the COPY debriefer/ line before npm ci in the
+# backend-builder stage, which makes file:../../debriefer/packages/...
+# deps resolvable during npm ci.
+
 # Build stage for frontend
 FROM node:22-alpine AS frontend-builder
 WORKDIR /app/frontend
@@ -62,6 +67,7 @@ COPY --from=backend-builder /app/server/dist ./server/dist
 COPY --from=backend-builder /app/server/node_modules ./server/node_modules
 # Copy debriefer packages — npm ci creates symlinks in node_modules for
 # file: deps, so the symlink targets must exist in the production stage too.
+# Also copy debriefer's root node_modules so its own dependencies resolve.
 COPY --from=backend-builder /debriefer/ /debriefer/
 COPY server/package.json ./server/
 # Copy migrations and data for startup initialization
@@ -91,12 +97,10 @@ EXPOSE 8080 3000
 # Switch to non-root user
 USER node
 
-# Health check for backend (used in CI and standalone; docker-compose overrides for each service)
+# Health check for backend
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# Default command runs the backend server
-# nginx and cron containers override this in docker-compose
-# --require newrelic instruments CJS modules (pg), --import handles ESM modules
+# Default command runs the backend server without New Relic
 WORKDIR /app/server
-CMD ["node", "--require", "newrelic", "--import", "newrelic/esm-loader.mjs", "dist/src/index.js"]
+CMD ["node", "dist/src/index.js"]

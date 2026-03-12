@@ -194,11 +194,6 @@ export const enrichDeathDetailsBatchPayloadSchema = z.object({
   sortBy: z.enum(["popularity", "interestingness"]).default("popularity"),
   ignoreCache: z.boolean().default(false),
   staging: z.boolean().default(false),
-  // Wikipedia-specific options
-  wikipediaUseAISectionSelection: z.boolean().default(false),
-  wikipediaFollowLinkedArticles: z.boolean().default(false),
-  wikipediaMaxLinkedArticles: z.number().int().positive().default(2),
-  wikipediaMaxSections: z.number().int().positive().default(10),
 })
 
 // Actor cache warming payload
