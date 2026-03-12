@@ -141,10 +141,9 @@ describe("createLifecycleHooks", () => {
   describe("default path (no options, no license key)", () => {
     it("works as no-op when NEW_RELIC_LICENSE_KEY is not set", () => {
       const originalKey = process.env.NEW_RELIC_LICENSE_KEY
+      const hadKey = "NEW_RELIC_LICENSE_KEY" in process.env
       delete process.env.NEW_RELIC_LICENSE_KEY
       resetNewRelicCache()
-
-      const hadKey = "NEW_RELIC_LICENSE_KEY" in process.env
 
       try {
         const defaultHooks = createLifecycleHooks()

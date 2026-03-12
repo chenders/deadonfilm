@@ -1,9 +1,14 @@
 /**
  * Lifecycle hooks for debriefer orchestrator observability.
  *
- * Wires debriefer's LifecycleHooks callbacks to:
+ * Wires debriefer's per-subject LifecycleHooks callbacks to:
  * - Pino structured logging (source attempts, completions, phases, early stops)
- * - New Relic custom events (per-actor completion, batch start/complete)
+ * - New Relic custom events (EnrichmentSourceSuccess, EnrichmentActorComplete)
+ *
+ * Only per-subject and per-source hooks are wired here. Batch-level hooks
+ * (onRunStart, onRunComplete, onRunFailed) are omitted because the adapter
+ * calls orchestrator.debrief() per actor, not debriefBatch(). Batch-level
+ * events should be emitted from the EnrichmentRunner.
  *
  * New Relic is optional — hooks degrade gracefully if the module is unavailable
  * (e.g., in test environments or when NEW_RELIC_LICENSE_KEY is not set).
