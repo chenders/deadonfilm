@@ -10,6 +10,7 @@
  */
 
 import type { LifecycleHooks, ResearchSubject, ScoredFinding } from "debriefer"
+import { createRequire } from "module"
 import { logger } from "../../logger.js"
 
 const log = logger.child({ module: "debriefer-hooks" })
@@ -20,14 +21,27 @@ export interface NewRelicAgent {
   noticeError(error: Error): void
 }
 
-/** Try to load New Relic. Returns null if unavailable. */
+/** Cached New Relic agent (loaded once) */
+let cachedAgent: NewRelicAgent | null | undefined
+
+/**
+ * Try to load New Relic. Returns null if unavailable or license key not set.
+ * Uses createRequire for ESM compatibility and caches the result.
+ */
 function tryLoadNewRelic(): NewRelicAgent | null {
+  if (cachedAgent !== undefined) return cachedAgent
+
+  if (!process.env.NEW_RELIC_LICENSE_KEY) {
+    cachedAgent = null
+    return null
+  }
+
   try {
-    // Dynamic require — New Relic must be loaded via --require at process start.
-    // This just grabs the already-loaded module if available.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("newrelic") as NewRelicAgent
+    const require = createRequire(import.meta.url)
+    cachedAgent = require("newrelic") as NewRelicAgent
+    return cachedAgent
   } catch {
+    cachedAgent = null
     return null
   }
 }
