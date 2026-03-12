@@ -43,6 +43,11 @@ jobs:
             type=sha,prefix=test-
             type=raw,value=test-latest
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Clone and build debriefer (local path dependency)
         env:
           DEBRIEFER_SHA: eb8232db95b7d53d29f135000f53922984d58f2e
