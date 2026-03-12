@@ -139,7 +139,7 @@ jobs:
 
       - name: Clone and build debriefer (local path dependency)
         env:
-          DEBRIEFER_SHA: 0d790d2
+          DEBRIEFER_SHA: 0f8bb10
         run: |
           git init ../../debriefer
           cd ../../debriefer
@@ -200,7 +200,7 @@ jobs:
 
       - name: Clone and build debriefer (local path dependency)
         env:
-          DEBRIEFER_SHA: 0d790d2
+          DEBRIEFER_SHA: 0f8bb10
         run: |
           git init ../../debriefer
           cd ../../debriefer
