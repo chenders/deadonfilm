@@ -13,7 +13,6 @@ jobs:
   dependency-audit:
     name: Dependency Audit
     runs-on: self-hosted
-    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
