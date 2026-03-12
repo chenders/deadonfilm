@@ -37,9 +37,9 @@ describe("mapSourceType", () => {
     expect(mapSourceType("people")).toBe(DataSourceType.PEOPLE_MAGAZINE)
   })
 
-  it("falls back to DUCKDUCKGO for unknown source types", () => {
-    expect(mapSourceType("some_future_source")).toBe(DataSourceType.DUCKDUCKGO)
-    expect(mapSourceType("")).toBe(DataSourceType.DUCKDUCKGO)
+  it("falls back to UNMAPPED for unknown source types", () => {
+    expect(mapSourceType("some_future_source")).toBe(DataSourceType.UNMAPPED)
+    expect(mapSourceType("")).toBe(DataSourceType.UNMAPPED)
   })
 })
 
@@ -134,7 +134,7 @@ describe("mapFindings", () => {
     const result = mapFindings([makeFinding({ sourceType: "new_debriefer_source" })])
 
     expect(result).toHaveLength(1)
-    expect(result[0]!.sourceType).toBe(DataSourceType.DUCKDUCKGO)
+    expect(result[0]!.sourceType).toBe(DataSourceType.UNMAPPED)
   })
 
   it("returns empty array for empty input", () => {
