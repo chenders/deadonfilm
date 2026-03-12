@@ -1,0 +1,107 @@
+name: Deploy Test Environment
+
+on:
+  push:
+    branches: ['test-*']
+
+concurrency:
+  group: deploy-test
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy (Test)
+    runs-on: self-hosted
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=test-
+            type=raw,value=test-latest
+
+      - name: Build and push app image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          # No GA or New Relic browser build args — disabled in test
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+      - name: Deploy to test environment
+        run: |
+          cd /opt/deadonfilm-test
+
+          # Copy latest compose and config files
+          cp ${{ github.workspace }}/docker-compose.test.yml docker-compose.yml
+          cp ${{ github.workspace }}/nginx-test.conf nginx-test.conf
+          cp ${{ github.workspace }}/postgresql-test.conf postgresql-test.conf
+
+          # Copy redis-jobs config (needed by redis-jobs volume mount)
+          mkdir -p server/config
+          cp ${{ github.workspace }}/server/config/redis-jobs.conf server/config/redis-jobs.conf
+
+          # Pull new images
+          docker compose pull --ignore-buildable
+
+          # Simple recreate — no blue-green needed for test environment
+          echo "=== Recreating all services ==="
+          docker compose up -d --force-recreate --remove-orphans
+
+          # Wait for services to be healthy
+          echo "=== Waiting for services to become healthy ==="
+          if ! docker compose up -d --wait --wait-timeout 120 --no-recreate; then
+            echo "=== Health check failed! ==="
+            docker compose ps -a
+            echo "--- app logs ---"
+            docker compose logs app --tail=100
+            echo "--- nginx logs ---"
+            docker compose logs nginx --tail=50
+            exit 1
+          fi
+
+          echo "=== All test containers healthy ==="
+          docker compose ps
+
+      - name: Health check through nginx
+        run: |
+          echo "=== Verifying health endpoint through nginx (port 3001) ==="
+          if ! docker exec deadonfilm-test-nginx wget -q -O- --timeout=10 http://127.0.0.1:3001/health; then
+            echo "Health check through nginx failed!"
+            docker logs deadonfilm-test-nginx --tail=50
+            docker logs deadonfilm-test-app --tail=100
+            exit 1
+          fi
+          echo ""
+          echo "=== Test environment deployed successfully ==="
+          echo "Access at http://localhost:3001"
+
+      - name: Cleanup old images
+        run: docker image prune -f --filter "until=24h"
+        continue-on-error: true
