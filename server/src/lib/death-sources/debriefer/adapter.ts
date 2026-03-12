@@ -58,6 +58,7 @@ import {
 import { adaptLegacySources } from "./legacy-source-adapter.js"
 import { mapFindings } from "./finding-mapper.js"
 import { createHaikuSectionFilter } from "./haiku-section-selector.js"
+import { createPersonValidator } from "./person-validator.js"
 import type { RawSourceData, ActorForEnrichment } from "../types.js"
 
 // Deadonfilm-only source classes (no debriefer-sources equivalents)
@@ -193,6 +194,17 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
         wikidata(),
         wikipedia({
           asyncSectionFilter: createHaikuSectionFilter(),
+          validatePerson: createPersonValidator(),
+          disambiguationSuffixes: [
+            "_(actor)",
+            "_(actress)",
+            "_(American_actor)",
+            "_(Canadian_actor)",
+            "_(British_actor)",
+            "_(Australian_actor)",
+            "_(film_actor)",
+            "_(television_actor)",
+          ],
         }),
         ...adaptLegacySources([new BFISightSoundSource()]),
       ],
