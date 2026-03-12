@@ -42,8 +42,6 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
     const log = this.createLogger(job)
     const { actorId, actorName, forceRefresh } = job.data
 
-    log.info({ actorId, actorName, forceRefresh }, "Starting single actor enrichment")
-
     const db = getPool()
 
     // 1. Validate actor exists and is deceased
@@ -61,6 +59,11 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
 
     // Use canonical name from DB (payload name may be stale)
     const canonicalName = validation.actorName ?? actorName
+
+    log.info(
+      { actorId, actorName: canonicalName, forceRefresh },
+      "Starting single actor enrichment"
+    )
 
     // 2. Run enrichment via EnrichmentRunner (same engine as batch handler)
     const runner = new EnrichmentRunner({
