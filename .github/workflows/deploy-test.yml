@@ -99,6 +99,8 @@ jobs:
             docker compose ps -a
             echo "--- app logs ---"
             docker compose logs app --tail=100
+            echo "--- worker logs ---"
+            docker compose logs worker --tail=100
             echo "--- nginx logs ---"
             docker compose logs nginx --tail=50
             exit 1
