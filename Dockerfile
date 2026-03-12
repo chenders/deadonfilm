@@ -27,6 +27,12 @@ WORKDIR /app/server
 # python3, make, g++ needed to compile @newrelic/native-metrics
 RUN apk add --no-cache python3 make g++
 
+# Copy pre-built debriefer monorepo so npm ci can resolve file: deps.
+# server/package.json has file:../../debriefer/packages/{core,sources}
+# which resolves to /debriefer/packages/... from WORKDIR /app/server.
+# Full monorepo needed because packages depend on shared node_modules.
+COPY debriefer/ /debriefer/
+
 COPY server/package*.json ./
 RUN npm ci
 COPY server/src/ ./src/
@@ -54,6 +60,9 @@ ENV BROWSER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 # Copy backend
 COPY --from=backend-builder /app/server/dist ./server/dist
 COPY --from=backend-builder /app/server/node_modules ./server/node_modules
+# Copy debriefer packages — npm ci creates symlinks in node_modules for
+# file: deps, so the symlink targets must exist in the production stage too.
+COPY --from=backend-builder /debriefer/ /debriefer/
 COPY server/package.json ./server/
 # Copy migrations and data for startup initialization
 COPY server/migrations ./server/migrations
