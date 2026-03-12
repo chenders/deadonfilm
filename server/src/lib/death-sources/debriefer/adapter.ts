@@ -59,6 +59,7 @@ import { adaptLegacySources } from "./legacy-source-adapter.js"
 import { mapFindings } from "./finding-mapper.js"
 import { createHaikuSectionFilter } from "./haiku-section-selector.js"
 import { createPersonValidator } from "./person-validator.js"
+import { createLifecycleHooks } from "./lifecycle-hooks.js"
 import type { RawSourceData, ActorForEnrichment } from "../types.js"
 
 // Deadonfilm-only source classes (no debriefer-sources equivalents)
@@ -133,6 +134,8 @@ export function createDebriefOrchestrator(
     orchestratorConfig
   )
 
+  const hooks = createLifecycleHooks()
+
   return async (actor: ActorForEnrichment): Promise<DebrieferAdapterResult> => {
     const subject: ResearchSubject = {
       id: actor.id,
@@ -148,7 +151,7 @@ export function createDebriefOrchestrator(
       },
     }
 
-    const result = await orchestrator.debrief(subject)
+    const result = await orchestrator.debrief(subject, { hooks })
 
     return {
       rawSources: mapFindings(result.findings),
