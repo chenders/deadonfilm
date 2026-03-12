@@ -23,7 +23,7 @@ const log = logger.child({ module: "debriefer-hooks" })
 /** Minimal interface for New Relic agent (for dependency injection in tests) */
 export interface NewRelicAgent {
   recordCustomEvent(eventType: string, attributes: Record<string, unknown>): void
-  noticeError(error: Error): void
+  noticeError(error: Error, customAttributes?: Record<string, unknown>): void
 }
 
 /** Cached New Relic agent (loaded once) */

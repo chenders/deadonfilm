@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import type { ResearchSubject, ResearchConfig, DebriefResult, ScoredFinding } from "debriefer"
+import type { ResearchSubject, DebriefResult, ScoredFinding } from "debriefer"
 import { createLifecycleHooks, resetNewRelicCache } from "../lifecycle-hooks.js"
 import type { NewRelicAgent } from "../lifecycle-hooks.js"
 
@@ -8,15 +8,6 @@ function makeSubject(overrides: Partial<ResearchSubject> = {}): ResearchSubject 
     id: 1,
     name: "John Wayne",
     context: { birthday: "1907-05-26", deathday: "1979-06-11" },
-    ...overrides,
-  }
-}
-
-function makeConfig(overrides: Partial<ResearchConfig> = {}): ResearchConfig {
-  return {
-    earlyStopThreshold: 3,
-    confidenceThreshold: 0.5,
-    costLimits: { maxCostPerSubject: 0.5, maxTotalCost: 10 },
     ...overrides,
   }
 }
