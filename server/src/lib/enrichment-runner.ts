@@ -72,18 +72,6 @@ export interface EnrichmentRunnerConfig {
   useReliabilityThreshold?: boolean
   /** Number of actors to process concurrently (default: 5) */
   concurrency?: number
-  // Wikipedia-specific options
-  // Note: AI section selection is now handled by the debriefer adapter's
-  // asyncSectionFilter (see adapter.ts createHaikuSectionFilter). These fields
-  // are kept for CLI backward compat but are not wired into the debriefer adapter.
-  /** @deprecated Handled by debriefer adapter's asyncSectionFilter */
-  wikipediaUseAISectionSelection?: boolean
-  /** @deprecated Not yet supported by debriefer adapter */
-  wikipediaFollowLinkedArticles?: boolean
-  /** @deprecated Not yet supported by debriefer adapter */
-  wikipediaMaxLinkedArticles?: number
-  /** @deprecated Not yet supported by debriefer adapter */
-  wikipediaMaxSections?: number
 }
 
 /**
@@ -214,8 +202,6 @@ export class EnrichmentRunner {
       staging = false,
       // Source reliability threshold
       useReliabilityThreshold = true,
-      // Wikipedia-specific options (not yet supported by debriefer adapter)
-      // wikipediaUseAISectionSelection, wikipediaFollowLinkedArticles, etc.
     } = this.config
 
     // Configure cache behavior for this run
