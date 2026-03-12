@@ -73,9 +73,16 @@ export interface EnrichmentRunnerConfig {
   /** Number of actors to process concurrently (default: 5) */
   concurrency?: number
   // Wikipedia-specific options
+  // Note: AI section selection is now handled by the debriefer adapter's
+  // asyncSectionFilter (see adapter.ts createHaikuSectionFilter). These fields
+  // are kept for CLI backward compat but are not wired into the debriefer adapter.
+  /** @deprecated Handled by debriefer adapter's asyncSectionFilter */
   wikipediaUseAISectionSelection?: boolean
+  /** @deprecated Not yet supported by debriefer adapter */
   wikipediaFollowLinkedArticles?: boolean
+  /** @deprecated Not yet supported by debriefer adapter */
   wikipediaMaxLinkedArticles?: number
+  /** @deprecated Not yet supported by debriefer adapter */
   wikipediaMaxSections?: number
 }
 
@@ -404,7 +411,7 @@ export class EnrichmentRunner {
           sourceHitRates[sourceType].attempts++
           sourceHitRates[sourceType].successes++
         }
-        // Track failed attempts as a single "debriefer_failed" bucket since we
+        // Track failed attempts as a single "_failed_sources" bucket since we
         // don't know which individual source types failed (debriefer only reports counts)
         const failedCount = debriefResult.sourcesAttempted - debriefResult.sourcesSucceeded
         if (failedCount > 0) {
@@ -461,7 +468,7 @@ export class EnrichmentRunner {
             // Mark sources as unsuccessful for non-enriched actors so admin
             // analytics (success rates, error reporting) behave correctly
             // Sources that returned findings are marked success: true (they did their job).
-            // Cleanup failure is tracked separately via the _cleanup_failed bucket.
+            // Cleanup failure is tracked separately via a claude_cleanup entry with success: false.
             const uniqueTypes = new Set(debriefResult.rawSources.map((s) => s.sourceType))
             const sourcesAttempted: Array<{
               source: string
