@@ -184,6 +184,9 @@ export enum DataSourceType {
   REDDIT = "reddit",
   INSTAGRAM = "instagram",
   FACEBOOK = "facebook",
+
+  // Fallback for unmapped debriefer source types
+  UNMAPPED = "unmapped",
 }
 
 /**

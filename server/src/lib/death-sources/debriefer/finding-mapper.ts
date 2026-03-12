@@ -10,9 +10,9 @@
 import type { ScoredFinding } from "debriefer"
 import type { RawSourceData } from "../types.js"
 import { DataSourceType, ReliabilityTier } from "../types.js"
-import pino from "pino"
+import { logger } from "../../logger.js"
 
-const log = pino({ name: "finding-mapper" })
+const log = logger.child({ name: "finding-mapper" })
 
 /** Set of valid DataSourceType string values for O(1) lookup */
 const VALID_SOURCE_TYPES = new Set<string>(Object.values(DataSourceType))
@@ -83,7 +83,7 @@ export function mapSourceType(sourceType: string): DataSourceType {
       "Unmapped debriefer source type — add it to DEBRIEFER_TO_DEADONFILM in finding-mapper.ts"
     )
   }
-  return DataSourceType.DUCKDUCKGO
+  return DataSourceType.UNMAPPED
 }
 
 /**

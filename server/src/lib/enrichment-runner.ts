@@ -321,7 +321,6 @@ export class EnrichmentRunner {
       let costLimitReached = false
       const updatedActors: Array<{ name: string; id: number }> = []
       let updated = 0
-      let enrichedCount = 0
       let deathPageCount = 0
 
       // Track source hit rates: {source: {attempts: n, successes: n}}
@@ -574,8 +573,6 @@ export class EnrichmentRunner {
           deathPageCount++
         }
 
-        enrichedCount++
-
         // Only include causeOfDeath if actor doesn't already have one
         const manner = cleaned?.manner || null
         const enrichmentData: EnrichmentData = {
@@ -746,7 +743,7 @@ export class EnrichmentRunner {
               actorsCompleted: progress.completed,
               actorsQueried: actorsToEnrich.length,
               actorsProcessed: batchActorsProcessed,
-              actorsEnriched: enrichedCount,
+              actorsEnriched: batchActorsEnriched,
               actorsWithDeathPage: deathPageCount,
               totalCostUsd: costTracker.getTotalCost(),
               phase: "completed",
