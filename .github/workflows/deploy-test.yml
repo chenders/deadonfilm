@@ -50,7 +50,7 @@ jobs:
 
       - name: Clone and build debriefer (local path dependency)
         env:
-          DEBRIEFER_SHA: 0f8bb10
+          DEBRIEFER_SHA: 0f8bb10f6c15325f69e6047e3631764435d42f82
         run: |
           git init debriefer
           cd debriefer
