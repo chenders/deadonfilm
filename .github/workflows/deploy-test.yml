@@ -89,11 +89,6 @@ jobs:
           echo "=== All test containers healthy ==="
           docker compose ps
 
-      - name: Run database migrations
-        run: |
-          cd /opt/deadonfilm-test
-          docker compose exec -T app sh -c "cd /app/server && node node_modules/.bin/node-pg-migrate up"
-
       - name: Health check through nginx
         run: |
           echo "=== Verifying health endpoint through nginx (port 3001) ==="
