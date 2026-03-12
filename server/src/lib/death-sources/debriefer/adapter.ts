@@ -58,6 +58,7 @@ import {
 import { adaptLegacySources } from "./legacy-source-adapter.js"
 import { mapFindings } from "./finding-mapper.js"
 import { createHaikuSectionFilter } from "./haiku-section-selector.js"
+import { createPersonValidator } from "./person-validator.js"
 import type { RawSourceData, ActorForEnrichment } from "../types.js"
 
 // Deadonfilm-only source classes (no debriefer-sources equivalents)
@@ -92,6 +93,8 @@ export interface DebrieferAdapterConfig {
   confidenceThreshold?: number
   /** Set to a number to enforce reliability threshold, or undefined to disable */
   reliabilityThreshold?: number
+  /** Use Gemini Flash AI for Wikipedia person date validation. Default: true. */
+  useAIDateValidation?: boolean
 }
 
 export interface DebrieferAdapterResult {
@@ -193,6 +196,19 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
         wikidata(),
         wikipedia({
           asyncSectionFilter: createHaikuSectionFilter(),
+          validatePerson: createPersonValidator({
+            useAIDateValidation: config.useAIDateValidation,
+          }),
+          disambiguationSuffixes: [
+            "_(actor)",
+            "_(actress)",
+            "_(American_actor)",
+            "_(Canadian_actor)",
+            "_(British_actor)",
+            "_(Australian_actor)",
+            "_(film_actor)",
+            "_(television_actor)",
+          ],
         }),
         ...adaptLegacySources([new BFISightSoundSource()]),
       ],
