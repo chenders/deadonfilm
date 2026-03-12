@@ -44,14 +44,6 @@ export { PerplexitySource } from "./ai-providers/perplexity.js"
 export { DeepSeekSource } from "./ai-providers/deepseek.js"
 export { GrokSource } from "./ai-providers/grok.js"
 
-// Main orchestrator
-export {
-  DeathEnrichmentOrchestrator,
-  DEFAULT_CONFIG,
-  type ExtendedEnrichmentResult,
-  type ActorLogEntry,
-} from "./orchestrator.js"
-
 // Claude cleanup
 export { cleanupWithClaude, buildCleanupPrompt, estimateCleanupCost } from "./claude-cleanup.js"
 
