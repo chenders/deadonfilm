@@ -722,6 +722,7 @@ describe("admin actors routes", () => {
         exitReason: "completed",
         updatedActors: [],
         uniqueSourcesAttempted: [],
+        sourceHitRates: {},
       })
 
       const res = await request(app).post("/admin/api/actors/123/enrich-inline")
@@ -729,6 +730,7 @@ describe("admin actors routes", () => {
       expect(res.status).toBe(200)
       expect(res.body.success).toBe(true)
       expect(res.body.fieldsUpdated).toEqual([])
+      expect(res.body.sourcesUsed).toEqual([])
       expect(res.body.message).toBe("No new enrichment data found")
     })
 
@@ -759,7 +761,12 @@ describe("admin actors routes", () => {
         costBySource: { wikipedia: 0, claude_cleanup: 0.05 },
         exitReason: "completed",
         updatedActors: [{ name: "John Wayne", id: 123 }],
-        uniqueSourcesAttempted: ["wikipedia", "wikidata"],
+        uniqueSourcesAttempted: ["wikipedia", "wikidata", "_failed_sources"],
+        sourceHitRates: {
+          wikipedia: { attempts: 1, successes: 1 },
+          wikidata: { attempts: 1, successes: 1 },
+          _failed_sources: { attempts: 3, successes: 0 },
+        },
       })
 
       const res = await request(app).post("/admin/api/actors/123/enrich-inline")
@@ -770,6 +777,8 @@ describe("admin actors routes", () => {
       expect(res.body.fieldsUpdated).toContain("locationOfDeath")
       expect(res.body.fieldsUpdated).toContain("notableFactors")
       expect(res.body.fieldsUpdated).toContain("causeOfDeath")
+      expect(res.body.sourcesUsed).toEqual(expect.arrayContaining(["wikipedia", "wikidata"]))
+      expect(res.body.sourcesUsed).not.toContain("_failed_sources")
       expect(res.body.durationMs).toBeGreaterThanOrEqual(0)
       expect(logAdminAction).toHaveBeenCalledWith(
         expect.objectContaining({
