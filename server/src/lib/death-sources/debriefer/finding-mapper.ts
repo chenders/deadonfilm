@@ -61,7 +61,7 @@ const warnedSourceTypes = new Set<string>()
  * 1. Check the explicit mapping table (handles hyphen→underscore and name differences)
  * 2. Check if the value directly exists in DataSourceType (handles matching names like "wikipedia")
  * 3. Try underscore conversion (e.g., "ap-news" → "ap_news")
- * 4. Log warning and return DUCKDUCKGO for truly unknown types
+ * 4. Log warning and return UNMAPPED for truly unknown types
  */
 export function mapSourceType(sourceType: string): DataSourceType {
   const mapped = DEBRIEFER_TO_DEADONFILM[sourceType]
