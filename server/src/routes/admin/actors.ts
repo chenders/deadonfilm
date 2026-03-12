@@ -1231,7 +1231,7 @@ router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Pro
     res.json({
       success: true,
       fieldsUpdated,
-      sourcesUsed: stats.uniqueSourcesAttempted || [],
+      sourcesUsed: (stats.uniqueSourcesAttempted || []).filter((s) => !s.startsWith("_")),
       durationMs,
       message: enriched ? undefined : "No new enrichment data found",
     })
