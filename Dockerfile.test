@@ -67,8 +67,8 @@ COPY --from=backend-builder /app/server/dist ./server/dist
 COPY --from=backend-builder /app/server/node_modules ./server/node_modules
 # Copy debriefer packages — npm ci creates symlinks in node_modules for
 # file: deps, so the symlink targets must exist in the production stage too.
-COPY --from=backend-builder /debriefer/packages/core/ /debriefer/packages/core/
-COPY --from=backend-builder /debriefer/packages/sources/ /debriefer/packages/sources/
+# Also copy debriefer's root node_modules so its own dependencies resolve.
+COPY --from=backend-builder /debriefer/ /debriefer/
 COPY server/package.json ./server/
 # Copy migrations and data for startup initialization
 COPY server/migrations ./server/migrations
