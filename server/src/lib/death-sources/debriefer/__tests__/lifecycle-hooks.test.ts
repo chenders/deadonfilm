@@ -28,7 +28,7 @@ function makeDebriefResult(
     subject: makeSubject(),
     data: [],
     findings: [],
-    synthesisResult: null,
+    synthesisResult: undefined,
     totalCostUsd: 0.05,
     sourcesAttempted: 10,
     sourcesSucceeded: 3,
