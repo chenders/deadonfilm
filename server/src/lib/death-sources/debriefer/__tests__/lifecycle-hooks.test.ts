@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import type { ResearchSubject, ResearchConfig, DebriefResult, ScoredFinding } from "debriefer"
-import { createLifecycleHooks } from "../lifecycle-hooks.js"
+import { createLifecycleHooks, resetNewRelicCache } from "../lifecycle-hooks.js"
 import type { NewRelicAgent } from "../lifecycle-hooks.js"
 
 function makeSubject(overrides: Partial<ResearchSubject> = {}): ResearchSubject {
@@ -196,6 +196,34 @@ describe("createLifecycleHooks", () => {
         })
       ).not.toThrow()
       expect(() => hooksNoNR.onRunFailed!(new Error("test"))).not.toThrow()
+    })
+  })
+
+  describe("default path (no options, no license key)", () => {
+    it("works as no-op when NEW_RELIC_LICENSE_KEY is not set", () => {
+      const originalKey = process.env.NEW_RELIC_LICENSE_KEY
+      delete process.env.NEW_RELIC_LICENSE_KEY
+      resetNewRelicCache()
+
+      try {
+        const defaultHooks = createLifecycleHooks()
+        const subject = makeSubject()
+
+        expect(() => defaultHooks.onRunStart!(5, makeConfig())).not.toThrow()
+        expect(() => defaultHooks.onSubjectStart!(subject, 0, 5)).not.toThrow()
+        expect(() =>
+          defaultHooks.onSourceComplete!(
+            subject,
+            "Wikipedia",
+            { text: "test", confidence: 0.5, costUsd: 0 },
+            0
+          )
+        ).not.toThrow()
+        expect(() => defaultHooks.onSubjectComplete!(subject, makeDebriefResult())).not.toThrow()
+      } finally {
+        if (originalKey) process.env.NEW_RELIC_LICENSE_KEY = originalKey
+        resetNewRelicCache()
+      }
     })
   })
 })

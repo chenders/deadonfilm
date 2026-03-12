@@ -24,6 +24,11 @@ export interface NewRelicAgent {
 /** Cached New Relic agent (loaded once) */
 let cachedAgent: NewRelicAgent | null | undefined
 
+/** Reset the cached New Relic agent (for testing only) */
+export function resetNewRelicCache(): void {
+  cachedAgent = undefined
+}
+
 /**
  * Try to load New Relic. Returns null if unavailable or license key not set.
  * Uses createRequire for ESM compatibility and caches the result.
@@ -40,7 +45,11 @@ function tryLoadNewRelic(): NewRelicAgent | null {
     const require = createRequire(import.meta.url)
     cachedAgent = require("newrelic") as NewRelicAgent
     return cachedAgent
-  } catch {
+  } catch (error) {
+    log.warn(
+      { err: error },
+      "Failed to load New Relic agent despite NEW_RELIC_LICENSE_KEY being set"
+    )
     cachedAgent = null
     return null
   }
