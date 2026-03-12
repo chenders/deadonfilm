@@ -166,7 +166,7 @@ export function createLifecycleHooks(
         sourcesSucceeded: result.sourcesSucceeded,
         findingsCount: result.findings.length,
         totalCostUsd: result.totalCostUsd,
-        durationMs: result.durationMs,
+        totalTimeMs: result.durationMs,
       })
     },
   }
