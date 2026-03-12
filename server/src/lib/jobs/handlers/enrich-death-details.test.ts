@@ -8,12 +8,16 @@ import { EnrichDeathDetailsHandler } from "./enrich-death-details.js"
 import { JobType, QueueName } from "../types.js"
 import * as db from "../../db.js"
 
-// Mock EnrichmentRunner
+// Mock EnrichmentRunner — capture constructor config for assertions
 const mockRunnerRun = vi.hoisted(() => vi.fn())
+const mockRunnerConfig = vi.hoisted(() => vi.fn())
 
 vi.mock("../../enrichment-runner.js", () => ({
   EnrichmentRunner: class MockEnrichmentRunner {
     run = mockRunnerRun
+    constructor(config: Record<string, unknown>) {
+      mockRunnerConfig(config)
+    }
   },
 }))
 
@@ -156,7 +160,7 @@ describe("EnrichDeathDetailsHandler", () => {
       mockRunnerRun.mockResolvedValue({
         actorsProcessed: 1,
         actorsEnriched: 1,
-        fillRate: 1,
+        fillRate: 100,
         totalCostUsd: 0.05,
         totalTimeMs: 3000,
         costBySource: {},
@@ -169,6 +173,15 @@ describe("EnrichDeathDetailsHandler", () => {
       expect(result.success).toBe(true)
       expect(result.data?.enriched).toBe(true)
       expect(mockRunnerRun).toHaveBeenCalled()
+      expect(mockRunnerConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorIds: [2157],
+          limit: 1,
+          ignoreCache: true,
+          claudeCleanup: true,
+          confidence: 0.5,
+        })
+      )
     })
   })
 
@@ -188,7 +201,7 @@ describe("EnrichDeathDetailsHandler", () => {
       mockRunnerRun.mockResolvedValue({
         actorsProcessed: 1,
         actorsEnriched: 1,
-        fillRate: 1,
+        fillRate: 100,
         totalCostUsd: 0.03,
         totalTimeMs: 2500,
         costBySource: { wikipedia: 0, claude_cleanup: 0.03 },
@@ -209,6 +222,15 @@ describe("EnrichDeathDetailsHandler", () => {
           actorsEnriched: 1,
         }),
       })
+      expect(mockRunnerConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorIds: [2157],
+          limit: 1,
+          ignoreCache: false,
+          claudeCleanup: true,
+          confidence: 0.5,
+        })
+      )
     })
 
     it("returns enriched: false when runner finds no data", async () => {
@@ -238,6 +260,37 @@ describe("EnrichDeathDetailsHandler", () => {
 
       expect(result.success).toBe(true)
       expect(result.data?.enriched).toBe(false)
+    })
+  })
+
+  describe("canonical name from DB", () => {
+    it("uses DB name over stale payload name", async () => {
+      mockPool.query.mockResolvedValue({
+        rows: [
+          {
+            id: 2157,
+            name: "Marion Robert Morrison",
+            deathday: "1979-06-11",
+            circumstances: null,
+          },
+        ],
+      })
+
+      mockRunnerRun.mockResolvedValue({
+        actorsProcessed: 1,
+        actorsEnriched: 1,
+        fillRate: 100,
+        totalCostUsd: 0.03,
+        totalTimeMs: 2500,
+        costBySource: {},
+        exitReason: "completed",
+        updatedActors: [{ name: "Marion Robert Morrison", id: 2157 }],
+      })
+
+      const result = await handler.process(makeJob({ actorName: "John Wayne" }))
+
+      expect(result.success).toBe(true)
+      expect(result.data?.actorName).toBe("Marion Robert Morrison")
     })
   })
 
