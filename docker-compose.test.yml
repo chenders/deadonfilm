@@ -1,0 +1,275 @@
+# Test Environment Docker Compose
+# Deploys alongside production on the same server with shifted ports.
+# Copy to /opt/deadonfilm-test/docker-compose.yml on the server.
+#
+# Key differences from production:
+#   - No New Relic agent service or instrumentation
+#   - Reduced resource limits (~4GB total vs ~10GB prod)
+#   - Vanilla postgres:16 (no NR extensions)
+#   - Simple recreate deploys (no blue-green)
+#   - Ports: nginx 3001, db 5438, redis 6381, redis-jobs 6382
+
+services:
+  db:
+    image: postgres:16
+    container_name: deadonfilm-test-db
+    restart: unless-stopped
+    ports:
+      - "5438:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-deadonfilm}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-deadonfilm_test}
+    volumes:
+      - test-postgres-data:/var/lib/postgresql/data
+      - ./postgresql-test.conf:/etc/postgresql/postgresql.conf:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    shm_size: '2gb'
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+        reservations:
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-deadonfilm} -d ${POSTGRES_DB:-deadonfilm_test}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  app:
+    image: ghcr.io/chenders/deadonfilm:${IMAGE_TAG:-test-latest}
+    container_name: deadonfilm-test-app
+    restart: unless-stopped
+    expose:
+      - "8080"
+    entrypoint: ["node", "dist/src/index.js"]
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - TZ=America/Los_Angeles
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-deadonfilm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-deadonfilm_test}
+      - REDIS_URL=redis://redis:6379
+      - REDIS_JOBS_URL=redis://redis-jobs:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      redis-jobs:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - test-sitemap-data:/app/sitemaps
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '2'
+        reservations:
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  nginx:
+    image: ghcr.io/chenders/deadonfilm:${IMAGE_TAG:-test-latest}
+    container_name: deadonfilm-test-nginx
+    restart: unless-stopped
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    ports:
+      - "3001:3001"
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - test-sitemap-data:/app/sitemaps:ro
+      - ./nginx-test.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "-T", "5", "http://127.0.0.1:3001/nginx-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  cron:
+    image: ghcr.io/chenders/deadonfilm:${IMAGE_TAG:-test-latest}
+    container_name: deadonfilm-test-cron
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Creating crontab..."
+        cat > /tmp/crontab << 'EOF'
+        SHELL=/bin/sh
+        PATH=/usr/local/bin:/usr/bin:/bin
+        # TMDB sync - every 2 hours, syncs recent changes
+        0 */2 * * * cd /app/server && node dist/scripts/sync-tmdb-changes.js
+        # Sitemap generation - daily at 6 AM UTC
+        0 6 * * * cd /app/server && node dist/scripts/sitemap-generate.js
+        # Movie seeding - weekly Sunday 4 AM UTC
+        0 4 * * 0 cd /app/server && node dist/scripts/seed-movies.js $(($(date +%Y)-1)) $(date +%Y) --count 500
+        # Find uncertain deaths - weekly Sunday 5 AM UTC
+        0 5 * * 0 cd /app/server && node dist/scripts/find-uncertain-deaths.js 2>&1 | head -100
+        EOF
+        # Strip leading spaces from heredoc (YAML adds 8 spaces)
+        sed -i 's/^[[:space:]]*//' /tmp/crontab
+        echo "Crontab contents:"
+        cat /tmp/crontab
+        echo "Starting supercronic..."
+        exec /usr/local/bin/supercronic /tmp/crontab
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - TZ=America/Los_Angeles
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-deadonfilm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-deadonfilm_test}
+      - REDIS_URL=redis://redis:6379
+      - REDIS_JOBS_URL=redis://redis-jobs:6379
+      - PATH=/usr/local/bin:/usr/bin:/bin
+    healthcheck:
+      test: ["CMD-SHELL", "pidof supercronic > /dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    volumes:
+      - test-sitemap-data:/app/sitemaps
+    depends_on:
+      app:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: deadonfilm-test-redis
+    restart: unless-stopped
+    ports:
+      - "6381:6379"
+    volumes:
+      - test-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+        reservations:
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  worker:
+    image: ghcr.io/chenders/deadonfilm:${IMAGE_TAG:-test-latest}
+    container_name: deadonfilm-test-worker
+    restart: unless-stopped
+    entrypoint: ["node", "dist/src/worker.js"]
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - TZ=America/Los_Angeles
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-deadonfilm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-deadonfilm_test}
+      - REDIS_URL=redis://redis:6379
+      - REDIS_JOBS_URL=redis://redis-jobs:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      redis-jobs:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pidof node > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1'
+        reservations:
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis-jobs:
+    image: redis:7-alpine
+    container_name: deadonfilm-test-redis-jobs
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6382:6379"
+    volumes:
+      - test-redis-jobs-data:/data
+      - ./server/config/redis-jobs.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+        reservations:
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  test-postgres-data:
+  test-sitemap-data:
+  test-redis-data:
+  test-redis-jobs-data:
