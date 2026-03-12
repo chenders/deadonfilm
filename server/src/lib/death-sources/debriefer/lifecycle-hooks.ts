@@ -71,25 +71,12 @@ export function createLifecycleHooks(
 ): LifecycleHooks<ResearchSubject, ScoredFinding[]> {
   const nr = options.newRelicAgent !== undefined ? options.newRelicAgent : tryLoadNewRelic()
 
-  return {
-    onRunStart(subjectCount, config) {
-      log.info(
-        {
-          subjectCount,
-          earlyStopThreshold: config.earlyStopThreshold,
-          confidenceThreshold: config.confidenceThreshold,
-          maxCostPerSubject: config.costLimits?.maxCostPerSubject,
-          maxTotalCost: config.costLimits?.maxTotalCost,
-        },
-        "Enrichment batch started"
-      )
-      nr?.recordCustomEvent("EnrichmentBatchStart", {
-        totalActors: subjectCount,
-        maxCostPerActor: config.costLimits?.maxCostPerSubject ?? 0,
-        maxTotalCost: config.costLimits?.maxTotalCost ?? 0,
-      })
-    },
+  // Note: onRunStart/onRunComplete/onRunFailed are omitted because the adapter
+  // calls orchestrator.debrief() per actor (not debriefBatch), so run-level hooks
+  // would fire once per actor instead of once per batch. Batch-level events should
+  // be emitted from the EnrichmentRunner instead.
 
+  return {
     onSubjectStart(subject, index, total) {
       log.info({ actorId: subject.id, actorName: subject.name, index, total }, "Processing actor")
     },
@@ -176,47 +163,6 @@ export function createLifecycleHooks(
         totalCostUsd: result.totalCostUsd,
         durationMs: result.durationMs,
       })
-    },
-
-    onBatchProgress(stats) {
-      log.debug(
-        {
-          completed: stats.completed,
-          total: stats.total,
-          costUsd: stats.costUsd,
-          elapsedMs: stats.elapsedMs,
-        },
-        `Batch progress: ${stats.completed}/${stats.total}`
-      )
-    },
-
-    onRunComplete(stats) {
-      log.info(
-        {
-          completed: stats.completed,
-          total: stats.total,
-          succeeded: stats.succeeded,
-          failed: stats.failed,
-          costUsd: stats.costUsd,
-          elapsedMs: stats.elapsedMs,
-          avgCostPerSubject: stats.avgCostPerSubject,
-          avgDurationMs: stats.avgDurationMs,
-        },
-        "Enrichment batch complete"
-      )
-      nr?.recordCustomEvent("EnrichmentBatchComplete", {
-        actorsProcessed: stats.completed,
-        actorsSucceeded: stats.succeeded,
-        actorsFailed: stats.failed,
-        totalCostUsd: stats.costUsd,
-        totalTimeMs: stats.elapsedMs,
-        avgCostPerActor: stats.avgCostPerSubject,
-      })
-    },
-
-    onRunFailed(error) {
-      log.error({ err: error }, "Enrichment batch failed")
-      nr?.noticeError(error)
     },
   }
 }

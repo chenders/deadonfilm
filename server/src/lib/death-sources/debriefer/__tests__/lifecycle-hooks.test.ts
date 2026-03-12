@@ -55,8 +55,7 @@ describe("createLifecycleHooks", () => {
     hooks = createLifecycleHooks({ newRelicAgent: mockNR })
   })
 
-  it("returns an object with all expected hook callbacks", () => {
-    expect(hooks.onRunStart).toBeTypeOf("function")
+  it("returns per-subject and per-source hook callbacks (no batch-level hooks)", () => {
     expect(hooks.onSubjectStart).toBeTypeOf("function")
     expect(hooks.onSourceAttempt).toBeTypeOf("function")
     expect(hooks.onSourceComplete).toBeTypeOf("function")
@@ -64,20 +63,11 @@ describe("createLifecycleHooks", () => {
     expect(hooks.onEarlyStop).toBeTypeOf("function")
     expect(hooks.onCostLimitReached).toBeTypeOf("function")
     expect(hooks.onSubjectComplete).toBeTypeOf("function")
-    expect(hooks.onBatchProgress).toBeTypeOf("function")
-    expect(hooks.onRunComplete).toBeTypeOf("function")
-    expect(hooks.onRunFailed).toBeTypeOf("function")
-  })
-
-  describe("onRunStart", () => {
-    it("fires New Relic EnrichmentBatchStart event", () => {
-      hooks.onRunStart!(5, makeConfig())
-
-      expect(mockNR.recordCustomEvent).toHaveBeenCalledWith(
-        "EnrichmentBatchStart",
-        expect.objectContaining({ totalActors: 5 })
-      )
-    })
+    // Batch-level hooks are omitted — adapter calls debrief() per actor, not debriefBatch()
+    expect(hooks.onRunStart).toBeUndefined()
+    expect(hooks.onRunComplete).toBeUndefined()
+    expect(hooks.onRunFailed).toBeUndefined()
+    expect(hooks.onBatchProgress).toBeUndefined()
   })
 
   describe("onSourceComplete", () => {
@@ -125,46 +115,11 @@ describe("createLifecycleHooks", () => {
     })
   })
 
-  describe("onRunComplete", () => {
-    it("fires New Relic EnrichmentBatchComplete event", () => {
-      hooks.onRunComplete!({
-        completed: 10,
-        total: 10,
-        succeeded: 8,
-        failed: 2,
-        costUsd: 1.5,
-        elapsedMs: 30000,
-        avgCostPerSubject: 0.15,
-        avgDurationMs: 3000,
-      })
-
-      expect(mockNR.recordCustomEvent).toHaveBeenCalledWith(
-        "EnrichmentBatchComplete",
-        expect.objectContaining({
-          actorsProcessed: 10,
-          actorsSucceeded: 8,
-          totalCostUsd: 1.5,
-        })
-      )
-    })
-  })
-
-  describe("onRunFailed", () => {
-    it("reports error to New Relic", () => {
-      const error = new Error("Database connection lost")
-      hooks.onRunFailed!(error)
-
-      expect(mockNR.noticeError).toHaveBeenCalledWith(error)
-    })
-  })
-
   describe("without New Relic", () => {
     it("all hooks work without throwing when New Relic is null", () => {
       const hooksNoNR = createLifecycleHooks({ newRelicAgent: null })
       const subject = makeSubject()
-      const config = makeConfig()
 
-      expect(() => hooksNoNR.onRunStart!(5, config)).not.toThrow()
       expect(() => hooksNoNR.onSubjectStart!(subject, 0, 5)).not.toThrow()
       expect(() => hooksNoNR.onSourceAttempt!(subject, "Wikipedia", 1)).not.toThrow()
       expect(() => hooksNoNR.onSourceComplete!(subject, "Wikipedia", null, 0)).not.toThrow()
@@ -180,22 +135,6 @@ describe("createLifecycleHooks", () => {
       expect(() => hooksNoNR.onEarlyStop!(subject, 3, "3+ source families")).not.toThrow()
       expect(() => hooksNoNR.onCostLimitReached!(subject, 0.5, 0.5)).not.toThrow()
       expect(() => hooksNoNR.onSubjectComplete!(subject, makeDebriefResult())).not.toThrow()
-      expect(() =>
-        hooksNoNR.onBatchProgress!({ completed: 1, total: 5, costUsd: 0.1, elapsedMs: 1000 })
-      ).not.toThrow()
-      expect(() =>
-        hooksNoNR.onRunComplete!({
-          completed: 5,
-          total: 5,
-          succeeded: 5,
-          failed: 0,
-          costUsd: 0.5,
-          elapsedMs: 5000,
-          avgCostPerSubject: 0.1,
-          avgDurationMs: 1000,
-        })
-      ).not.toThrow()
-      expect(() => hooksNoNR.onRunFailed!(new Error("test"))).not.toThrow()
     })
   })
 
@@ -205,11 +144,12 @@ describe("createLifecycleHooks", () => {
       delete process.env.NEW_RELIC_LICENSE_KEY
       resetNewRelicCache()
 
+      const hadKey = "NEW_RELIC_LICENSE_KEY" in process.env
+
       try {
         const defaultHooks = createLifecycleHooks()
         const subject = makeSubject()
 
-        expect(() => defaultHooks.onRunStart!(5, makeConfig())).not.toThrow()
         expect(() => defaultHooks.onSubjectStart!(subject, 0, 5)).not.toThrow()
         expect(() =>
           defaultHooks.onSourceComplete!(
@@ -221,7 +161,11 @@ describe("createLifecycleHooks", () => {
         ).not.toThrow()
         expect(() => defaultHooks.onSubjectComplete!(subject, makeDebriefResult())).not.toThrow()
       } finally {
-        if (originalKey) process.env.NEW_RELIC_LICENSE_KEY = originalKey
+        if (hadKey) {
+          process.env.NEW_RELIC_LICENSE_KEY = originalKey
+        } else {
+          delete process.env.NEW_RELIC_LICENSE_KEY
+        }
         resetNewRelicCache()
       }
     })
