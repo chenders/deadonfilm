@@ -138,8 +138,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.1",
-    "debriefer": "file:../../debriefer/packages/core",
-    "debriefer-sources": "file:../../debriefer/packages/sources",
+    "debriefer": "^1.0.0",
+    "debriefer-sources": "^1.0.0",
     "@bull-board/api": "^6.16.4",
     "@bull-board/express": "^6.16.4",
     "@extra/recaptcha": "^4.2.1-next.587",

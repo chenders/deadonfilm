@@ -41,12 +41,20 @@ When adding a new source, consult [Wikipedia's RSP list](https://en.wikipedia.or
 
 ## Architecture
 
+Orchestration is handled by the `debriefer` npm package (`debriefer@^1.0.0`), with a deadonfilm adapter layer.
+
 | Component | Path | Purpose |
 |-----------|------|---------|
-| Orchestrator | `server/src/lib/death-sources/orchestrator.ts` | Tries sources in priority order, stops at confidence threshold |
+| Debriefer adapter | `server/src/lib/death-sources/debriefer/adapter.ts` | Builds `ResearchOrchestrator` with 8-phase source structure |
+| Finding mapper | `server/src/lib/death-sources/debriefer/finding-mapper.ts` | Maps debriefer `ScoredFinding[]` → deadonfilm `RawSourceData[]` |
+| Legacy adapter | `server/src/lib/death-sources/debriefer/legacy-source-adapter.ts` | Wraps deadonfilm-only `BaseDataSource` as debriefer `BaseResearchSource` |
+| Lifecycle hooks | `server/src/lib/death-sources/debriefer/lifecycle-hooks.ts` | Per-source Pino logging + New Relic custom events |
+| Section selector | `server/src/lib/death-sources/debriefer/haiku-section-selector.ts` | Claude Haiku-based Wikipedia section filter |
+| Person validator | `server/src/lib/death-sources/debriefer/person-validator.ts` | AI + regex Wikipedia person disambiguation |
+| Enrichment runner | `server/src/lib/enrichment-runner.ts` | Top-level runner: calls debriefer → Claude cleanup → DB writer |
 | Base source | `server/src/lib/death-sources/base-source.ts` | Caching, rate limiting, timeout, confidence calculation |
 | Claude cleanup | `server/src/lib/death-sources/claude-cleanup.ts` | AI synthesis of multi-source raw data into clean narrative |
-| Source implementations | `server/src/lib/death-sources/sources/*.ts` | Individual data source lookup logic |
+| Source implementations | `server/src/lib/death-sources/sources/*.ts` | Individual data source lookup logic (17 legacy sources) |
 | AI providers | `server/src/lib/death-sources/ai-providers/*.ts` | AI model integrations (Gemini, GPT, Groq, etc.) |
 | Types | `server/src/lib/death-sources/types.ts` | `DataSourceType` enum, config interfaces, result types |
 | HTML utils | `server/src/lib/death-sources/html-utils.ts` | `htmlToText()` sanitization pipeline |
@@ -55,15 +63,23 @@ When adding a new source, consult [Wikipedia's RSP list](https://en.wikipedia.or
 
 ## Orchestrator Flow
 
-1. Initialize sources organized into sequential **phases** (structured → web search → news → obituary → books → archives → genealogy → AI models)
-2. Process multiple actors concurrently (configurable concurrency, default 5, range 1-20)
-3. For each actor, execute phases sequentially; within each phase, fire all sources concurrently via `Promise.allSettled()`
-4. Accumulate ALL raw source data into `rawSources[]`
-5. **Early stopping between phases**: based on source family count threshold (similar to biography's "3+ high-quality families"), per-actor cost limit also checked
-6. Always send accumulated raw data to Claude synthesis (`claude-cleanup.ts`)
-7. Claude produces unified structured output
+```
+EnrichmentRunner → debriefActor() → ResearchOrchestrator (debriefer npm package)
+  ├── debriefer-sources (27 standard: Wikipedia, Wikidata, news, search, archives)
+  └── LegacySourceAdapter (17 deadonfilm-only: AI providers, trade press, etc.)
+  → mapFindings() → RawSourceData[]
+  → cleanupWithClaude() → structured output
+  → DB writer → actor_death_circumstances
+```
 
-**Note**: The legacy "first-wins" merge strategy has been replaced. All actors now use the gather-all + synthesis approach (same as biography enrichment). This produces higher-quality results by cross-referencing multiple sources.
+1. `EnrichmentRunner` creates a debriefer `ResearchOrchestrator` via `adapter.ts` with 8-phase source structure
+2. Process multiple actors concurrently (configurable concurrency, default 5, range 1-20)
+3. For each actor, debriefer executes phases sequentially; within each phase, fires all sources concurrently
+4. Debriefer accumulates all findings with reliability scores and confidence
+5. **Early stopping between phases**: based on source family count threshold and per-actor cost limit
+6. `mapFindings()` converts debriefer `ScoredFinding[]` to deadonfilm `RawSourceData[]`
+7. Claude synthesis (`claude-cleanup.ts`) produces unified structured output
+8. DB writer upserts to `actor_death_circumstances` with COALESCE (preserves existing non-null values)
 
 ## Source Priority Order
 

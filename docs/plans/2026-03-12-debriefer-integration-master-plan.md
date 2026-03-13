@@ -16,10 +16,10 @@ This plan consolidates all debriefer integration work for deadonfilm. It superse
 | A | Death enrichment refactor | Done |
 | B | Debriefer API gaps | Done (debriefer side) |
 | C | Death integration gaps (deadonfilm) | Done |
-| D | Job handler migration + cleanup | **In progress** (D1 done, D2 pending) |
-| E | Test & verify on test environment | Not started |
+| D | Job handler migration + cleanup | **Done** |
+| E | Test & verify on test environment | **Done** |
 | F | Biography enrichment migration | Not started |
-| G | Publish debriefer to npm | Not started |
+| G | Publish debriefer to npm | **Done** |
 
 ---
 
@@ -170,15 +170,17 @@ Separate effort after death enrichment is stable on main. Same pattern as Phase 
 
 ---
 
-## Phase G: Publish Debriefer to npm (NOT STARTED)
+## Phase G: Publish Debriefer to npm (DONE)
 
-Once debriefer is stable, publish to npm and switch from `file:` path deps. This eliminates the need for `Dockerfile.test`, the debriefer clone step in CI, and simplifies the Docker build.
+Published `debriefer` and `debriefer-sources` 1.0.0 to npm with provenance attestation.
 
-- [ ] Publish `debriefer` and `debriefer-sources` to npm
-- [ ] Update `server/package.json` to use npm versions
-- [ ] Remove `Dockerfile.test` (use standard `Dockerfile`)
-- [ ] Remove debriefer clone steps from CI and deploy workflows
-- [ ] Update pinned SHA references
+- [x] Published `debriefer@1.0.0` and `debriefer-sources@1.0.0` to npm (with SLSA provenance)
+- [x] Added publish workflow (`.github/workflows/publish.yml` in debriefer repo) triggered by GitHub Release
+- [x] Updated `server/package.json` to use `^1.0.0` instead of `file:` paths
+- [x] Deleted `Dockerfile.test` (standard `Dockerfile` works for both prod and test)
+- [x] Removed debriefer clone steps from `ci.yml`, `deploy.yml`, and `deploy-test.yml`
+- [x] Removed debriefer COPY lines from `Dockerfile`
+- [x] No more pinned SHA management
 
 ---
 
@@ -186,21 +188,18 @@ Once debriefer is stable, publish to npm and switch from `file:` path deps. This
 
 ### Test Deployment
 - `test-*` branches auto-deploy to `http://megadude:3001` via `.github/workflows/deploy-test.yml`
-- Uses `Dockerfile.test` which clones debriefer into the Docker build context
-- Debriefer SHA pinned in both `ci.yml` and `deploy-test.yml` — update both when bumping
+- Uses standard `Dockerfile` (same as production)
 
 ### Test Database
 - Full production clone restored via `pg_dump -Fc` / `pg_restore`
 - Port 5438, database name `deadonfilm_test`
 - To reset: `docker compose stop app worker cron` → drop/recreate DB → `pg_restore` → restart
 
-### Docker Build (file: deps)
-- `npm ci` creates symlinks for `file:` deps — full debriefer monorepo must be COPY'd to both build and production stages in `Dockerfile.test`
-- The `test-latest` Docker tag uses a separate buildcache (`buildcache-test`)
-
-### CI
-- Backend build/test jobs clone debriefer at pinned SHA before `npm ci`
-- Debriefer SHA is pinned in `.github/workflows/ci.yml` and `.github/workflows/deploy-test.yml` — update all references together when bumping
+### Debriefer Packages
+- Published to npm: `debriefer@^1.0.0`, `debriefer-sources@^1.0.0`
+- Source: github.com/chenders/debriefer
+- Publish workflow: create a GitHub Release → auto-publishes with provenance
+- NPM_TOKEN secret in debriefer repo (90-day granular token, expires ~June 2026)
 
 ---
 
