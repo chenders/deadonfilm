@@ -188,6 +188,38 @@ describe("claude-cleanup", () => {
       expect(prompt).toContain("medical examiner classification")
       expect(prompt).toContain("natural|accident|suicide|homicide|undetermined|pending")
     })
+
+    it("truncates source text exceeding 15K chars", () => {
+      const longText = "A".repeat(20_000)
+      const sources: RawSourceData[] = [
+        {
+          sourceName: "Google Search",
+          sourceType: DataSourceType.GOOGLE_SEARCH,
+          confidence: 0.7,
+          text: longText,
+        },
+      ]
+      const prompt = buildCleanupPrompt(mockActor, sources)
+      // Should NOT contain the full 20K of A's
+      expect(prompt).not.toContain("A".repeat(20_000))
+      expect(prompt).toContain("[truncated")
+      expect(prompt).toContain("20,000 chars")
+    })
+
+    it("does not truncate source text under 15K chars", () => {
+      const shortText = "Died of natural causes. ".repeat(100) // ~2400 chars
+      const sources: RawSourceData[] = [
+        {
+          sourceName: "Wikipedia",
+          sourceType: DataSourceType.WIKIPEDIA,
+          confidence: 0.9,
+          text: shortText,
+        },
+      ]
+      const prompt = buildCleanupPrompt(mockActor, sources)
+      expect(prompt).not.toContain("[truncated")
+      expect(prompt).toContain(shortText.trim())
+    })
   })
 
   describe("manner validation with DeathMannerSchema", () => {
