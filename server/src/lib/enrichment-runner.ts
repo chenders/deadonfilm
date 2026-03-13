@@ -509,7 +509,7 @@ export class EnrichmentRunner {
                 null,
                 debriefResult.durationMs,
                 totalActorCost,
-                JSON.stringify([]),
+                JSON.stringify(debriefResult.logEntries),
               ]
             )
           }
@@ -704,7 +704,7 @@ export class EnrichmentRunner {
               bestSource?.sourceType || null,
               debriefResult.durationMs,
               totalActorCost,
-              JSON.stringify([]),
+              JSON.stringify(debriefResult.logEntries),
             ]
           )
           enrichmentRunActorId = eraResult.rows[0]?.id ?? null

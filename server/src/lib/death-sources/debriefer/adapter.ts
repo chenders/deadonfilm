@@ -59,7 +59,7 @@ import { adaptLegacySources } from "./legacy-source-adapter.js"
 import { mapFindings } from "./finding-mapper.js"
 import { createHaikuSectionFilter } from "./haiku-section-selector.js"
 import { createPersonValidator } from "./person-validator.js"
-import { createLifecycleHooks } from "./lifecycle-hooks.js"
+import { createLifecycleHooks, LogEntryCollector } from "./lifecycle-hooks.js"
 import type { RawSourceData, ActorForEnrichment } from "../types.js"
 
 // Deadonfilm-only source classes (no debriefer-sources equivalents)
@@ -105,6 +105,12 @@ export interface DebrieferAdapterResult {
   sourcesSucceeded: number
   durationMs: number
   stoppedAtPhase?: number
+  logEntries: Array<{
+    timestamp: string
+    level: string
+    message: string
+    data?: Record<string, unknown>
+  }>
 }
 
 /**
@@ -134,9 +140,11 @@ export function createDebriefOrchestrator(
     orchestratorConfig
   )
 
-  const hooks = createLifecycleHooks()
-
   return async (actor: ActorForEnrichment): Promise<DebrieferAdapterResult> => {
+    // Create a fresh log collector per actor so entries don't mix across concurrent actors
+    const logCollector = new LogEntryCollector()
+    const hooks = createLifecycleHooks({ logCollector })
+
     const subject: ResearchSubject = {
       id: actor.id,
       name: actor.name,
@@ -160,6 +168,7 @@ export function createDebriefOrchestrator(
       sourcesSucceeded: result.sourcesSucceeded,
       durationMs: result.durationMs,
       stoppedAtPhase: result.stoppedAtPhase,
+      logEntries: logCollector.entries,
     }
   }
 }
