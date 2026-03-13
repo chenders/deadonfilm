@@ -54,7 +54,7 @@ Orchestration is handled by the `debriefer` npm package (`debriefer@^1.0.0`), wi
 | Enrichment runner | `server/src/lib/enrichment-runner.ts` | Top-level runner: calls debriefer → Claude cleanup → DB writer |
 | Base source | `server/src/lib/death-sources/base-source.ts` | Caching, rate limiting, timeout, confidence calculation |
 | Claude cleanup | `server/src/lib/death-sources/claude-cleanup.ts` | AI synthesis of multi-source raw data into clean narrative |
-| Source implementations | `server/src/lib/death-sources/sources/*.ts` | Individual data source lookup logic (17 legacy sources) |
+| Source implementations | `server/src/lib/death-sources/sources/*.ts` | Individual data source lookup logic |
 | AI providers | `server/src/lib/death-sources/ai-providers/*.ts` | AI model integrations (Gemini, GPT, Groq, etc.) |
 | Types | `server/src/lib/death-sources/types.ts` | `DataSourceType` enum, config interfaces, result types |
 | HTML utils | `server/src/lib/death-sources/html-utils.ts` | `htmlToText()` sanitization pipeline |
@@ -66,7 +66,7 @@ Orchestration is handled by the `debriefer` npm package (`debriefer@^1.0.0`), wi
 ```
 EnrichmentRunner → debriefActor() → ResearchOrchestrator (debriefer npm package)
   ├── debriefer-sources (27 standard: Wikipedia, Wikidata, news, search, archives)
-  └── LegacySourceAdapter (17 deadonfilm-only: AI providers, trade press, etc.)
+  └── LegacySourceAdapter (deadonfilm-only: AI providers, trade press, etc.)
   → mapFindings() → RawSourceData[]
   → cleanupWithClaude() → structured output
   → DB writer → actor_death_circumstances
