@@ -424,13 +424,11 @@ export class EnrichmentRunner {
 
         const totalActorCost = debriefResult.totalCostUsd + cleanupCostUsd
 
-        // Compute per-actor cost attribution by source type (used for per-actor DB rows)
+        // Compute per-actor cost attribution by source type using actual per-source costs
         const actorCostBySource: Record<string, number> = {}
-        if (debriefResult.rawSources.length > 0 && debriefResult.totalCostUsd > 0) {
-          const uniqueTypes = new Set(debriefResult.rawSources.map((rs) => rs.sourceType))
-          const perTypeCost = debriefResult.totalCostUsd / Math.max(uniqueTypes.size, 1)
-          for (const sourceType of uniqueTypes) {
-            actorCostBySource[sourceType] = perTypeCost
+        for (const rs of debriefResult.rawSources) {
+          if (rs.costUsd && rs.costUsd > 0) {
+            actorCostBySource[rs.sourceType] = (actorCostBySource[rs.sourceType] ?? 0) + rs.costUsd
           }
         }
 

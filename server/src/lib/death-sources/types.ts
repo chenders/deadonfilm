@@ -444,6 +444,7 @@ export interface RawSourceData {
   confidence: number
   reliabilityTier?: ReliabilityTier
   reliabilityScore?: number
+  costUsd?: number
   resolvedSources?: import("./url-resolver.js").ResolvedUrl[]
 }
 
