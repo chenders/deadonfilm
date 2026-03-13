@@ -138,8 +138,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.1",
-    "debriefer": "file:../../debriefer/packages/core",
-    "debriefer-sources": "file:../../debriefer/packages/sources",
     "@bull-board/api": "^6.16.4",
     "@bull-board/express": "^6.16.4",
     "@extra/recaptcha": "^4.2.1-next.587",
@@ -151,6 +149,8 @@
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "debriefer": "^1.0.1",
+    "debriefer-sources": "^1.0.1",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "express-rate-limit": "^8.2.1",

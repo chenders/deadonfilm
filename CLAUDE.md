@@ -104,7 +104,7 @@ e2e/                          # Playwright tests and screenshots
 
 ### Key Dependencies
 
-**Backend**: express, pg, ioredis, bullmq, @anthropic-ai/sdk, commander, dotenv, pino, zod, node-pg-migrate, playwright-core (web scraping), newrelic
+**Backend**: express, pg, ioredis, bullmq, @anthropic-ai/sdk, debriefer + debriefer-sources (research orchestration), commander, dotenv, pino, zod, node-pg-migrate, playwright-core (web scraping), newrelic
 
 **Frontend**: react 18, react-router-dom 6, @tanstack/react-query, react-helmet-async, recharts, react-datepicker, slugify
 

@@ -43,28 +43,10 @@ jobs:
             type=sha,prefix=test-
             type=raw,value=test-latest
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Clone and build debriefer (local path dependency)
-        env:
-          DEBRIEFER_SHA: 0f8bb10f6c15325f69e6047e3631764435d42f82
-        run: |
-          git init debriefer
-          cd debriefer
-          git remote add origin https://github.com/chenders/debriefer.git
-          git fetch --depth 1 origin $DEBRIEFER_SHA
-          git checkout FETCH_HEAD
-          npm ci
-          npx turbo build --filter=debriefer --filter=debriefer-sources
-
       - name: Build and push app image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile.test
           push: true
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
