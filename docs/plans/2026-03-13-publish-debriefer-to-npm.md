@@ -1,7 +1,7 @@
 # Phase G: Publish Debriefer to npm
 
 **Date**: 2026-03-13
-**Status**: Not started
+**Status**: Done
 **Depends on**: Phase E (done — debriefer integration verified in production)
 
 ## Goal
@@ -18,7 +18,7 @@ Publish `debriefer` and `debriefer-sources` to npm at 1.0.0, then update deadonf
 
 ## Part 1: Debriefer Repo
 
-**Repo**: `/Users/chris/Source/debriefer` (github.com/chenders/debriefer)
+**Repo**: github.com/chenders/debriefer (clone locally)
 
 ### 1.1 npm Account Setup
 - Run `npm login` to authenticate
@@ -40,7 +40,7 @@ Add to both `packages/core/package.json` and `packages/sources/package.json`:
 
 ### 1.4 Build and Publish
 ```bash
-cd /Users/chris/Source/debriefer
+cd <debriefer-repo-root>
 npx turbo build
 cd packages/core && npm publish
 cd ../sources && npm publish
@@ -57,7 +57,7 @@ git push && git push --tags
 
 ## Part 2: Deadonfilm Repo
 
-**Repo**: `/Users/chris/Source/deadonfilm`
+**Repo**: github.com/chenders/deadonfilm (this repo)
 
 ### 2.1 Update Dependencies
 In `server/package.json`, replace:
