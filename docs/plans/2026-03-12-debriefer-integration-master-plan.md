@@ -76,84 +76,32 @@ Changes made in the debriefer repo to support deadonfilm's needs.
 
 ---
 
-## Phase D: Job Handler Migration + Cleanup (IN PROGRESS)
+## Phase D: Job Handler Migration + Cleanup (DONE)
 
 ### D1: BullMQ Job Handler Migration (DONE — PR #571)
 - [x] Rewrite `enrich-death-details.ts` to use `EnrichmentRunner` with `actorIds: [actorId]`
 - [x] Remove `DeathEnrichmentOrchestrator` import (last consumer)
 - [x] 9 tests
 
-### D2: Remove Old Orchestrator
-**Priority**: Low | **Effort**: Small | **Status**: Not started (blocked on D1 merge)
-
-- [ ] Remove or deprecate `server/src/lib/death-sources/orchestrator.ts`
-- [ ] Remove unused exports from `server/src/lib/death-sources/index.ts`
-- [ ] Remove `StatusBar` and related dead code
-- [ ] Remove `EnrichmentLogger` if no longer used
-
-**Test checkpoint after D2**: Deploy to test environment, run a quick smoke test (enrich 1 actor via admin UI) to verify the old orchestrator removal didn't break anything.
+### D2: Remove Old Orchestrator + CLI Scripts (DONE — PR #572)
+- [x] Remove `server/src/lib/death-sources/orchestrator.ts` (1,394 lines)
+- [x] Remove `server/src/lib/death-sources/orchestrator.test.ts` (243 lines)
+- [x] Remove `server/scripts/enrich-death-details.ts` (1,404 lines) — replaced by admin UI
+- [x] Remove `server/scripts/test-browser-auth.ts` (474 lines)
+- [x] Migrate inline enrichment endpoint to `EnrichmentRunner`
+- [x] StatusBar and EnrichmentLogger confirmed still in active use (not dead code)
 
 ---
 
-## Phase E: Test & Verify on Test Environment (NOT STARTED)
+## Phase E: Test & Verify on Test Environment (DONE)
 
-Validate the integration on `http://megadude:3001` before merging `test-debriefer-integration` to main. The test database is a full production clone.
+Validated on `http://megadude:3001` with production clone database.
 
-### E1: CLI Enrichment Smoke Test
-**When**: After D2 is merged
-**How**: SSH to server, exec into the test app container, run the enrichment script
-
-```bash
-docker exec -it deadonfilm-test-app sh -c \
-  "cd /app/server && node dist/scripts/enrich-death-details.js --actor-id 2157 --limit 1"
-```
-
-**Verify**:
-- [ ] Script runs without errors
-- [ ] Sources are attempted (check Pino logs for lifecycle hook output)
-- [ ] Claude cleanup produces structured data
-- [ ] Data is written to `actor_death_circumstances` table
-- [ ] Cost is tracked correctly
-
-### E2: Admin UI Single-Actor Enrichment
-**When**: After E1 passes
-**How**: Open `http://megadude:3001/admin` → find an actor → click "Enrich"
-
-**Verify**:
-- [ ] Enrichment starts without errors
-- [ ] Progress updates appear in the UI
-- [ ] Results are visible on the actor's page
-- [ ] Death page (`/actor/{slug}/death`) renders correctly
-
-### E3: Admin UI Batch Enrichment (Small Batch)
-**When**: After E2 passes
-**How**: Admin dashboard → Enrichment tab → start a batch with limit=5
-
-**Verify**:
-- [ ] Batch job starts and appears in BullMQ queue (Bull Board at `/admin/bull-board`)
-- [ ] Progress updates in the enrichment run details page
-- [ ] All 5 actors processed (check `enrichment_runs` table)
-- [ ] Source hit rates populated in the run summary
-- [ ] Cost tracking matches expectations
-
-### E4: Quality Comparison
-**When**: After E3 passes
-**How**: Pick 3-5 actors that were enriched in production, re-enrich on test, compare
-
-**Verify**:
-- [ ] Circumstances narratives are comparable quality
-- [ ] Notable factors are being extracted
-- [ ] Confidence levels are reasonable
-- [ ] No regressions in cause-of-death extraction
-- [ ] Sources attribution looks correct
-
-### E5: Full CI Verification
-**When**: Before merging to main
-
-**Verify**:
-- [ ] All CI checks pass on `test-debriefer-integration`
-- [ ] No test regressions (full test suite)
-- [ ] E2E tests pass
+- [x] Test deployment healthy (all services running)
+- [x] Single-actor inline enrichment: 3 sources, 37s, no errors
+- [x] Batch enrichment (5 actors): 5/5 enriched, $0.92 cost, 0 errors
+- [x] Quality verified (Maggie Smith, Kris Kristofferson): rich narratives, correct locations, entity linking
+- [x] All CI checks pass
 
 ---
 
@@ -172,11 +120,11 @@ Separate effort after death enrichment is stable on main. Same pattern as Phase 
 
 ## Phase G: Publish Debriefer to npm (DONE)
 
-Published `debriefer` and `debriefer-sources` 1.0.0 to npm with provenance attestation.
+Published `debriefer` and `debriefer-sources` to npm with provenance attestation.
 
-- [x] Published `debriefer@1.0.0` and `debriefer-sources@1.0.0` to npm (with SLSA provenance)
+- [x] Published `debriefer@1.0.1` and `debriefer-sources@1.0.1` to npm (with SLSA provenance)
 - [x] Added publish workflow (`.github/workflows/publish.yml` in debriefer repo) triggered by GitHub Release
-- [x] Updated `server/package.json` to use `^1.0.0` instead of `file:` paths
+- [x] Updated `server/package.json` to use `^1.0.1` instead of `file:` paths
 - [x] Deleted `Dockerfile.test` (standard `Dockerfile` works for both prod and test)
 - [x] Removed debriefer clone steps from `ci.yml`, `deploy.yml`, and `deploy-test.yml`
 - [x] Removed debriefer COPY lines from `Dockerfile`
@@ -196,7 +144,7 @@ Published `debriefer` and `debriefer-sources` 1.0.0 to npm with provenance attes
 - To reset: `docker compose stop app worker cron` → drop/recreate DB → `pg_restore` → restart
 
 ### Debriefer Packages
-- Published to npm: `debriefer@^1.0.0`, `debriefer-sources@^1.0.0`
+- Published to npm: `debriefer@^1.0.1`, `debriefer-sources@^1.0.1`
 - Source: github.com/chenders/debriefer
 - Publish workflow: create a GitHub Release → auto-publishes with provenance
 - NPM_TOKEN secret in debriefer repo (90-day granular token, expires ~June 2026)

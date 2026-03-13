@@ -41,7 +41,7 @@ When adding a new source, consult [Wikipedia's RSP list](https://en.wikipedia.or
 
 ## Architecture
 
-Orchestration is handled by the `debriefer` npm package (`debriefer@^1.0.0`), with a deadonfilm adapter layer.
+Orchestration is handled by the `debriefer` npm package, with a deadonfilm adapter layer.
 
 | Component | Path | Purpose |
 |-----------|------|---------|
@@ -65,7 +65,7 @@ Orchestration is handled by the `debriefer` npm package (`debriefer@^1.0.0`), wi
 
 ```
 EnrichmentRunner → debriefActor() → ResearchOrchestrator (debriefer npm package)
-  ├── debriefer-sources (27 standard: Wikipedia, Wikidata, news, search, archives)
+  ├── debriefer-sources (standard: Wikipedia, Wikidata, news, search, archives)
   └── LegacySourceAdapter (deadonfilm-only: AI providers, trade press, etc.)
   → mapFindings() → RawSourceData[]
   → cleanupWithClaude() → structured output
