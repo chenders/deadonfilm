@@ -17,6 +17,7 @@
 import type { LifecycleHooks, ResearchSubject, ScoredFinding } from "debriefer"
 import { createRequire } from "module"
 import { logger } from "../../logger.js"
+import { cacheSourceFinding, cacheSourceFailure } from "./source-cache-bridge.js"
 
 const log = logger.child({ module: "debriefer-hooks" })
 
@@ -123,6 +124,7 @@ export function createLifecycleHooks(
     },
 
     onSourceComplete(subject, sourceName, finding, costUsd) {
+      const actorId = typeof subject.id === "number" ? subject.id : parseInt(String(subject.id), 10)
       if (finding) {
         log.debug(
           {
@@ -143,6 +145,10 @@ export function createLifecycleHooks(
           textLength: finding.text.length,
           hasUrl: !!finding.url,
         })
+        // Write to source_query_cache for admin visibility and deduplication
+        if (!isNaN(actorId)) {
+          cacheSourceFinding(actorId, sourceName, finding, costUsd)
+        }
         nr?.recordCustomEvent("EnrichmentSourceSuccess", {
           actorId: subject.id,
           actorName: subject.name,
@@ -161,6 +167,7 @@ export function createLifecycleHooks(
     },
 
     onSourceError(subject, sourceName, error) {
+      const actorId = typeof subject.id === "number" ? subject.id : parseInt(String(subject.id), 10)
       log.warn(
         { actorId: subject.id, actorName: subject.name, source: sourceName, err: error },
         `${sourceName}: error`
@@ -169,6 +176,14 @@ export function createLifecycleHooks(
         source: sourceName,
         error: error instanceof Error ? error.message : String(error),
       })
+      // Cache failures to prevent re-trying consistently failing sources
+      if (!isNaN(actorId)) {
+        cacheSourceFailure(
+          actorId,
+          sourceName,
+          error instanceof Error ? error.message : String(error)
+        )
+      }
       if (error instanceof Error) {
         nr?.noticeError(error, { actorId: String(subject.id), source: sourceName })
       }
