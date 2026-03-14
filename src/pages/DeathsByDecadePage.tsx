@@ -75,8 +75,6 @@ export default function DeathsByDecadePage() {
   }
 
   const noResults = data.deaths.length === 0
-  const baseOffset = (page - 1) * data.pagination.pageSize
-
   return (
     <>
       <Helmet>
@@ -135,7 +133,7 @@ export default function DeathsByDecadePage() {
         ) : (
           <>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {data.deaths.map((person, index) => (
+              {data.deaths.map((person) => (
                 <ActorCard
                   key={person.id}
                   name={person.name}
@@ -145,7 +143,6 @@ export default function DeathsByDecadePage() {
                   ageAtDeath={person.ageAtDeath}
                   causeOfDeath={person.causeOfDeath}
                   knownFor={person.knownFor}
-                  rank={baseOffset + index + 1}
                   useCauseOfDeathBadge
                   testId={`death-row-${person.id}`}
                 >

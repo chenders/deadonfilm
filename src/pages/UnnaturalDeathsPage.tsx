@@ -213,7 +213,6 @@ export default function UnnaturalDeathsPage() {
                   causeOfDeath={person.causeOfDeath}
                   causeOfDeathDetails={person.causeOfDeathDetails}
                   knownFor={person.knownFor}
-                  rank={person.rank}
                   useCauseOfDeathBadge
                   testId={`unnatural-death-row-${person.id}`}
                 />

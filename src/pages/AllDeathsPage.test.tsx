@@ -292,21 +292,6 @@ describe("AllDeathsPage", () => {
     })
   })
 
-  it("displays ranks correctly", async () => {
-    vi.mocked(api.getAllDeaths).mockResolvedValue({
-      deaths: mockDeaths,
-      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
-    })
-
-    renderWithProviders(<AllDeathsPage />)
-
-    await waitFor(() => {
-      // Check that ranks are displayed - both desktop and mobile show rank
-      expect(screen.getAllByText("1").length).toBeGreaterThanOrEqual(1)
-      expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(1)
-    })
-  })
-
   it("renders include obscure filter checkbox", async () => {
     vi.mocked(api.getAllDeaths).mockResolvedValue({
       deaths: mockDeaths,

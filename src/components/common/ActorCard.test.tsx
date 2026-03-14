@@ -169,23 +169,6 @@ describe("ActorCard", () => {
     expect(screen.getByTestId("actor-card-1")).toBeInTheDocument()
   })
 
-  it("renders rank number when provided", () => {
-    renderCard({ rank: 42 })
-
-    expect(screen.getByText("42")).toBeInTheDocument()
-    // Rank wrapper should contain the card
-    const rankEl = screen.getByText("42")
-    expect(rankEl.tagName).toBe("SPAN")
-    expect(rankEl.closest("div")).toContainElement(screen.getByText("John Wayne"))
-  })
-
-  it("does not render rank wrapper when rank is not provided", () => {
-    renderCard()
-
-    // No rank number should be rendered
-    expect(screen.queryByText(/^\d+$/)).not.toBeInTheDocument()
-  })
-
   it("applies lazy loading by default", () => {
     renderCard()
 

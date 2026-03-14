@@ -80,8 +80,6 @@ export default function CauseCategoryPage() {
     return <ErrorMessage message="Category not found" />
   }
 
-  const baseOffset = (page - 1) * data.pagination.pageSize
-
   return (
     <>
       <Helmet>
@@ -190,13 +188,8 @@ export default function CauseCategoryPage() {
         <div className="mb-4">
           <h2 className="mb-4 font-display text-xl text-brown-dark">All Actors</h2>
           <div className="space-y-2">
-            {data.actors.map((actor, index) => (
-              <CauseActorRow
-                key={actor.id}
-                actor={actor}
-                rank={baseOffset + index + 1}
-                showCauseBadge
-              />
+            {data.actors.map((actor) => (
+              <CauseActorRow key={actor.id} actor={actor} showCauseBadge />
             ))}
           </div>
         </div>

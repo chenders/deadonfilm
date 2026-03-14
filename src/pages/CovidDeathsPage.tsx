@@ -119,7 +119,6 @@ export default function CovidDeathsPage() {
                   causeOfDeath={person.causeOfDeath}
                   causeOfDeathDetails={person.causeOfDeathDetails}
                   knownFor={person.knownFor}
-                  rank={person.rank}
                   useCauseOfDeathBadge
                   testId={`covid-death-row-${person.id}`}
                 />

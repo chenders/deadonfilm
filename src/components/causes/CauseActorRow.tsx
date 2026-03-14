@@ -8,12 +8,11 @@ import type { CauseActor } from "@/types"
 
 interface CauseActorRowProps {
   actor: CauseActor
-  rank: number
   /** Whether to show the cause badge (true for category pages, false for specific cause pages) */
   showCauseBadge?: boolean
 }
 
-export default function CauseActorRow({ actor, rank, showCauseBadge = true }: CauseActorRowProps) {
+export default function CauseActorRow({ actor, showCauseBadge = true }: CauseActorRowProps) {
   const actorId = actor.id
   const slug = createActorSlug(actor.name, actorId)
   const profileUrl = getProfileUrl(actor.profilePath, "w185") || actor.fallbackProfileUrl
@@ -29,8 +28,6 @@ export default function CauseActorRow({ actor, rank, showCauseBadge = true }: Ca
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
-        <span className="w-8 text-center font-display text-lg text-brown-medium">{rank}</span>
-
         {profileUrl ? (
           <img
             src={profileUrl}
@@ -70,10 +67,6 @@ export default function CauseActorRow({ actor, rank, showCauseBadge = true }: Ca
 
       {/* Mobile layout */}
       <div className="flex items-start gap-3 md:hidden">
-        <span className="mt-1 w-6 text-center font-display text-base text-brown-medium">
-          {rank}
-        </span>
-
         {profileUrl ? (
           <img
             src={profileUrl}
