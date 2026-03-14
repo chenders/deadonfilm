@@ -41,7 +41,12 @@ export class BioLegacySourceAdapter extends BaseResearchSource<ResearchSubject> 
     _signal: AbortSignal
   ): Promise<RawFinding | null> {
     const actor = subjectToActor(subject)
-    const result = await this.legacySource.lookup(actor)
+    let result
+    try {
+      result = await this.legacySource.lookup(actor)
+    } catch {
+      return null
+    }
 
     if (!result.success || !result.data) {
       return null

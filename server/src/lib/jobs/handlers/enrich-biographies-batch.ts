@@ -256,7 +256,14 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
 
           // Insert per-actor result
           if (runId) {
-            await this.insertActorResult(db, runId, actor, result, actorLogs)
+            try {
+              await this.insertActorResult(db, runId, actor, result, actorLogs)
+            } catch (trackingError) {
+              log.error(
+                { error: trackingError, runId, actorId: actor.id },
+                "Failed to insert actor result tracking (enrichment still succeeded)"
+              )
+            }
           }
 
           // Update job progress
@@ -398,7 +405,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       const placeholders = opts.actorIds.map((_, i) => `$${i + 1}`).join(", ")
       const result = await db.query(
         `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-                wikipedia_url, biography AS biography_raw_tmdb, biography
+                wikipedia_url, biography_raw_tmdb, biography
          FROM actors
          WHERE id IN (${placeholders})
          ${!opts.allowRegeneration ? "AND id NOT IN (SELECT actor_id FROM actor_biography_details)" : ""}`,
@@ -430,7 +437,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
 
     const result = await db.query(
       `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-              wikipedia_url, biography AS biography_raw_tmdb, biography
+              wikipedia_url, biography_raw_tmdb, biography
        FROM actors
        ${whereClause}
        ${orderByClause}

@@ -64,6 +64,10 @@ import type {
 } from "../types.js"
 import { synthesizeBiography, type BiographySynthesisResult } from "../claude-cleanup.js"
 
+// Logging
+import { logger } from "../../logger.js"
+const log = logger.child({ name: "bio-debriefer-adapter" })
+
 // Page fetching infrastructure for link following
 import { fetchPageWithFallbacks } from "../../shared/fetch-page-with-fallbacks.js"
 import { extractArticleContent } from "../../shared/readability-extract.js"
@@ -258,7 +262,8 @@ function buildBioPhases(config: BioDebrieferAdapterConfig): SourcePhaseGroup<Res
       // Direct fetch returns HTML — extract article body with Readability
       const article = extractArticleContent(result.content, result.url)
       return article?.text || null
-    } catch {
+    } catch (error) {
+      log.debug({ err: error, url }, "fetchPage failed (non-blocking)")
       return null
     }
   }
