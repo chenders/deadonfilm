@@ -86,7 +86,12 @@ export function cacheSourceFinding(
 /**
  * Write a failed source attempt to the cache table.
  */
-export function cacheSourceFailure(actorId: number, sourceName: string, error: string): void {
+export function cacheSourceFailure(
+  actorId: number,
+  sourceName: string,
+  error: string,
+  costUsd?: number
+): void {
   const sourceType = resolveSourceType(sourceName)
   if (!sourceType) return
 
@@ -96,6 +101,7 @@ export function cacheSourceFailure(actorId: number, sourceName: string, error: s
     queryString: `debriefer:${sourceName}:actor:${actorId}`,
     responseStatus: null,
     errorMessage: error,
+    costUsd: costUsd ?? null,
   }).catch((err) => {
     log.debug({ err, sourceName, actorId }, "Cache write failed (non-blocking)")
   })

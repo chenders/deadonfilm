@@ -87,8 +87,8 @@ describe("cacheSourceFinding", () => {
 })
 
 describe("cacheSourceFailure", () => {
-  it("writes failure to cache with error message", async () => {
-    cacheSourceFailure(123, "The Guardian", "404 Not Found")
+  it("writes failure to cache with error message and cost", async () => {
+    cacheSourceFailure(123, "The Guardian", "404 Not Found", 0.005)
 
     await vi.waitFor(() => expect(mockSetCachedQuery).toHaveBeenCalled())
 
@@ -98,7 +98,16 @@ describe("cacheSourceFailure", () => {
       queryString: "debriefer:The Guardian:actor:123",
       responseStatus: null,
       errorMessage: "404 Not Found",
+      costUsd: 0.005,
     })
+  })
+
+  it("defaults costUsd to null when not provided", async () => {
+    cacheSourceFailure(123, "The Guardian", "no result")
+
+    await vi.waitFor(() => expect(mockSetCachedQuery).toHaveBeenCalled())
+
+    expect(mockSetCachedQuery).toHaveBeenCalledWith(expect.objectContaining({ costUsd: null }))
   })
 
   it("skips unknown source names", () => {

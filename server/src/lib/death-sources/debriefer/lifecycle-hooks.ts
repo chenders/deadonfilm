@@ -165,7 +165,7 @@ export function createLifecycleHooks(
         collector?.add("debug", `${sourceName}: no result`, { source: sourceName, costUsd })
         // Cache failures so admin can see which sources returned nothing
         if (!isNaN(actorId)) {
-          cacheSourceFailure(actorId, sourceName, "no result")
+          cacheSourceFailure(actorId, sourceName, "no result", costUsd)
         }
       }
     },
