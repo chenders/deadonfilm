@@ -132,7 +132,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       // 2. Create enrichment pipeline (debriefer adapter + Claude synthesis)
       const enrichActor = createBioEnrichmentPipeline({
         confidenceThreshold: confidenceThreshold ?? 0.6,
-        earlyStopThreshold: earlyStopSourceCount ?? 3,
+        earlyStopThreshold: earlyStopSourceCount === 0 ? undefined : (earlyStopSourceCount ?? 3),
         maxCostPerActor: maxCostPerActor ?? 0.5,
         maxTotalCost: maxTotalCost ?? 10.0,
         free: sourceCategories?.free ?? true,
@@ -246,6 +246,17 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
               error: reason,
               costUsd,
             })
+          }
+
+          // Merge debriefer per-source log entries with handler-level logs
+          if (result.logEntries) {
+            actorLogs.push(
+              ...result.logEntries.map((le) => ({
+                timestamp: le.timestamp,
+                level: le.level as "info" | "warn" | "error",
+                message: le.message,
+              }))
+            )
           }
 
           // Insert per-actor result

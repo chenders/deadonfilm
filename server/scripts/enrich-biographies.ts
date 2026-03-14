@@ -269,7 +269,7 @@ async function run(options: CliOptions): Promise<void> {
         archives: !options.disableArchives,
         books: !options.disableBooks,
         ...(options.earlyStopSources !== undefined && {
-          earlyStopThreshold: options.earlyStopSources,
+          earlyStopThreshold: options.earlyStopSources === 0 ? undefined : options.earlyStopSources,
         }),
       }
 

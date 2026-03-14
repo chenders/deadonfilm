@@ -1,7 +1,7 @@
 # Phase F: Biography Enrichment Migration to Debriefer
 
 **Date**: 2026-03-14
-**Status**: Not started
+**Status**: In progress
 **Depends on**: Phase G (done — debriefer published to npm), PR #574 (feature parity fixes), PR #577 (reliability-weighted truncation)
 
 ## Goal
