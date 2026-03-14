@@ -19,13 +19,11 @@ vi.mock("../../db.js", () => ({
   })),
 }))
 
-// Mock biography orchestrator
+// Mock biography debriefer adapter
 const mockEnrichActor = vi.fn()
 
-vi.mock("../../biography-sources/orchestrator.js", () => ({
-  BiographyEnrichmentOrchestrator: function MockOrchestrator() {
-    return { enrichActor: mockEnrichActor }
-  },
+vi.mock("../../biography-sources/debriefer/adapter.js", () => ({
+  createBioEnrichmentPipeline: () => mockEnrichActor,
 }))
 
 // Mock biography db writer

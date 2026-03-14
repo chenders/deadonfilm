@@ -33,11 +33,17 @@ vi.mock("../../lib/biography/golden-test-cases.js", () => ({
   scoreAllResults: (...args: unknown[]) => mockScoreAllResults(...args),
 }))
 
+// Mock old orchestrator (still used for re-synthesis endpoint)
 vi.mock("../../lib/biography-sources/orchestrator.js", () => ({
   BiographyEnrichmentOrchestrator: class {
     enrichActor = mockEnrichActor
     resynthesizeFromCache = mockResynthesizeFromCache
   },
+}))
+
+// Mock new debriefer adapter (used for enrichment and golden test endpoints)
+vi.mock("../../lib/biography-sources/debriefer/adapter.js", () => ({
+  createBioEnrichmentPipeline: () => mockEnrichActor,
 }))
 
 vi.mock("../../lib/biography-enrichment-db-writer.js", () => ({
