@@ -150,6 +150,7 @@ describe("debriefActor", () => {
       confidence: 0.9,
       reliabilityTier: ReliabilityTier.SECONDARY_COMPILATION,
       reliabilityScore: 0.85,
+      costUsd: 0,
     })
   })
 

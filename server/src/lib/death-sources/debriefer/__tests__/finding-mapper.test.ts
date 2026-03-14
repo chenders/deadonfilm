@@ -81,6 +81,7 @@ describe("mapFindings", () => {
       confidence: 0.85,
       reliabilityTier: ReliabilityTier.SECONDARY_COMPILATION,
       reliabilityScore: 0.85,
+      costUsd: 0,
     })
   })
 

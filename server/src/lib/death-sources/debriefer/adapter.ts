@@ -27,7 +27,6 @@ import {
   googleSearch,
   bingSearch,
   braveSearch,
-  duckduckgoSearch,
   apNews,
   bbcNews,
   reuters,
@@ -59,10 +58,15 @@ import { adaptLegacySources } from "./legacy-source-adapter.js"
 import { mapFindings } from "./finding-mapper.js"
 import { createHaikuSectionFilter } from "./haiku-section-selector.js"
 import { createPersonValidator } from "./person-validator.js"
-import { createLifecycleHooks } from "./lifecycle-hooks.js"
+import { createLifecycleHooks, LogEntryCollector, type LogEntry } from "./lifecycle-hooks.js"
 import type { RawSourceData, ActorForEnrichment } from "../types.js"
 
+// Page fetching infrastructure for link following
+import { fetchPageWithFallbacks } from "../../shared/fetch-page-with-fallbacks.js"
+import { extractArticleContent } from "../../shared/readability-extract.js"
+
 // Deadonfilm-only source classes (no debriefer-sources equivalents)
+import { DuckDuckGoSource } from "../sources/duckduckgo.js"
 import { BFISightSoundSource } from "../sources/bfi-sight-sound.js"
 import { NewsAPISource } from "../sources/newsapi.js"
 import { DeadlineSource } from "../sources/deadline.js"
@@ -105,6 +109,7 @@ export interface DebrieferAdapterResult {
   sourcesSucceeded: number
   durationMs: number
   stoppedAtPhase?: number
+  logEntries: LogEntry[]
 }
 
 /**
@@ -134,9 +139,11 @@ export function createDebriefOrchestrator(
     orchestratorConfig
   )
 
-  const hooks = createLifecycleHooks()
-
   return async (actor: ActorForEnrichment): Promise<DebrieferAdapterResult> => {
+    // Create a fresh log collector per actor so entries don't mix across concurrent actors
+    const logCollector = new LogEntryCollector()
+    const hooks = createLifecycleHooks({ logCollector })
+
     const subject: ResearchSubject = {
       id: actor.id,
       name: actor.name,
@@ -160,6 +167,7 @@ export function createDebriefOrchestrator(
       sourcesSucceeded: result.sourcesSucceeded,
       durationMs: result.durationMs,
       stoppedAtPhase: result.stoppedAtPhase,
+      logEntries: logCollector.entries,
     }
   }
 }
@@ -218,10 +226,34 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
     })
 
     // Phase 2: Web Search (free)
+    // fetchPage callback uses deadonfilm's full fallback chain:
+    // direct fetch → archive.org → archive.is → browser + CAPTCHA solver
+    const fetchPage = async (url: string, signal: AbortSignal): Promise<string | null> => {
+      try {
+        const result = await fetchPageWithFallbacks(url, { signal, timeoutMs: 15000 })
+        if (!result.content || result.fetchMethod === "none") return null
+        // Archive fallbacks may return already-extracted text, not HTML
+        if (result.fetchMethod !== "direct") return result.content
+        // Direct fetch returns HTML — extract article body with Readability
+        const article = extractArticleContent(result.content, result.url)
+        return article?.text || null
+      } catch {
+        return null
+      }
+    }
+    const webSearchConfig = { maxLinksToFollow: 3, fetchPage }
+
+    // DuckDuckGo uses legacy source for CAPTCHA resilience (Playwright stealth + solver)
+    // Other search engines use debriefer-sources with fetchPage for link following
     phases.push({
       phase: 2,
       name: "Web Search",
-      sources: [googleSearch(), bingSearch(), duckduckgoSearch(), braveSearch()],
+      sources: [
+        googleSearch(webSearchConfig),
+        bingSearch(webSearchConfig),
+        ...adaptLegacySources([new DuckDuckGoSource()]),
+        braveSearch(webSearchConfig),
+      ],
     })
 
     // Phase 4: Obituary (free)

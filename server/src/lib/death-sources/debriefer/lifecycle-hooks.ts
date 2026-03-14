@@ -17,8 +17,34 @@
 import type { LifecycleHooks, ResearchSubject, ScoredFinding } from "debriefer"
 import { createRequire } from "module"
 import { logger } from "../../logger.js"
+import { cacheSourceFinding, cacheSourceFailure, resolveSourceType } from "./source-cache-bridge.js"
 
 const log = logger.child({ module: "debriefer-hooks" })
+
+/** Log entry format matching the admin UI's ActorLogEntry interface */
+export interface LogEntry {
+  timestamp: string
+  level: "info" | "warn" | "error" | "debug"
+  message: string
+  data?: Record<string, unknown>
+}
+
+/**
+ * Collects per-actor log entries for storage in enrichment_run_actors.log_entries.
+ * Create one per actor call so entries don't mix across concurrent actors.
+ */
+export class LogEntryCollector {
+  readonly entries: LogEntry[] = []
+
+  add(level: LogEntry["level"], message: string, data?: Record<string, unknown>): void {
+    this.entries.push({
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      data,
+    })
+  }
+}
 
 /** Minimal interface for New Relic agent (for dependency injection in tests) */
 export interface NewRelicAgent {
@@ -63,6 +89,8 @@ function tryLoadNewRelic(): NewRelicAgent | null {
 export interface LifecycleHooksOptions {
   /** Inject a New Relic agent (for testing). If omitted, tries to load via require. */
   newRelicAgent?: NewRelicAgent | null
+  /** Collector for per-actor log entries. If provided, hooks write entries for DB storage. */
+  logCollector?: LogEntryCollector
 }
 
 /**
@@ -75,6 +103,7 @@ export function createLifecycleHooks(
   options: LifecycleHooksOptions = {}
 ): LifecycleHooks<ResearchSubject, ScoredFinding[]> {
   const nr = options.newRelicAgent !== undefined ? options.newRelicAgent : tryLoadNewRelic()
+  const collector = options.logCollector
 
   // Note: onRunStart/onRunComplete/onRunFailed are omitted because the adapter
   // calls orchestrator.debrief() per actor (not debriefBatch), so run-level hooks
@@ -91,9 +120,11 @@ export function createLifecycleHooks(
         { actorId: subject.id, actorName: subject.name, source: sourceName, phase },
         `Trying ${sourceName}`
       )
+      collector?.add("debug", `Trying ${sourceName}`, { source: sourceName, phase })
     },
 
     onSourceComplete(subject, sourceName, finding, costUsd) {
+      const actorId = typeof subject.id === "number" ? subject.id : parseInt(String(subject.id), 10)
       if (finding) {
         log.debug(
           {
@@ -107,10 +138,22 @@ export function createLifecycleHooks(
           },
           `${sourceName}: success`
         )
+        collector?.add("info", `${sourceName}: success`, {
+          source: sourceName,
+          confidence: finding.confidence,
+          costUsd,
+          textLength: finding.text.length,
+          hasUrl: !!finding.url,
+        })
+        // Write to source_query_cache for admin visibility and deduplication
+        if (!isNaN(actorId)) {
+          cacheSourceFinding(actorId, sourceName, finding, costUsd)
+        }
         nr?.recordCustomEvent("EnrichmentSourceSuccess", {
           actorId: subject.id,
           actorName: subject.name,
           source: sourceName,
+          sourceType: resolveSourceType(sourceName) ?? sourceName,
           confidence: finding.confidence,
           costUsd,
         })
@@ -119,6 +162,11 @@ export function createLifecycleHooks(
           { actorId: subject.id, actorName: subject.name, source: sourceName, costUsd },
           `${sourceName}: no result`
         )
+        collector?.add("debug", `${sourceName}: no result`, { source: sourceName, costUsd })
+        // Cache failures so admin can see which sources returned nothing
+        if (!isNaN(actorId)) {
+          cacheSourceFailure(actorId, sourceName, "no result", costUsd)
+        }
       }
     },
 
@@ -132,10 +180,15 @@ export function createLifecycleHooks(
         },
         `Phase ${phase} complete`
       )
+      collector?.add("debug", `Phase ${phase} complete`, {
+        phase,
+        findingsCount: findingsInPhase.length,
+      })
     },
 
     onEarlyStop(subject, phase, reason) {
       log.info({ actorId: subject.id, actorName: subject.name, phase, reason }, "Early stop")
+      collector?.add("info", "Early stop", { phase, reason })
     },
 
     onCostLimitReached(subject, costUsd, limit) {
@@ -143,6 +196,7 @@ export function createLifecycleHooks(
         { actorId: subject.id, actorName: subject.name, costUsd, limit },
         "Per-actor cost limit reached"
       )
+      collector?.add("warn", "Per-actor cost limit reached", { costUsd, limit })
     },
 
     onSubjectComplete(subject, result) {
@@ -159,6 +213,14 @@ export function createLifecycleHooks(
         },
         "Actor complete"
       )
+      collector?.add("info", "Actor complete", {
+        sourcesAttempted: result.sourcesAttempted,
+        sourcesSucceeded: result.sourcesSucceeded,
+        findingsCount: result.findings.length,
+        totalCostUsd: result.totalCostUsd,
+        durationMs: result.durationMs,
+        stoppedAtPhase: result.stoppedAtPhase,
+      })
       nr?.recordCustomEvent("EnrichmentActorComplete", {
         actorId: subject.id,
         actorName: subject.name,

@@ -32,6 +32,7 @@ import newrelic from "newrelic"
 
 const MODEL_ID = "claude-opus-4-5-20251101"
 const MAX_TOKENS = 3000
+const MAX_SOURCE_TEXT_CHARS = 15_000
 
 /**
  * Valid notable_factors tags that Claude is allowed to return.
@@ -142,7 +143,12 @@ export function buildCleanupPrompt(actor: ActorForEnrichment, rawSources: RawSou
         s.reliabilityScore !== undefined
           ? `, reliability: ${(s.reliabilityScore * 100).toFixed(0)}%`
           : ""
-      const cleanedText = sanitizeSourceText(s.text)
+      let cleanedText = sanitizeSourceText(s.text)
+      if (cleanedText.length > MAX_SOURCE_TEXT_CHARS) {
+        cleanedText =
+          cleanedText.slice(0, MAX_SOURCE_TEXT_CHARS) +
+          `\n\n[truncated — original was ${String(s.text.length)} chars]`
+      }
       return `--- ${s.sourceName} (confidence: ${(s.confidence * 100).toFixed(0)}%${reliabilityLabel}) ---\n${cleanedText}`
     })
     .join("\n\n")

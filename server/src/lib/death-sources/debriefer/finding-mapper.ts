@@ -113,5 +113,6 @@ export function mapFindings(findings: ScoredFinding[]): RawSourceData[] {
       confidence: f.confidence,
       reliabilityTier: mapReliabilityTier(String(f.reliabilityTier)),
       reliabilityScore: f.reliabilityScore,
+      costUsd: f.costUsd,
     }))
 }
