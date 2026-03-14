@@ -7,6 +7,7 @@
  */
 
 import { ReliabilityTier } from "../death-sources/types.js"
+import type { LogEntry } from "../death-sources/debriefer/lifecycle-hooks.js"
 
 // ============================================================================
 // Source Types
@@ -274,12 +275,7 @@ export interface BiographyResult {
     processingTimeMs: number
   }
   error?: string
-  logEntries?: Array<{
-    timestamp: string
-    level: string
-    message: string
-    data?: Record<string, unknown>
-  }>
+  logEntries?: LogEntry[]
 }
 
 // ============================================================================

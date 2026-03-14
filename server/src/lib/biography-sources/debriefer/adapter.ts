@@ -72,8 +72,7 @@ const log = logger.child({ name: "bio-debriefer-adapter" })
 import { fetchPageWithFallbacks } from "../../shared/fetch-page-with-fallbacks.js"
 import { extractArticleContent } from "../../shared/readability-extract.js"
 
-// Haiku section selector and person validator (shared with death)
-import { createHaikuSectionFilter } from "../../death-sources/debriefer/haiku-section-selector.js"
+// Person validator (shared with death)
 import { createPersonValidator } from "../../death-sources/debriefer/person-validator.js"
 
 // Biography-only legacy source classes (no debriefer-sources equivalents)
@@ -127,7 +126,7 @@ export function createBioDebriefOrchestrator(
 
   const orchestratorConfig: ResearchConfig = {
     // Dual threshold: both confidence AND reliability must be met
-    earlyStopThreshold: config.earlyStopThreshold ?? 3,
+    earlyStopThreshold: config.earlyStopThreshold ?? 5,
     confidenceThreshold: config.confidenceThreshold ?? 0.6,
     reliabilityThreshold: config.reliabilityThreshold ?? 0.6,
     costLimits: {
@@ -277,7 +276,6 @@ function buildBioPhases(config: BioDebrieferAdapterConfig): SourcePhaseGroup<Res
       sources: [
         wikidata(),
         wikipedia({
-          asyncSectionFilter: createHaikuSectionFilter(),
           validatePerson: createPersonValidator({ useAIDateValidation: true }),
           disambiguationSuffixes: [
             "_(actor)",

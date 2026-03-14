@@ -23,6 +23,7 @@ import {
 } from "../../biography-enrichment-db-writer.js"
 import { ParallelBatchRunner, BatchCostTracker } from "../../shared/concurrency.js"
 import type { ActorForBiography, BiographyResult } from "../../biography-sources/types.js"
+import type { LogEntry } from "../../death-sources/debriefer/lifecycle-hooks.js"
 import type { Pool } from "pg"
 
 export interface EnrichBiographiesBatchResult {
@@ -37,13 +38,6 @@ export interface EnrichBiographiesBatchResult {
     error?: string
     costUsd: number
   }>
-}
-
-/** Log entry stored per-actor in JSONB */
-interface LogEntry {
-  timestamp: string
-  level: "info" | "warn" | "error" | "debug"
-  message: string
 }
 
 export class EnrichBiographiesBatchHandler extends BaseJobHandler<
@@ -134,7 +128,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       // 2. Create enrichment pipeline (debriefer adapter + Claude synthesis)
       const enrichActor = createBioEnrichmentPipeline({
         confidenceThreshold: confidenceThreshold ?? 0.6,
-        earlyStopThreshold: earlyStopSourceCount === 0 ? Infinity : (earlyStopSourceCount ?? 3),
+        earlyStopThreshold: earlyStopSourceCount === 0 ? Infinity : (earlyStopSourceCount ?? 5),
         maxCostPerActor: maxCostPerActor ?? 0.5,
         maxTotalCost: maxTotalCost ?? 10.0,
         free: sourceCategories?.free ?? true,
@@ -229,13 +223,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
 
           // Merge debriefer per-source log entries with handler-level logs
           if (result.logEntries) {
-            actorLogs.push(
-              ...result.logEntries.map((le) => ({
-                timestamp: le.timestamp,
-                level: le.level as LogEntry["level"],
-                message: le.message,
-              }))
-            )
+            actorLogs.push(...result.logEntries)
           }
 
           // Insert per-actor result

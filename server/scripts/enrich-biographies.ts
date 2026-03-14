@@ -189,7 +189,6 @@ const program = new Command()
   .option("--max-cost-per-actor <n>", "Max cost per actor in USD", parsePositiveFloat, 0.5)
   .option("--max-total-cost <n>", "Max total cost in USD", parsePositiveFloat, 5)
   .option("--golden-test", "Run golden test cases and score results")
-  .option("--disable-haiku-cleanup", "Disable Haiku AI extraction stage")
   .option("--disable-web-search", "Disable web search sources")
   .option("--disable-news", "Disable news sources")
   .option("--disable-archives", "Disable archive sources")
@@ -233,7 +232,6 @@ interface CliOptions {
   maxCostPerActor: number
   maxTotalCost: number
   goldenTest?: boolean
-  disableHaikuCleanup?: boolean
   disableWebSearch?: boolean
   disableNews?: boolean
   disableArchives?: boolean
@@ -312,7 +310,6 @@ async function run(options: CliOptions): Promise<void> {
       console.log(`  Confidence threshold: ${options.confidence}`)
       console.log(`  Max cost per actor:   $${options.maxCostPerActor}`)
       console.log(`  Max total cost:       $${options.maxTotalCost}`)
-      console.log(`  Haiku AI cleanup:     ${options.disableHaikuCleanup ? "DISABLED" : "enabled"}`)
       console.log(`  Web search:           ${options.disableWebSearch ? "DISABLED" : "enabled"}`)
       console.log(`  News sources:         ${options.disableNews ? "DISABLED" : "enabled"}`)
       console.log(`  Archive sources:      ${options.disableArchives ? "DISABLED" : "enabled"}`)
