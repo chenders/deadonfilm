@@ -274,6 +274,12 @@ export interface BiographyResult {
     processingTimeMs: number
   }
   error?: string
+  logEntries?: Array<{
+    timestamp: string
+    level: string
+    message: string
+    data?: Record<string, unknown>
+  }>
 }
 
 // ============================================================================

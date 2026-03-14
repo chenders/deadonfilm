@@ -14,7 +14,7 @@ import type { Job } from "bullmq"
 import { getPool } from "../../db.js"
 import { BaseJobHandler } from "./base.js"
 import { JobType, QueueName, type JobResult, type EnrichBiographiesBatchPayload } from "../types.js"
-import { BiographyEnrichmentOrchestrator } from "../../biography-sources/orchestrator.js"
+import { createBioEnrichmentPipeline } from "../../biography-sources/debriefer/adapter.js"
 import { RunLogger } from "../../run-logger.js"
 import {
   writeBiographyToProduction,
@@ -129,34 +129,25 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
         }
       }
 
-      // 2. Create orchestrator with config
-      const orchestrator = new BiographyEnrichmentOrchestrator({
+      // 2. Create enrichment pipeline (debriefer adapter + Claude synthesis)
+      const enrichActor = createBioEnrichmentPipeline({
         confidenceThreshold: confidenceThreshold ?? 0.6,
-        ...(earlyStopSourceCount !== undefined && { earlyStopSourceCount }),
-        ...(concurrency !== undefined && { concurrency }),
-        costLimits: {
-          maxCostPerActor: maxCostPerActor ?? 0.5,
-          maxTotalCost: maxTotalCost ?? 10.0,
-        },
-        sourceCategories: sourceCategories
-          ? {
-              free: sourceCategories.free ?? true,
-              reference: sourceCategories.reference ?? true,
-              webSearch: sourceCategories.webSearch ?? true,
-              news: sourceCategories.news ?? true,
-              obituary: sourceCategories.obituary ?? true,
-              archives: sourceCategories.archives ?? true,
-              books: sourceCategories.books ?? true,
-              ai: false,
-            }
-          : undefined,
+        earlyStopThreshold: earlyStopSourceCount ?? 3,
+        maxCostPerActor: maxCostPerActor ?? 0.5,
+        maxTotalCost: maxTotalCost ?? 10.0,
+        free: sourceCategories?.free ?? true,
+        reference: sourceCategories?.reference ?? true,
+        webSearch: sourceCategories?.webSearch ?? true,
+        news: sourceCategories?.news ?? true,
+        obituary: sourceCategories?.obituary ?? true,
+        archives: sourceCategories?.archives ?? true,
+        books: sourceCategories?.books ?? true,
       })
 
       // Wire up RunLogger for DB log capture if we have a run ID
       let runLogger: RunLogger | null = null
       if (runId) {
         runLogger = new RunLogger("biography", runId)
-        orchestrator.setRunLogger(runLogger)
       }
 
       // 3. Process each actor
@@ -201,7 +192,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
             message: `Starting enrichment for ${actor.name} (${i + 1}/${actors.length})`,
           })
 
-          const result = await orchestrator.enrichActor(actor)
+          const result = await enrichActor(actor)
           const costUsd = result.stats.totalCostUsd
           totalCostUsd += costUsd
           totalSourceCost += result.stats.sourceCostUsd ?? 0

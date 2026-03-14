@@ -5,7 +5,7 @@ import * as readline from "readline"
 import { Command, InvalidArgumentError } from "commander"
 import { Pool } from "pg"
 import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
-import { BiographyEnrichmentOrchestrator } from "../src/lib/biography-sources/orchestrator.js"
+import { createBioEnrichmentPipeline } from "../src/lib/biography-sources/debriefer/adapter.js"
 import {
   writeBiographyToProduction,
   writeBiographyToStaging,
@@ -15,7 +15,6 @@ import { GOLDEN_TEST_CASES, scoreAllResults } from "../src/lib/biography/golden-
 import type {
   ActorForBiography,
   BiographyData,
-  BiographyEnrichmentConfig,
   BiographyResult,
 } from "../src/lib/biography-sources/types.js"
 
@@ -258,30 +257,19 @@ async function run(options: CliOptions): Promise<void> {
       }
 
       // Build enrichment config from CLI options
-      const config: Partial<BiographyEnrichmentConfig> = {
-        limit: options.limit,
-        concurrency: options.concurrency,
+      const config = {
         confidenceThreshold: options.confidence,
-        costLimits: {
-          maxCostPerActor: options.maxCostPerActor,
-          maxTotalCost: options.maxTotalCost,
-        },
-        sourceCategories: {
-          free: true,
-          reference: true,
-          webSearch: !options.disableWebSearch,
-          news: !options.disableNews,
-          obituary: true,
-          archives: !options.disableArchives,
-          books: !options.disableBooks,
-          ai: false,
-        },
-        contentCleaning: {
-          haikuEnabled: !options.disableHaikuCleanup,
-          mechanicalOnly: !!options.disableHaikuCleanup,
-        },
+        maxCostPerActor: options.maxCostPerActor,
+        maxTotalCost: options.maxTotalCost,
+        free: true,
+        reference: true,
+        webSearch: !options.disableWebSearch,
+        news: !options.disableNews,
+        obituary: true,
+        archives: !options.disableArchives,
+        books: !options.disableBooks,
         ...(options.earlyStopSources !== undefined && {
-          earlyStopSourceCount: options.earlyStopSources,
+          earlyStopThreshold: options.earlyStopSources,
         }),
       }
 
@@ -356,8 +344,8 @@ async function run(options: CliOptions): Promise<void> {
         return
       }
 
-      // Create orchestrator and process actors
-      const orchestrator = new BiographyEnrichmentOrchestrator(config)
+      // Create enrichment pipeline (debriefer adapter + Claude synthesis)
+      const enrichActor = createBioEnrichmentPipeline(config)
       const startTime = Date.now()
       const enrichmentResults = new Map<number, BiographyResult>()
       let totalCost = 0
@@ -368,7 +356,7 @@ async function run(options: CliOptions): Promise<void> {
         console.log(`\n[${i + 1}/${actors.length}] Processing ${actor.name}...`)
 
         try {
-          const result = await orchestrator.enrichActor(actor)
+          const result = await enrichActor(actor)
           enrichmentResults.set(actor.id, result)
           totalCost += result.stats.totalCostUsd
 

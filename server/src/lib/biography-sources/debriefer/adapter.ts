@@ -56,7 +56,13 @@ import { adaptBioLegacySources } from "./legacy-source-adapter.js"
 import { mapFindings as mapBioFindings } from "./finding-mapper.js"
 import { createBioLifecycleHooks } from "./lifecycle-hooks.js"
 import { LogEntryCollector, type LogEntry } from "../../death-sources/debriefer/lifecycle-hooks.js"
-import type { RawBiographySourceData, ActorForBiography } from "../types.js"
+import type {
+  RawBiographySourceData,
+  ActorForBiography,
+  BiographyResult,
+  BiographySourceEntry,
+} from "../types.js"
+import { synthesizeBiography, type BiographySynthesisResult } from "../claude-cleanup.js"
 
 // Page fetching infrastructure for link following
 import { fetchPageWithFallbacks } from "../../shared/fetch-page-with-fallbacks.js"
@@ -177,6 +183,62 @@ export async function debriefActorBio(
 ): Promise<BioDebrieferAdapterResult> {
   const processActor = createBioDebriefOrchestrator(config)
   return processActor(actor)
+}
+
+/**
+ * Creates a full-pipeline enrichment function that runs debriefer + Claude synthesis.
+ *
+ * Returns a BiographyResult-compatible shape so consumers (batch handler, admin routes)
+ * can switch with minimal changes. Call this once per batch to share rate limiting.
+ */
+export function createBioEnrichmentPipeline(
+  config: BioDebrieferAdapterConfig & { synthesisModel?: string }
+): (actor: ActorForBiography) => Promise<BiographyResult> {
+  const processActor = createBioDebriefOrchestrator(config)
+
+  return async (actor: ActorForBiography): Promise<BiographyResult> => {
+    const debriefResult = await processActor(actor)
+
+    // Run Claude synthesis if we have raw sources
+    let synthesisResult: BiographySynthesisResult | null = null
+    if (debriefResult.rawSources.length > 0) {
+      synthesisResult = await synthesizeBiography(actor, debriefResult.rawSources, {
+        model: config.synthesisModel,
+      })
+    }
+
+    // Map sources to BiographySourceEntry format
+    const sources: BiographySourceEntry[] = debriefResult.rawSources.map((rs) => ({
+      type: rs.sourceType,
+      url: rs.url ?? null,
+      retrievedAt: new Date(),
+      confidence: rs.confidence,
+      reliabilityTier: rs.reliabilityTier,
+      reliabilityScore: rs.reliabilityScore,
+      costUsd: rs.costUsd ?? 0,
+    }))
+
+    const sourceCostUsd = debriefResult.totalCostUsd
+    const synthesisCostUsd = synthesisResult?.costUsd ?? 0
+
+    return {
+      actorId: actor.id,
+      data: synthesisResult?.data ?? null,
+      sources,
+      rawSources: debriefResult.rawSources,
+      cleanedData: synthesisResult?.data ?? undefined,
+      stats: {
+        sourcesAttempted: debriefResult.sourcesAttempted,
+        sourcesSucceeded: debriefResult.sourcesSucceeded,
+        totalCostUsd: sourceCostUsd + synthesisCostUsd,
+        sourceCostUsd,
+        synthesisCostUsd,
+        processingTimeMs: debriefResult.durationMs,
+      },
+      error: synthesisResult?.error,
+      logEntries: debriefResult.logEntries,
+    }
+  }
 }
 
 /**
