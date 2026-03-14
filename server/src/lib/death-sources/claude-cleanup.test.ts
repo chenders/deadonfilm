@@ -203,7 +203,7 @@ describe("claude-cleanup", () => {
       // Should NOT contain the full 20K of A's
       expect(prompt).not.toContain("A".repeat(20_000))
       expect(prompt).toContain("[truncated")
-      expect(prompt).toContain("20,000 chars")
+      expect(prompt).toContain("20000 chars")
     })
 
     it("does not truncate source text under 15K chars", () => {

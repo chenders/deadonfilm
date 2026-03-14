@@ -147,7 +147,7 @@ export function buildCleanupPrompt(actor: ActorForEnrichment, rawSources: RawSou
       if (cleanedText.length > MAX_SOURCE_TEXT_CHARS) {
         cleanedText =
           cleanedText.slice(0, MAX_SOURCE_TEXT_CHARS) +
-          `\n\n[truncated — original was ${s.text.length.toLocaleString()} chars]`
+          `\n\n[truncated — original was ${String(s.text.length)} chars]`
       }
       return `--- ${s.sourceName} (confidence: ${(s.confidence * 100).toFixed(0)}%${reliabilityLabel}) ---\n${cleanedText}`
     })
