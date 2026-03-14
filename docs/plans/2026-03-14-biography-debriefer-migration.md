@@ -4,6 +4,10 @@
 **Status**: In progress
 **Depends on**: Phase G (done — debriefer published to npm), PR #574 (feature parity fixes), PR #577 (reliability-weighted truncation)
 
+## Mandate
+
+**No features may be lost in deadonfilm as a result of this migration.** Every capability the old `BiographyEnrichmentOrchestrator` provided must work identically or better after migration. If a feature cannot be preserved in the initial PR, it must be tracked here and completed before this phase is marked done.
+
 ## Goal
 
 Replace the self-contained `BiographyOrchestrator` (947 lines) with debriefer's `ResearchOrchestrator`, matching the pattern used for death enrichment. Include all infrastructure fixes from the start to avoid the feature regressions that plagued the death migration.
@@ -40,16 +44,41 @@ Lessons learned from death enrichment (PR #574):
 - **Per-source cost attribution**: Actual `costUsd` from findings, not even-split
 - **Reliability-weighted truncation**: 60K total budget allocated by reliability score
 
-## Biography-Specific Features to Preserve
+## Feature Parity Checklist
 
-| Feature | Description | Implementation |
-|---------|-------------|----------------|
-| Dual-threshold early stopping | Requires BOTH confidence >= 0.6 AND reliability >= 0.6 | debriefer config: `confidenceThreshold: 0.6, reliabilityThreshold: 0.6` |
-| SOURCE_FAMILY grouping | Wikimedia (Wikidata + Wikipedia) count as one family for early stop | Map to debriefer's source family concept |
-| BOOKS phase always tried | Books phase runs even after early stop | Phase config or post-early-stop hook |
-| Re-synthesis from cache | Re-run Claude synthesis without re-fetching sources | Standalone function reading from `source_query_cache` |
-| Golden test framework | 7 test actors with fact recall scoring (0-100) | Runs against new adapter, compare scores |
-| Biography keywords | Personal life keywords for confidence calculation | Debriefer-sources use their own confidence; legacy sources keep bio keywords |
+Every feature from the old orchestrator must be preserved. Items marked with status:
+
+| Feature | Old System | New System | Status |
+|---------|-----------|------------|--------|
+| Parallel actor processing | `ParallelBatchRunner` with configurable concurrency (1-20) | **NOT IMPLEMENTED** — sequential `for` loop | **MUST FIX** |
+| Dual-threshold early stopping | confidence >= 0.6 AND reliability >= 0.6 | debriefer config `confidenceThreshold + reliabilityThreshold` | Done |
+| SOURCE_FAMILY grouping | Wikimedia, books counted as one family for early stop | Debriefer handles source families | Done |
+| BOOKS phase always tried | Runs even after early stop for unique archival content | Phase included but early stop behavior depends on debriefer | **VERIFY** |
+| Re-synthesis from cache | `orchestrator.resynthesizeFromCache()` | Old orchestrator kept for this endpoint | Done |
+| Golden test framework | 7 test actors, 0-100 scoring | Framework unchanged, uses new pipeline | Done |
+| Biography keywords | Personal life keywords for confidence calculation | Legacy sources keep bio keywords; debriefer sources use their own | Done |
+| Cache writes use BiographySourceType | `source_query_cache` entries use bio source types | **Uses DataSourceType (death types) instead** — admin queries by bio type find nothing | **MUST FIX** |
+| Per-source caching | Every source query cached in `source_query_cache` | Cache bridge writes per debriefer source | Done |
+| Rate limiting coordination | Shared `SourceRateLimiter` across concurrent actors | Legacy sources keep their own; debriefer has internal limiting | Done |
+| Haiku AI content cleaning | Stage 2 Haiku-based content filtering | Section filter via `createHaikuSectionFilter()` | Done |
+| RunLogger DB log stream | Structured logs to `run_logs` table | Removed — per-source logs via lifecycle hooks instead | **VERIFY** equivalence |
+| CLI --concurrency flag | Respected by orchestrator | **Ignored** — flag exists but does nothing | **MUST FIX** |
+| Admin concurrency setting | Configurable 1-20 in admin UI | **Ignored** — payload field exists but handler drops it | **MUST FIX** |
+| Unit test coverage | N/A (old orchestrator had its own tests) | 4 new adapter files have **zero tests** | **MUST FIX** |
+
+## Items That Must Be Fixed Before Merge
+
+1. **Parallel actor processing**: Wire `concurrency` from `BioDebrieferAdapterConfig` through to `ParallelBatchRunner` in the batch handler (or equivalent). The old orchestrator processed actors concurrently — the new handler uses a sequential `for` loop.
+
+2. **Cache bridge source types**: Create a biography-specific cache bridge (or extend the existing one) that writes `BiographySourceType` values to `source_query_cache` instead of `DataSourceType` values. Admin queries filtering by bio source type must work.
+
+3. **CLI --concurrency**: Either wire the flag to the pipeline or remove it with a clear deprecation message. A flag that does nothing silently is unacceptable.
+
+4. **Unit tests**: Add `__tests__/` directory with tests for:
+   - `finding-mapper.test.ts` — all 35 mapping entries, fallback chain, UNMAPPED behavior
+   - `legacy-source-adapter.test.ts` — property delegation, fetchResult success/failure, subjectToActor mapping
+   - `adapter.test.ts` — orchestrator creation, pipeline composition, config forwarding
+   - `lifecycle-hooks.test.ts` — hook presence, NR events, cache writes, log collector
 
 ## Source Mapping
 
@@ -75,44 +104,50 @@ Note: DuckDuckGo uses legacy source (not debriefer) for CAPTCHA resilience.
 
 ## Files
 
-### Create
+### Created
 - `server/src/lib/biography-sources/debriefer/adapter.ts` — orchestrator builder with 7-phase structure
 - `server/src/lib/biography-sources/debriefer/finding-mapper.ts` — ScoredFinding[] → bio source data
 - `server/src/lib/biography-sources/debriefer/lifecycle-hooks.ts` — logging, NR events, cache bridge
+- `server/src/lib/biography-sources/debriefer/legacy-source-adapter.ts` — wraps BaseBiographySource
+
+### To Create
 - `server/src/lib/biography-sources/debriefer/__tests__/adapter.test.ts`
 - `server/src/lib/biography-sources/debriefer/__tests__/finding-mapper.test.ts`
+- `server/src/lib/biography-sources/debriefer/__tests__/legacy-source-adapter.test.ts`
+- `server/src/lib/biography-sources/debriefer/__tests__/lifecycle-hooks.test.ts`
 
-### Modify
-- `server/src/lib/biography-sources/claude-cleanup.ts` — add reliability-weighted truncation
-- `server/src/lib/jobs/handlers/enrich-biographies-batch.ts` — use new adapter
-- `server/src/routes/admin/biography-enrichment.ts` — use new adapter for inline enrichment
-- `server/scripts/enrich-biographies.ts` — use new adapter
+### Modified
+- `server/src/lib/biography-sources/claude-cleanup.ts` — 60K budget (up from 50K)
+- `server/src/lib/biography-sources/types.ts` — UNMAPPED enum, logEntries on BiographyResult
+- `server/src/lib/jobs/handlers/enrich-biographies-batch.ts` — uses new adapter
+- `server/src/lib/jobs/handlers/enrich-biographies-batch.test.ts` — updated mocks
+- `server/src/routes/admin/biography-enrichment.ts` — uses new adapter for enrichment + golden test
+- `server/src/routes/admin/biography-enrichment.test.ts` — updated mocks
+- `server/src/routes/admin/actors.ts` — inline bio enrichment uses new adapter
+- `server/scripts/enrich-biographies.ts` — uses new adapter
 
-### Delete
-- `server/src/lib/biography-sources/orchestrator.ts` (947 lines)
+### To Delete (after all features verified)
+- `server/src/lib/biography-sources/orchestrator.ts` (947 lines) — currently kept for re-synthesis only
 
-### Keep unchanged
+### Keep Unchanged
 - `server/src/lib/biography-enrichment-db-writer.ts` — DB writer stays as-is
 - `server/src/lib/biography/golden-test-cases.ts` — golden test framework stays
 - `server/scripts/resynthesize-biographies.ts` — reads from cache, independent of orchestrator
 
-## Consumers to Migrate
-
-1. `scripts/enrich-biographies.ts` — CLI script (Commander.js)
-2. `src/lib/jobs/handlers/enrich-biographies-batch.ts` — BullMQ batch handler
-3. `src/routes/admin/biography-enrichment.ts` — admin routes (inline + batch)
-
 ## Testing Strategy
 
-1. **Unit tests**: Adapter, finding-mapper (mirrors death enrichment test patterns)
+1. **Unit tests**: Adapter, finding-mapper, legacy-source-adapter, lifecycle-hooks (mirrors death enrichment test patterns)
 2. **Golden tests**: Run 7-actor golden test suite, compare scores before/after migration
 3. **Cost comparison**: Enrich same actor with old and new, compare costs
 4. **Integration**: Admin UI inline enrichment, BullMQ batch job, CLI script
 
 ## Success Criteria
 
+- **No feature regressions** — every capability from the old orchestrator works
 - Golden test average score >= previous average (no quality regression)
 - Per-actor cost within 20% of old system
-- All existing admin UI features work (enrichment status, logs, batch jobs)
+- All existing admin UI features work (enrichment status, logs, batch jobs, concurrency setting)
 - Re-synthesis from cache works
-- Source cache entries appear in `source_query_cache` for debriefer sources
+- Source cache entries appear in `source_query_cache` with correct `BiographySourceType` values
+- Parallel actor processing respects the concurrency setting (1-20)
+- Unit tests cover all 4 new adapter files
