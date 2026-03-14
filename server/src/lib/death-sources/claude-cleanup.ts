@@ -32,7 +32,15 @@ import newrelic from "newrelic"
 
 const MODEL_ID = "claude-opus-4-5-20251101"
 const MAX_TOKENS = 3000
-const MAX_SOURCE_TEXT_CHARS = 15_000
+/**
+ * Total character budget for all source text in the cleanup prompt.
+ * If total text across all sources fits within this budget, nothing is truncated.
+ * If over budget, sources are truncated proportionally by reliability score —
+ * high-reliability sources (Wikipedia, tier 1 news) keep more text than
+ * low-reliability ones (search aggregators, UGC).
+ */
+const MAX_TOTAL_SOURCE_CHARS = 60_000
+const MIN_SOURCE_CHARS = 500 // Every source gets at least this much
 
 /**
  * Valid notable_factors tags that Claude is allowed to return.
@@ -137,19 +145,40 @@ export function buildCleanupPrompt(actor: ActorForEnrichment, rawSources: RawSou
   const deathYear = actor.deathday ? new Date(actor.deathday).getFullYear() : null
   const birthInfo = birthYear ? `born ${birthYear}, ` : ""
 
-  const rawDataSection = rawSources
-    .map((s) => {
+  // Clean all source texts first
+  const cleaned = rawSources.map((s) => ({
+    source: s,
+    text: sanitizeSourceText(s.text),
+    reliability: s.reliabilityScore ?? 0.5,
+  }))
+
+  const totalChars = cleaned.reduce((sum, c) => sum + c.text.length, 0)
+
+  // Apply reliability-weighted truncation only if over budget
+  let truncatedTexts: string[]
+  if (totalChars <= MAX_TOTAL_SOURCE_CHARS) {
+    truncatedTexts = cleaned.map((c) => c.text)
+  } else {
+    // Allocate budget proportionally by reliability score
+    const totalReliability = cleaned.reduce((sum, c) => sum + c.reliability, 0)
+    truncatedTexts = cleaned.map((c) => {
+      const share = (c.reliability / totalReliability) * MAX_TOTAL_SOURCE_CHARS
+      const limit = Math.max(Math.round(share), MIN_SOURCE_CHARS)
+      if (c.text.length <= limit) return c.text
+      return (
+        c.text.slice(0, limit) +
+        `\n\n[truncated — original was ${String(c.text.length)} chars, budget ${String(limit)} chars based on reliability ${(c.reliability * 100).toFixed(0)}%]`
+      )
+    })
+  }
+
+  const rawDataSection = cleaned
+    .map((c, i) => {
       const reliabilityLabel =
-        s.reliabilityScore !== undefined
-          ? `, reliability: ${(s.reliabilityScore * 100).toFixed(0)}%`
+        c.source.reliabilityScore !== undefined
+          ? `, reliability: ${(c.source.reliabilityScore * 100).toFixed(0)}%`
           : ""
-      let cleanedText = sanitizeSourceText(s.text)
-      if (cleanedText.length > MAX_SOURCE_TEXT_CHARS) {
-        cleanedText =
-          cleanedText.slice(0, MAX_SOURCE_TEXT_CHARS) +
-          `\n\n[truncated — original was ${String(s.text.length)} chars]`
-      }
-      return `--- ${s.sourceName} (confidence: ${(s.confidence * 100).toFixed(0)}%${reliabilityLabel}) ---\n${cleanedText}`
+      return `--- ${c.source.sourceName} (confidence: ${(c.source.confidence * 100).toFixed(0)}%${reliabilityLabel}) ---\n${truncatedTexts[i]}`
     })
     .join("\n\n")
 
