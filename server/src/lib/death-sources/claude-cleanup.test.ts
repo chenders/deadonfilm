@@ -61,8 +61,8 @@ describe("claude-cleanup", () => {
     it("includes all source data with confidence percentages", () => {
       const prompt = buildCleanupPrompt(mockActor, mockSources)
 
-      expect(prompt).toContain("--- Wikipedia (confidence: 85%) ---")
-      expect(prompt).toContain("--- Wikidata (confidence: 90%) ---")
+      expect(prompt).toContain("--- Wikipedia (confidence: 85%, reliability: 50%) ---")
+      expect(prompt).toContain("--- Wikidata (confidence: 90%, reliability: 50%) ---")
       expect(prompt).toContain("stomach cancer at UCLA Medical Center")
     })
 
@@ -189,36 +189,118 @@ describe("claude-cleanup", () => {
       expect(prompt).toContain("natural|accident|suicide|homicide|undetermined|pending")
     })
 
-    it("truncates source text exceeding 15K chars", () => {
-      const longText = "A".repeat(20_000)
-      const sources: RawSourceData[] = [
-        {
-          sourceName: "Google Search",
-          sourceType: DataSourceType.GOOGLE_SEARCH,
-          confidence: 0.7,
-          text: longText,
-        },
-      ]
-      const prompt = buildCleanupPrompt(mockActor, sources)
-      // Should NOT contain the full 20K of A's
-      expect(prompt).not.toContain("A".repeat(20_000))
-      expect(prompt).toContain("[truncated")
-      expect(prompt).toContain("20000 chars")
-    })
-
-    it("does not truncate source text under 15K chars", () => {
-      const shortText = "Died of natural causes. ".repeat(100) // ~2400 chars
+    it("does not truncate when total text is under 60K budget", () => {
       const sources: RawSourceData[] = [
         {
           sourceName: "Wikipedia",
           sourceType: DataSourceType.WIKIPEDIA,
           confidence: 0.9,
-          text: shortText,
+          reliabilityScore: 0.85,
+          text: "A".repeat(20_000),
+        },
+        {
+          sourceName: "Google Search",
+          sourceType: DataSourceType.GOOGLE_SEARCH,
+          confidence: 0.7,
+          reliabilityScore: 0.7,
+          text: "B".repeat(20_000),
         },
       ]
+      // 40K total < 60K budget — no truncation
       const prompt = buildCleanupPrompt(mockActor, sources)
       expect(prompt).not.toContain("[truncated")
-      expect(prompt).toContain(shortText.trim())
+      expect(prompt).toContain("A".repeat(20_000))
+      expect(prompt).toContain("B".repeat(20_000))
+    })
+
+    it("truncates proportionally by reliability when over 60K budget", () => {
+      const sources: RawSourceData[] = [
+        {
+          sourceName: "Wikipedia",
+          sourceType: DataSourceType.WIKIPEDIA,
+          confidence: 0.9,
+          reliabilityScore: 0.85,
+          text: "A".repeat(50_000),
+        },
+        {
+          sourceName: "Google Search",
+          sourceType: DataSourceType.GOOGLE_SEARCH,
+          confidence: 0.7,
+          reliabilityScore: 0.7,
+          text: "B".repeat(50_000),
+        },
+      ]
+      // 100K total > 60K budget — truncation needed
+      const prompt = buildCleanupPrompt(mockActor, sources)
+      expect(prompt).toContain("[truncated")
+      // Wikipedia (reliability 0.85) should get more budget than Google (0.7)
+      // Wikipedia share: 0.85/(0.85+0.7) * 60K ≈ 32903
+      // Google share: 0.7/(0.85+0.7) * 60K ≈ 27097
+      const wikiMatch = prompt.match(/budget (\d+) chars based on reliability 85%/)
+      const googleMatch = prompt.match(/budget (\d+) chars based on reliability 70%/)
+      expect(wikiMatch).not.toBeNull()
+      expect(googleMatch).not.toBeNull()
+      const wikiBudget = parseInt(wikiMatch![1], 10)
+      const googleBudget = parseInt(googleMatch![1], 10)
+      expect(wikiBudget).toBeGreaterThan(googleBudget)
+      expect(wikiBudget).toBeGreaterThan(30_000)
+      expect(googleBudget).toBeGreaterThan(25_000)
+    })
+
+    it("gives every source at least MIN_SOURCE_CHARS", () => {
+      const sources: RawSourceData[] = [
+        {
+          sourceName: "Wikipedia",
+          sourceType: DataSourceType.WIKIPEDIA,
+          confidence: 0.9,
+          reliabilityScore: 0.95,
+          text: "A".repeat(80_000),
+        },
+        {
+          sourceName: "UGC Source",
+          sourceType: DataSourceType.FINDAGRAVE,
+          confidence: 0.3,
+          reliabilityScore: 0.01,
+          text: "B".repeat(5_000),
+        },
+      ]
+      // Even with very low reliability, UGC source should keep at least 500 chars
+      const prompt = buildCleanupPrompt(mockActor, sources)
+      // The UGC source text should still appear (at least 500 B's)
+      expect(prompt).toContain("B".repeat(500))
+    })
+
+    it("falls back to equal shares when all reliability scores are zero", () => {
+      const sources: RawSourceData[] = [
+        {
+          sourceName: "Source A",
+          sourceType: DataSourceType.WIKIPEDIA,
+          confidence: 0.5,
+          reliabilityScore: 0,
+          text: "A".repeat(50_000),
+        },
+        {
+          sourceName: "Source B",
+          sourceType: DataSourceType.WIKIDATA,
+          confidence: 0.5,
+          reliabilityScore: 0,
+          text: "B".repeat(50_000),
+        },
+      ]
+      // 100K total > 60K budget, all reliability=0 — should use equal shares (30K each)
+      const prompt = buildCleanupPrompt(mockActor, sources)
+      expect(prompt).toContain("[truncated")
+      // Both should get roughly equal budget (~30K each)
+      const matches = [...prompt.matchAll(/budget (\d+) chars/g)]
+      expect(matches).toHaveLength(2)
+      const budgetA = parseInt(matches[0][1], 10)
+      const budgetB = parseInt(matches[1][1], 10)
+      expect(budgetA).toBeGreaterThan(25_000)
+      expect(budgetA).toBeLessThan(35_000)
+      expect(budgetB).toBeGreaterThan(25_000)
+      expect(budgetB).toBeLessThan(35_000)
+      // Should be approximately equal
+      expect(Math.abs(budgetA - budgetB)).toBeLessThan(1_000)
     })
   })
 
