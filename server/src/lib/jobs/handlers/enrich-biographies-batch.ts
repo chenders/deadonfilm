@@ -282,25 +282,19 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
         concurrency: concurrency ?? 5,
         costTracker,
         getCost: (result) => result.costUsd,
-        onItemComplete: async (_actor, _result, progress) => {
+        onItemComplete: async (actor, _result, progress) => {
           actorsCompleted = progress.completed
 
           // Update run progress in DB
           if (runId) {
             try {
-              await this.updateRunProgress(
-                db,
-                runId,
-                progress.completed,
-                `${progress.inFlight} actors in flight`,
-                {
-                  actorsProcessed: progress.completed,
-                  actorsEnriched,
-                  totalCostUsd: costTracker.getTotalCost(),
-                  sourceCostUsd: totalSourceCost,
-                  synthesisCostUsd: totalSynthesisCost,
-                }
-              )
+              await this.updateRunProgress(db, runId, progress.completed, actor.name, {
+                actorsProcessed: progress.completed,
+                actorsEnriched,
+                totalCostUsd: costTracker.getTotalCost(),
+                sourceCostUsd: totalSourceCost,
+                synthesisCostUsd: totalSynthesisCost,
+              })
             } catch (progressError) {
               log.warn(
                 { error: progressError, runId, completed: progress.completed },

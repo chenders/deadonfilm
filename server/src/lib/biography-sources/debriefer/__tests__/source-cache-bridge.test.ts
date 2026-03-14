@@ -92,7 +92,7 @@ describe("cacheSourceFinding", () => {
     vi.clearAllMocks()
   })
 
-  it("writes finding to cache with BiographySourceType (cast to DataSourceType)", () => {
+  it("writes finding to cache in BiographyLookupResult format for resynthesizeFromCache", () => {
     const finding = {
       text: "Born in Iowa, he grew up on a farm.",
       confidence: 0.8,
@@ -107,9 +107,21 @@ describe("cacheSourceFinding", () => {
       queryString: "debriefer-bio:Wikipedia:actor:123",
       responseStatus: 200,
       responseData: {
-        text: "Born in Iowa, he grew up on a farm.",
-        confidence: 0.8,
-        url: "https://example.com",
+        success: true,
+        source: {
+          type: BiographySourceType.WIKIPEDIA_BIO,
+          url: "https://example.com",
+          retrievedAt: expect.any(Date),
+          confidence: 0.8,
+          costUsd: 0,
+        },
+        data: {
+          sourceName: "Wikipedia",
+          sourceType: BiographySourceType.WIKIPEDIA_BIO,
+          text: "Born in Iowa, he grew up on a farm.",
+          url: "https://example.com",
+          confidence: 0.8,
+        },
       },
       costUsd: 0,
     })

@@ -107,15 +107,30 @@ export function cacheSourceFinding(
   const sourceType = resolveSourceType(sourceName)
   if (!sourceType) return
 
+  // Write in BiographyLookupResult format so resynthesizeFromCache can read it.
+  // resynthesizeFromCache casts cached responseRaw as BiographyLookupResult and
+  // checks: lookupResult?.success, lookupResult.data.text, lookupResult.source.
   setCachedQuery({
     sourceType: sourceType as unknown as DataSourceType,
     actorId,
     queryString: `debriefer-bio:${sourceName}:actor:${actorId}`,
     responseStatus: 200,
     responseData: {
-      text: finding.text,
-      confidence: finding.confidence,
-      url: finding.url,
+      success: true,
+      source: {
+        type: sourceType,
+        url: finding.url ?? null,
+        retrievedAt: new Date(),
+        confidence: finding.confidence,
+        costUsd: costUsd,
+      },
+      data: {
+        sourceName: sourceName,
+        sourceType: sourceType,
+        text: finding.text,
+        url: finding.url,
+        confidence: finding.confidence,
+      },
     },
     costUsd,
   }).catch((err) => {
