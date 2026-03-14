@@ -77,6 +77,9 @@ export enum BiographySourceType {
   // AI Utility (internal)
   GEMINI_BIO_SECTION_SELECTOR = "gemini-bio-section-selector",
   HAIKU_CONTENT_CLEANER = "haiku-content-cleaner",
+
+  // Unmapped (fallback for unknown debriefer source types)
+  UNMAPPED = "unmapped-bio",
 }
 
 // ============================================================================
@@ -220,6 +223,7 @@ export interface RawBiographySourceData {
   confidence: number
   reliabilityTier?: ReliabilityTier
   reliabilityScore?: number
+  costUsd?: number
   publication?: string
   articleTitle?: string
   domain?: string
