@@ -291,11 +291,16 @@ describe("claude-cleanup", () => {
       const prompt = buildCleanupPrompt(mockActor, sources)
       expect(prompt).toContain("[truncated")
       // Both should get roughly equal budget (~30K each)
-      const matchA = prompt.match(/budget (\d+) chars/)
-      expect(matchA).not.toBeNull()
-      const budgetA = parseInt(matchA![1], 10)
+      const matches = [...prompt.matchAll(/budget (\d+) chars/g)]
+      expect(matches).toHaveLength(2)
+      const budgetA = parseInt(matches[0][1], 10)
+      const budgetB = parseInt(matches[1][1], 10)
       expect(budgetA).toBeGreaterThan(25_000)
       expect(budgetA).toBeLessThan(35_000)
+      expect(budgetB).toBeGreaterThan(25_000)
+      expect(budgetB).toBeLessThan(35_000)
+      // Should be approximately equal
+      expect(Math.abs(budgetA - budgetB)).toBeLessThan(1_000)
     })
   })
 
