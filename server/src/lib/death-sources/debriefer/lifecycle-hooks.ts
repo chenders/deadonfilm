@@ -163,29 +163,10 @@ export function createLifecycleHooks(
           `${sourceName}: no result`
         )
         collector?.add("debug", `${sourceName}: no result`, { source: sourceName, costUsd })
-      }
-    },
-
-    onSourceError(subject, sourceName, error) {
-      const actorId = typeof subject.id === "number" ? subject.id : parseInt(String(subject.id), 10)
-      log.warn(
-        { actorId: subject.id, actorName: subject.name, source: sourceName, err: error },
-        `${sourceName}: error`
-      )
-      collector?.add("warn", `${sourceName}: error`, {
-        source: sourceName,
-        error: error instanceof Error ? error.message : String(error),
-      })
-      // Cache failures to prevent re-trying consistently failing sources
-      if (!isNaN(actorId)) {
-        cacheSourceFailure(
-          actorId,
-          sourceName,
-          error instanceof Error ? error.message : String(error)
-        )
-      }
-      if (error instanceof Error) {
-        nr?.noticeError(error, { actorId: String(subject.id), source: sourceName })
+        // Cache failures so admin can see which sources returned nothing
+        if (!isNaN(actorId)) {
+          cacheSourceFailure(actorId, sourceName, "no result")
+        }
       }
     },
 
