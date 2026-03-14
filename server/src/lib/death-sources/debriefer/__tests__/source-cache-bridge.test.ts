@@ -9,7 +9,7 @@ vi.mock("../../cache.js", () => ({
 
 // Mock logger
 vi.mock("../../../logger.js", () => ({
-  logger: { child: () => ({ debug: vi.fn() }) },
+  logger: { child: () => ({ debug: vi.fn(), warn: vi.fn() }) },
 }))
 
 import {
@@ -96,7 +96,7 @@ describe("cacheSourceFailure", () => {
       sourceType: DataSourceType.GUARDIAN,
       actorId: 123,
       queryString: "debriefer:The Guardian:actor:123",
-      responseStatus: null,
+      responseStatus: 500,
       errorMessage: "404 Not Found",
       costUsd: 0.005,
     })

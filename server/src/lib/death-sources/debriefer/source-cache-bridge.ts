@@ -50,8 +50,19 @@ const SOURCE_NAME_TO_TYPE: Record<string, DataSourceType> = {
   "Internet Archive": DataSourceType.INTERNET_ARCHIVE,
 }
 
+/** Tracks unknown source names we've already warned about (avoid log spam) */
+const warnedUnknownNames = new Set<string>()
+
 export function resolveSourceType(sourceName: string): DataSourceType | null {
-  return SOURCE_NAME_TO_TYPE[sourceName] ?? null
+  const mapped = SOURCE_NAME_TO_TYPE[sourceName]
+  if (!mapped && sourceName && !warnedUnknownNames.has(sourceName)) {
+    warnedUnknownNames.add(sourceName)
+    log.warn(
+      { sourceName },
+      "Unmapped debriefer source name — add to SOURCE_NAME_TO_TYPE in source-cache-bridge.ts"
+    )
+  }
+  return mapped ?? null
 }
 
 /**
@@ -99,7 +110,7 @@ export function cacheSourceFailure(
     sourceType,
     actorId,
     queryString: `debriefer:${sourceName}:actor:${actorId}`,
-    responseStatus: null,
+    responseStatus: 500,
     errorMessage: error,
     costUsd: costUsd ?? null,
   }).catch((err) => {
