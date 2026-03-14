@@ -17,7 +17,7 @@
 import type { LifecycleHooks, ResearchSubject, ScoredFinding } from "debriefer"
 import { createRequire } from "module"
 import { logger } from "../../logger.js"
-import { cacheSourceFinding, cacheSourceFailure } from "./source-cache-bridge.js"
+import { cacheSourceFinding, cacheSourceFailure, resolveSourceType } from "./source-cache-bridge.js"
 
 const log = logger.child({ module: "debriefer-hooks" })
 
@@ -153,7 +153,7 @@ export function createLifecycleHooks(
           actorId: subject.id,
           actorName: subject.name,
           source: sourceName,
-          sourceType: sourceName,
+          sourceType: resolveSourceType(sourceName) ?? sourceName,
           confidence: finding.confidence,
           costUsd,
         })

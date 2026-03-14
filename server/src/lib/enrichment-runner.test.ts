@@ -26,12 +26,14 @@ const defaultDebriefResult = {
       confidence: 0.9,
       reliabilityTier: "secondary",
       reliabilityScore: 0.85,
+      costUsd: 0,
     },
   ],
   totalCostUsd: 0.05,
   sourcesAttempted: 5,
   sourcesSucceeded: 1,
   durationMs: 1500,
+  logEntries: [],
 }
 
 // Default Claude cleanup result
@@ -73,10 +75,9 @@ let mockDebriefResult = { ...defaultDebriefResult }
 let mockCleanupResult: typeof defaultCleanupResult | null = { ...defaultCleanupResult }
 
 // Mock debriefer adapter — createDebriefOrchestrator returns a function
+const mockCreateDebriefOrchestrator = vi.hoisted(() => vi.fn())
 vi.mock("./death-sources/debriefer/adapter.js", () => ({
-  createDebriefOrchestrator: vi
-    .fn()
-    .mockReturnValue(vi.fn().mockImplementation(async () => ({ ...mockDebriefResult }))),
+  createDebriefOrchestrator: mockCreateDebriefOrchestrator,
 }))
 
 // Mock Claude cleanup
@@ -132,6 +133,10 @@ describe("EnrichmentRunner", () => {
     vi.clearAllMocks()
     // Reset mock query to return empty by default
     mockQuery.mockResolvedValue({ rows: [] })
+    // Reset debriefer mock to default behavior
+    mockCreateDebriefOrchestrator.mockReturnValue(
+      vi.fn().mockImplementation(async () => ({ ...mockDebriefResult }))
+    )
     // Reset mock results to defaults
     mockDebriefResult = { ...defaultDebriefResult }
     mockCleanupResult = { ...defaultCleanupResult }
@@ -342,6 +347,76 @@ describe("EnrichmentRunner", () => {
       expect(typeof stats.actorsEnriched).toBe("number")
       expect(typeof stats.totalCostUsd).toBe("number")
       expect(typeof stats.exitReason).toBe("string")
+    })
+
+    it("attributes costs per source using actual costUsd from findings", async () => {
+      const multiSourceResult = {
+        ...defaultDebriefResult,
+        rawSources: [
+          {
+            sourceName: "Wikipedia",
+            sourceType: "wikipedia",
+            text: "died",
+            confidence: 0.9,
+            costUsd: 0,
+          },
+          {
+            sourceName: "Google",
+            sourceType: "google_search",
+            text: "died of cancer",
+            confidence: 0.7,
+            costUsd: 0.005,
+          },
+          {
+            sourceName: "Brave",
+            sourceType: "brave_search",
+            text: "died of cancer",
+            confidence: 0.7,
+            costUsd: 0.005,
+          },
+        ],
+        totalCostUsd: 0.01,
+        logEntries: [],
+      }
+      mockCreateDebriefOrchestrator.mockReturnValue(vi.fn().mockResolvedValue(multiSourceResult))
+
+      mockQuery
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 1,
+              tmdb_id: 100,
+              imdb_person_id: null,
+              name: "Test",
+              birthday: "1950-01-01",
+              deathday: "2020-01-01",
+              cause_of_death: null,
+              cause_of_death_details: null,
+              tmdb_popularity: 10,
+              dof_popularity: 50,
+              circumstances: null,
+              notable_factors: null,
+            },
+          ],
+        })
+        .mockResolvedValue({ rows: [] })
+
+      const runner = new EnrichmentRunner({
+        actorIds: [1],
+        free: true,
+        paid: false,
+        ai: false,
+        staging: false,
+      })
+      const stats = await runner.run()
+
+      // Free source (Wikipedia) should have $0 cost
+      expect(stats.costBySource["wikipedia"]).toBeUndefined()
+      // Paid sources should have their actual costs
+      expect(stats.costBySource["google_search"]).toBe(0.005)
+      expect(stats.costBySource["brave_search"]).toBe(0.005)
+      // Claude cleanup cost tracked separately
+      expect(stats.costBySource["claude_cleanup"]).toBeGreaterThan(0)
     })
   })
 
