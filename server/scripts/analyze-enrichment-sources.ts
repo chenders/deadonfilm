@@ -344,6 +344,7 @@ async function getDeathCoverageGaps(opts: Options): Promise<CoverageGapRow[]> {
 async function getDeathRedundancy(opts: Options, topN: number): Promise<RedundancyPair[]> {
   const db = getPool()
   const filter = buildRunFilter("era", "enrichment_runs", opts)
+  const topNParam = filter.params.length + 1
 
   const result = await db.query<{
     source_a: string
@@ -371,7 +372,7 @@ async function getDeathRedundancy(opts: Options, topN: number): Promise<Redundan
       FROM successful_sources
       GROUP BY source
       ORDER BY cnt DESC
-      LIMIT ${topN}
+      LIMIT $${topNParam}
     )
     SELECT
       a.source AS source_a,
@@ -389,7 +390,7 @@ async function getDeathRedundancy(opts: Options, topN: number): Promise<Redundan
     GROUP BY a.source, b.source, ts_a.cnt
     ORDER BY co_success_rate DESC
     `,
-    filter.params
+    [...filter.params, topN]
   )
 
   return result.rows.map((r) => ({
@@ -663,6 +664,7 @@ async function getBioCoverageGaps(opts: Options): Promise<CoverageGapRow[]> {
 async function getBioRedundancy(opts: Options, topN: number): Promise<RedundancyPair[]> {
   const db = getPool()
   const filter = buildRunFilter("bra", "bio_enrichment_runs", opts)
+  const topNParam = filter.params.length + 1
 
   const result = await db.query<{
     source_a: string
@@ -690,7 +692,7 @@ async function getBioRedundancy(opts: Options, topN: number): Promise<Redundancy
       FROM successful_sources
       GROUP BY source
       ORDER BY cnt DESC
-      LIMIT ${topN}
+      LIMIT $${topNParam}
     )
     SELECT
       a.source AS source_a,
@@ -708,7 +710,7 @@ async function getBioRedundancy(opts: Options, topN: number): Promise<Redundancy
     GROUP BY a.source, b.source, ts_a.cnt
     ORDER BY co_success_rate DESC
     `,
-    filter.params
+    [...filter.params, topN]
   )
 
   return result.rows.map((r) => ({
