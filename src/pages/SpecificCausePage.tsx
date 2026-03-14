@@ -52,8 +52,6 @@ export default function SpecificCausePage() {
     return <ErrorMessage message="Cause not found" />
   }
 
-  const baseOffset = (page - 1) * data.pagination.pageSize
-
   return (
     <>
       <Helmet>
@@ -158,13 +156,8 @@ export default function SpecificCausePage() {
             <p className="text-center text-text-muted">No actors found for this cause.</p>
           ) : (
             <div className="space-y-2">
-              {data.actors.map((actor, index) => (
-                <CauseActorRow
-                  key={actor.id}
-                  actor={actor}
-                  rank={baseOffset + index + 1}
-                  showCauseBadge={false}
-                />
+              {data.actors.map((actor) => (
+                <CauseActorRow key={actor.id} actor={actor} showCauseBadge={false} />
               ))}
             </div>
           )}

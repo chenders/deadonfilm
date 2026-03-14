@@ -23,10 +23,10 @@ const mockActor: CauseActor = {
   yearsLost: 8.5,
 }
 
-function renderWithRouter(actor: CauseActor, props?: { rank?: number; showCauseBadge?: boolean }) {
+function renderWithRouter(actor: CauseActor, props?: { showCauseBadge?: boolean }) {
   return render(
     <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <CauseActorRow actor={actor} rank={props?.rank ?? 1} showCauseBadge={props?.showCauseBadge} />
+      <CauseActorRow actor={actor} showCauseBadge={props?.showCauseBadge} />
     </MemoryRouter>
   )
 }
@@ -46,11 +46,6 @@ describe("CauseActorRow", () => {
   it("renders age at death", () => {
     renderWithRouter(mockActor)
     expect(screen.getAllByText(/Age 72/).length).toBeGreaterThanOrEqual(1)
-  })
-
-  it("renders rank", () => {
-    renderWithRouter(mockActor, { rank: 5 })
-    expect(screen.getAllByText("5").length).toBeGreaterThanOrEqual(1)
   })
 
   it("renders years lost", () => {
