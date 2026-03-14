@@ -17,11 +17,7 @@
 import type { LifecycleHooks, ResearchSubject, ScoredFinding } from "debriefer"
 import { createRequire } from "module"
 import { logger } from "../../logger.js"
-import {
-  cacheSourceFinding,
-  cacheSourceFailure,
-  resolveSourceType,
-} from "../../death-sources/debriefer/source-cache-bridge.js"
+import { cacheSourceFinding, cacheSourceFailure, resolveSourceType } from "./source-cache-bridge.js"
 import type { LogEntry, NewRelicAgent } from "../../death-sources/debriefer/lifecycle-hooks.js"
 import { LogEntryCollector } from "../../death-sources/debriefer/lifecycle-hooks.js"
 

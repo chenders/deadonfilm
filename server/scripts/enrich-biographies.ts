@@ -10,6 +10,7 @@ import {
   writeBiographyToProduction,
   writeBiographyToStaging,
 } from "../src/lib/biography-enrichment-db-writer.js"
+import { ParallelBatchRunner, BatchCostTracker } from "../src/lib/shared/concurrency.js"
 import { setIgnoreCache } from "../src/lib/biography-sources/base-source.js"
 import { GOLDEN_TEST_CASES, scoreAllResults } from "../src/lib/biography/golden-test-cases.js"
 import type {
@@ -348,17 +349,17 @@ async function run(options: CliOptions): Promise<void> {
       const enrichActor = createBioEnrichmentPipeline(config)
       const startTime = Date.now()
       const enrichmentResults = new Map<number, BiographyResult>()
-      let totalCost = 0
       let enrichedCount = 0
 
-      for (let i = 0; i < actors.length; i++) {
-        const actor = actors[i]
-        console.log(`\n[${i + 1}/${actors.length}] Processing ${actor.name}...`)
+      // Create cost tracker for batch-level limits
+      const costTracker = new BatchCostTracker(options.maxTotalCost)
 
+      // Define per-actor processor
+      const processActor = async (actor: ActorForBiography): Promise<{ costUsd: number }> => {
         try {
           const result = await enrichActor(actor)
           enrichmentResults.set(actor.id, result)
-          totalCost += result.stats.totalCostUsd
+          const costUsd = result.stats.totalCostUsd
 
           if (result.data) {
             enrichedCount++
@@ -367,36 +368,46 @@ async function run(options: CliOptions): Promise<void> {
             const writeFunc = options.staging ? writeBiographyToStaging : writeBiographyToProduction
             await writeFunc(pool, actor.id, result.data, result.sources)
             console.log(
-              `  Written to ${options.staging ? "staging" : "production"} | ` +
+              `  [${actor.name}] Written to ${options.staging ? "staging" : "production"} | ` +
                 `Sources: ${result.stats.sourcesSucceeded}/${result.stats.sourcesAttempted} | ` +
-                `Cost: $${result.stats.totalCostUsd.toFixed(4)} | ` +
+                `Cost: $${costUsd.toFixed(4)} | ` +
                 `Time: ${result.stats.processingTimeMs}ms`
             )
           } else {
             console.log(
-              `  No data produced | ` +
+              `  [${actor.name}] No data produced | ` +
                 `Sources: ${result.stats.sourcesSucceeded}/${result.stats.sourcesAttempted} | ` +
                 `Error: ${result.error || "unknown"}`
             )
           }
+
+          return { costUsd }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : "Unknown error"
-          console.error(`  Fatal error processing ${actor.name}: ${errorMsg}`)
+          console.error(`  [${actor.name}] Fatal error: ${errorMsg}`)
+          return { costUsd: 0 }
         }
+      }
 
-        // Check total cost limit
-        if (totalCost >= options.maxTotalCost) {
+      // Run actors in parallel with configurable concurrency
+      const runner = new ParallelBatchRunner<ActorForBiography, { costUsd: number }>({
+        concurrency: options.concurrency,
+        costTracker,
+        getCost: (result) => result.costUsd,
+        onItemComplete: async (actor, _result, progress) => {
           console.log(
-            `\nTotal cost limit reached ($${totalCost.toFixed(4)} >= $${options.maxTotalCost})`
+            `  [${progress.completed}/${actors.length}] Completed ${actor.name} (${progress.inFlight} in flight)`
           )
-          console.log(`Processed ${i + 1} of ${actors.length} actors before limit`)
-          break
-        }
+        },
+      })
 
-        // Delay between actors
-        if (i < actors.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 500))
-        }
+      await runner.run(actors, processActor)
+
+      const totalCost = costTracker.getTotalCost()
+      if (costTracker.isLimitExceeded()) {
+        console.log(
+          `\nTotal cost limit reached ($${totalCost.toFixed(4)} >= $${options.maxTotalCost})`
+        )
       }
 
       // Golden test scoring

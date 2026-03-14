@@ -21,6 +21,7 @@ import {
   writeBiographyToProduction,
   writeBiographyToStaging,
 } from "../../biography-enrichment-db-writer.js"
+import { ParallelBatchRunner, BatchCostTracker } from "../../shared/concurrency.js"
 import type { ActorForBiography, BiographyResult } from "../../biography-sources/types.js"
 import type { Pool } from "pg"
 
@@ -145,9 +146,8 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
         books: sourceCategories?.books ?? true,
       })
 
-      // 3. Process each actor
+      // 3. Process actors in parallel using ParallelBatchRunner
       const results: EnrichBiographiesBatchResult["results"] = []
-      let totalCostUsd = 0
       let totalSourceCost = 0
       let totalSynthesisCost = 0
       let actorsEnriched = 0
@@ -158,38 +158,22 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       const sourceSuccesses: Record<string, number> = {}
       const errors: Array<{ actorId: number; actorName: string; error: string }> = []
 
-      for (let i = 0; i < actors.length; i++) {
-        const actor = actors[i]
-        const actorLogs: LogEntry[] = []
+      // Create cost tracker for batch-level limits
+      const costTracker = new BatchCostTracker(maxTotalCost ?? Infinity)
 
-        // Update progress
-        if (runId) {
-          try {
-            await this.updateRunProgress(db, runId, i, actor.name, {
-              actorsProcessed: i,
-              actorsEnriched,
-              totalCostUsd,
-              sourceCostUsd: totalSourceCost,
-              synthesisCostUsd: totalSynthesisCost,
-            })
-          } catch (progressError) {
-            log.warn(
-              { error: progressError, runId, actorIndex: i },
-              "Failed to update run progress"
-            )
-          }
-        }
+      // Define per-actor processor
+      const processActor = async (actor: ActorForBiography): Promise<{ costUsd: number }> => {
+        const actorLogs: LogEntry[] = []
 
         try {
           actorLogs.push({
             timestamp: new Date().toISOString(),
             level: "info",
-            message: `Starting enrichment for ${actor.name} (${i + 1}/${actors.length})`,
+            message: `Starting enrichment for ${actor.name}`,
           })
 
           const result = await enrichActor(actor)
           const costUsd = result.stats.totalCostUsd
-          totalCostUsd += costUsd
           totalSourceCost += result.stats.sourceCostUsd ?? 0
           totalSynthesisCost += result.stats.synthesisCostUsd ?? 0
 
@@ -266,41 +250,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
             }
           }
 
-          // Update job progress
-          await job.updateProgress(Math.round(((i + 1) / actors.length) * 100))
-
-          // Check batch total cost limit
-          if (maxTotalCost && totalCostUsd >= maxTotalCost) {
-            log.info(
-              { totalCostUsd, maxTotalCost },
-              "Batch total cost limit reached, stopping early"
-            )
-            if (runId) {
-              await this.completeBioEnrichmentRun(db, runId, {
-                actorsProcessed: i + 1,
-                actorsEnriched,
-                actorsWithSubstantiveContent,
-                totalCostUsd,
-                sourceCostUsd: totalSourceCost,
-                synthesisCostUsd: totalSynthesisCost,
-                exitReason: "cost_limit",
-                costBySource,
-                sourceHitRates: this.computeHitRates(sourceAttempts, sourceSuccesses),
-                errorCount: errors.length,
-                errors,
-              })
-            }
-            return {
-              success: true,
-              data: {
-                actorsProcessed: i + 1,
-                actorsEnriched,
-                actorsFailed,
-                totalCostUsd,
-                results,
-              },
-            }
-          }
+          return { costUsd }
         } catch (error) {
           actorsFailed++
           const errorMsg = error instanceof Error ? error.message : "Unknown error"
@@ -333,6 +283,81 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
               [runId, actor.id, errorMsg, JSON.stringify(actorLogs)]
             )
           }
+
+          return { costUsd: 0 }
+        }
+      }
+
+      // Run actors in parallel with configurable concurrency
+      let actorsCompleted = 0
+      const runner = new ParallelBatchRunner<ActorForBiography, { costUsd: number }>({
+        concurrency: concurrency ?? 5,
+        costTracker,
+        getCost: (result) => result.costUsd,
+        onItemComplete: async (_actor, _result, progress) => {
+          actorsCompleted = progress.completed
+
+          // Update run progress in DB
+          if (runId) {
+            try {
+              await this.updateRunProgress(
+                db,
+                runId,
+                progress.completed,
+                `${progress.inFlight} actors in flight`,
+                {
+                  actorsProcessed: progress.completed,
+                  actorsEnriched,
+                  totalCostUsd: costTracker.getTotalCost(),
+                  sourceCostUsd: totalSourceCost,
+                  synthesisCostUsd: totalSynthesisCost,
+                }
+              )
+            } catch (progressError) {
+              log.warn(
+                { error: progressError, runId, completed: progress.completed },
+                "Failed to update run progress"
+              )
+            }
+          }
+
+          // Update job progress percentage
+          await job.updateProgress(Math.round((progress.completed / actors.length) * 100))
+        },
+      })
+
+      await runner.run(actors, processActor)
+
+      const totalCostUsd = costTracker.getTotalCost()
+      const costLimitReached = costTracker.isLimitExceeded()
+
+      // If cost limit was hit, complete the run with cost_limit exit reason
+      if (costLimitReached) {
+        log.info({ totalCostUsd, maxTotalCost }, "Batch total cost limit reached")
+        if (runId) {
+          await this.completeBioEnrichmentRun(db, runId, {
+            actorsProcessed: actorsCompleted,
+            actorsEnriched,
+            actorsWithSubstantiveContent,
+            totalCostUsd,
+            sourceCostUsd: totalSourceCost,
+            synthesisCostUsd: totalSynthesisCost,
+            exitReason: "cost_limit",
+            costBySource,
+            sourceHitRates: this.computeHitRates(sourceAttempts, sourceSuccesses),
+            errorCount: errors.length,
+            errors,
+          })
+        }
+        return {
+          success: true,
+          data: {
+            actorsProcessed: actorsCompleted,
+            actorsEnriched,
+            actorsFailed,
+            totalCostUsd,
+            results,
+          },
         }
       }
 
