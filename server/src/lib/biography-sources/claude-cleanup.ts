@@ -22,7 +22,7 @@ const OUTPUT_COST_PER_MILLION = 15
 
 const DEFAULT_MODEL = "claude-sonnet-4-20250514"
 const MAX_TOKENS = 4096
-const MAX_SOURCE_CHARS = 50_000
+const MAX_SOURCE_CHARS = 60_000
 
 const VALID_CONFIDENCE = new Set(["high", "medium", "low"])
 

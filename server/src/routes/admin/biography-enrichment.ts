@@ -154,13 +154,13 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
       res.status(404).json({ error: { message: "Actor not found" } })
       return
     }
-    const { BiographyEnrichmentOrchestrator } =
-      await import("../../lib/biography-sources/orchestrator.js")
+    const { createBioEnrichmentPipeline } =
+      await import("../../lib/biography-sources/debriefer/adapter.js")
     const { writeBiographyToProduction } =
       await import("../../lib/biography-enrichment-db-writer.js")
 
-    const orchestrator = new BiographyEnrichmentOrchestrator()
-    const result = await orchestrator.enrichActor(actor)
+    const enrichActor = createBioEnrichmentPipeline({})
+    const result = await enrichActor(actor)
 
     if (result.data && result.data.hasSubstantiveContent) {
       await writeBiographyToProduction(pool, actorId, result.data, result.sources)
@@ -382,8 +382,8 @@ router.post("/golden-test", async (req: Request, res: Response): Promise<void> =
   try {
     const { GOLDEN_TEST_CASES, scoreAllResults } =
       await import("../../lib/biography/golden-test-cases.js")
-    const { BiographyEnrichmentOrchestrator } =
-      await import("../../lib/biography-sources/orchestrator.js")
+    const { createBioEnrichmentPipeline } =
+      await import("../../lib/biography-sources/debriefer/adapter.js")
     const { writeBiographyToProduction } =
       await import("../../lib/biography-enrichment-db-writer.js")
 
@@ -410,13 +410,13 @@ router.post("/golden-test", async (req: Request, res: Response): Promise<void> =
       (name) => !actorsResult.rows.some((r: { name: string }) => r.name === name)
     )
 
-    const orchestrator = new BiographyEnrichmentOrchestrator()
+    const enrichActor = createBioEnrichmentPipeline({})
     const resultsByName = new Map()
     const errors: string[] = []
 
     for (const actor of actorsResult.rows) {
       try {
-        const result = await orchestrator.enrichActor(actor)
+        const result = await enrichActor(actor)
         if (result.data && result.data.hasSubstantiveContent) {
           await writeBiographyToProduction(pool, actor.id, result.data, result.sources)
           resultsByName.set(actor.name, result.data)

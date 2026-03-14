@@ -14,13 +14,16 @@ import type { Job } from "bullmq"
 import { getPool } from "../../db.js"
 import { BaseJobHandler } from "./base.js"
 import { JobType, QueueName, type JobResult, type EnrichBiographiesBatchPayload } from "../types.js"
-import { BiographyEnrichmentOrchestrator } from "../../biography-sources/orchestrator.js"
-import { RunLogger } from "../../run-logger.js"
+import { createBioEnrichmentPipeline } from "../../biography-sources/debriefer/adapter.js"
+// RunLogger removed — per-source logs now come from debriefer lifecycle hooks
+// via result.logEntries, merged into actorLogs and stored in bio_enrichment_run_actors
 import {
   writeBiographyToProduction,
   writeBiographyToStaging,
 } from "../../biography-enrichment-db-writer.js"
+import { ParallelBatchRunner, BatchCostTracker } from "../../shared/concurrency.js"
 import type { ActorForBiography, BiographyResult } from "../../biography-sources/types.js"
+import type { LogEntry } from "../../death-sources/debriefer/lifecycle-hooks.js"
 import type { Pool } from "pg"
 
 export interface EnrichBiographiesBatchResult {
@@ -35,13 +38,6 @@ export interface EnrichBiographiesBatchResult {
     error?: string
     costUsd: number
   }>
-}
-
-/** Log entry stored per-actor in JSONB */
-interface LogEntry {
-  timestamp: string
-  level: "info" | "warn" | "error"
-  message: string
 }
 
 export class EnrichBiographiesBatchHandler extends BaseJobHandler<
@@ -129,39 +125,23 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
         }
       }
 
-      // 2. Create orchestrator with config
-      const orchestrator = new BiographyEnrichmentOrchestrator({
+      // 2. Create enrichment pipeline (debriefer adapter + Claude synthesis)
+      const enrichActor = createBioEnrichmentPipeline({
         confidenceThreshold: confidenceThreshold ?? 0.6,
-        ...(earlyStopSourceCount !== undefined && { earlyStopSourceCount }),
-        ...(concurrency !== undefined && { concurrency }),
-        costLimits: {
-          maxCostPerActor: maxCostPerActor ?? 0.5,
-          maxTotalCost: maxTotalCost ?? 10.0,
-        },
-        sourceCategories: sourceCategories
-          ? {
-              free: sourceCategories.free ?? true,
-              reference: sourceCategories.reference ?? true,
-              webSearch: sourceCategories.webSearch ?? true,
-              news: sourceCategories.news ?? true,
-              obituary: sourceCategories.obituary ?? true,
-              archives: sourceCategories.archives ?? true,
-              books: sourceCategories.books ?? true,
-              ai: false,
-            }
-          : undefined,
+        earlyStopThreshold: earlyStopSourceCount === 0 ? Infinity : (earlyStopSourceCount ?? 5),
+        maxCostPerActor: maxCostPerActor ?? 0.5,
+        maxTotalCost: maxTotalCost ?? 10.0,
+        free: sourceCategories?.free ?? true,
+        reference: sourceCategories?.reference ?? true,
+        webSearch: sourceCategories?.webSearch ?? true,
+        news: sourceCategories?.news ?? true,
+        obituary: sourceCategories?.obituary ?? true,
+        archives: sourceCategories?.archives ?? true,
+        books: sourceCategories?.books ?? true,
       })
 
-      // Wire up RunLogger for DB log capture if we have a run ID
-      let runLogger: RunLogger | null = null
-      if (runId) {
-        runLogger = new RunLogger("biography", runId)
-        orchestrator.setRunLogger(runLogger)
-      }
-
-      // 3. Process each actor
+      // 3. Process actors in parallel using ParallelBatchRunner
       const results: EnrichBiographiesBatchResult["results"] = []
-      let totalCostUsd = 0
       let totalSourceCost = 0
       let totalSynthesisCost = 0
       let actorsEnriched = 0
@@ -172,38 +152,22 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       const sourceSuccesses: Record<string, number> = {}
       const errors: Array<{ actorId: number; actorName: string; error: string }> = []
 
-      for (let i = 0; i < actors.length; i++) {
-        const actor = actors[i]
-        const actorLogs: LogEntry[] = []
+      // Create cost tracker for batch-level limits
+      const costTracker = new BatchCostTracker(maxTotalCost ?? Infinity)
 
-        // Update progress
-        if (runId) {
-          try {
-            await this.updateRunProgress(db, runId, i, actor.name, {
-              actorsProcessed: i,
-              actorsEnriched,
-              totalCostUsd,
-              sourceCostUsd: totalSourceCost,
-              synthesisCostUsd: totalSynthesisCost,
-            })
-          } catch (progressError) {
-            log.warn(
-              { error: progressError, runId, actorIndex: i },
-              "Failed to update run progress"
-            )
-          }
-        }
+      // Define per-actor processor
+      const processActor = async (actor: ActorForBiography): Promise<{ costUsd: number }> => {
+        const actorLogs: LogEntry[] = []
 
         try {
           actorLogs.push({
             timestamp: new Date().toISOString(),
             level: "info",
-            message: `Starting enrichment for ${actor.name} (${i + 1}/${actors.length})`,
+            message: `Starting enrichment for ${actor.name}`,
           })
 
-          const result = await orchestrator.enrichActor(actor)
+          const result = await enrichActor(actor)
           const costUsd = result.stats.totalCostUsd
-          totalCostUsd += costUsd
           totalSourceCost += result.stats.sourceCostUsd ?? 0
           totalSynthesisCost += result.stats.synthesisCostUsd ?? 0
 
@@ -257,47 +221,24 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
             })
           }
 
+          // Merge debriefer per-source log entries with handler-level logs
+          if (result.logEntries) {
+            actorLogs.push(...result.logEntries)
+          }
+
           // Insert per-actor result
           if (runId) {
-            await this.insertActorResult(db, runId, actor, result, actorLogs)
-          }
-
-          // Update job progress
-          await job.updateProgress(Math.round(((i + 1) / actors.length) * 100))
-
-          // Check batch total cost limit
-          if (maxTotalCost && totalCostUsd >= maxTotalCost) {
-            log.info(
-              { totalCostUsd, maxTotalCost },
-              "Batch total cost limit reached, stopping early"
-            )
-            await runLogger?.flush()
-            if (runId) {
-              await this.completeBioEnrichmentRun(db, runId, {
-                actorsProcessed: i + 1,
-                actorsEnriched,
-                actorsWithSubstantiveContent,
-                totalCostUsd,
-                sourceCostUsd: totalSourceCost,
-                synthesisCostUsd: totalSynthesisCost,
-                exitReason: "cost_limit",
-                costBySource,
-                sourceHitRates: this.computeHitRates(sourceAttempts, sourceSuccesses),
-                errorCount: errors.length,
-                errors,
-              })
-            }
-            return {
-              success: true,
-              data: {
-                actorsProcessed: i + 1,
-                actorsEnriched,
-                actorsFailed,
-                totalCostUsd,
-                results,
-              },
+            try {
+              await this.insertActorResult(db, runId, actor, result, actorLogs)
+            } catch (trackingError) {
+              log.error(
+                { error: trackingError, runId, actorId: actor.id },
+                "Failed to insert actor result tracking (enrichment still succeeded)"
+              )
             }
           }
+
+          return { costUsd }
         } catch (error) {
           actorsFailed++
           const errorMsg = error instanceof Error ? error.message : "Unknown error"
@@ -330,11 +271,77 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
               [runId, actor.id, errorMsg, JSON.stringify(actorLogs)]
             )
           }
+
+          return { costUsd: 0 }
         }
       }
 
-      // Flush any remaining buffered run logs before completing
-      await runLogger?.flush()
+      // Run actors in parallel with configurable concurrency
+      let actorsCompleted = 0
+      const runner = new ParallelBatchRunner<ActorForBiography, { costUsd: number }>({
+        concurrency: concurrency ?? 5,
+        costTracker,
+        getCost: (result) => result.costUsd,
+        onItemComplete: async (actor, _result, progress) => {
+          actorsCompleted = progress.completed
+
+          // Update run progress in DB
+          if (runId) {
+            try {
+              await this.updateRunProgress(db, runId, progress.completed, actor.name, {
+                actorsProcessed: progress.completed,
+                actorsEnriched,
+                totalCostUsd: costTracker.getTotalCost(),
+                sourceCostUsd: totalSourceCost,
+                synthesisCostUsd: totalSynthesisCost,
+              })
+            } catch (progressError) {
+              log.warn(
+                { error: progressError, runId, completed: progress.completed },
+                "Failed to update run progress"
+              )
+            }
+          }
+
+          // Update job progress percentage
+          await job.updateProgress(Math.round((progress.completed / actors.length) * 100))
+        },
+      })
+
+      await runner.run(actors, processActor)
+
+      const totalCostUsd = costTracker.getTotalCost()
+      const costLimitReached = costTracker.isLimitExceeded()
+
+      // If cost limit was hit, complete the run with cost_limit exit reason
+      if (costLimitReached) {
+        log.info({ totalCostUsd, maxTotalCost }, "Batch total cost limit reached")
+        if (runId) {
+          await this.completeBioEnrichmentRun(db, runId, {
+            actorsProcessed: actorsCompleted,
+            actorsEnriched,
+            actorsWithSubstantiveContent,
+            totalCostUsd,
+            sourceCostUsd: totalSourceCost,
+            synthesisCostUsd: totalSynthesisCost,
+            exitReason: "cost_limit",
+            costBySource,
+            sourceHitRates: this.computeHitRates(sourceAttempts, sourceSuccesses),
+            errorCount: errors.length,
+            errors,
+          })
+        }
+        return {
+          success: true,
+          data: {
+            actorsProcessed: actorsCompleted,
+            actorsEnriched,
+            actorsFailed,
+            totalCostUsd,
+            results,
+          },
+        }
+      }
 
       // Complete the run
       if (runId) {
@@ -405,7 +412,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       const placeholders = opts.actorIds.map((_, i) => `$${i + 1}`).join(", ")
       const result = await db.query(
         `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-                wikipedia_url, biography AS biography_raw_tmdb, biography
+                wikipedia_url, biography_raw_tmdb, biography
          FROM actors
          WHERE id IN (${placeholders})
          ${!opts.allowRegeneration ? "AND id NOT IN (SELECT actor_id FROM actor_biography_details)" : ""}`,
@@ -437,7 +444,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
 
     const result = await db.query(
       `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-              wikipedia_url, biography AS biography_raw_tmdb, biography
+              wikipedia_url, biography_raw_tmdb, biography
        FROM actors
        ${whereClause}
        ${orderByClause}
