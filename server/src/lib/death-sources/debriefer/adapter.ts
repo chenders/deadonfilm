@@ -58,7 +58,7 @@ import { adaptLegacySources } from "./legacy-source-adapter.js"
 import { mapFindings } from "./finding-mapper.js"
 import { createHaikuSectionFilter } from "./haiku-section-selector.js"
 import { createPersonValidator } from "./person-validator.js"
-import { createLifecycleHooks, LogEntryCollector } from "./lifecycle-hooks.js"
+import { createLifecycleHooks, LogEntryCollector, type LogEntry } from "./lifecycle-hooks.js"
 import type { RawSourceData, ActorForEnrichment } from "../types.js"
 
 // Page fetching infrastructure for link following
@@ -109,12 +109,7 @@ export interface DebrieferAdapterResult {
   sourcesSucceeded: number
   durationMs: number
   stoppedAtPhase?: number
-  logEntries: Array<{
-    timestamp: string
-    level: string
-    message: string
-    data?: Record<string, unknown>
-  }>
+  logEntries: LogEntry[]
 }
 
 /**
@@ -237,8 +232,11 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
       try {
         const result = await fetchPageWithFallbacks(url, { signal, timeoutMs: 15000 })
         if (!result.content || result.fetchMethod === "none") return null
+        // Archive fallbacks may return already-extracted text, not HTML
+        if (result.fetchMethod !== "direct") return result.content
+        // Direct fetch returns HTML — extract article body with Readability
         const article = extractArticleContent(result.content, result.url)
-        return article?.textContent || null
+        return article?.text || null
       } catch {
         return null
       }
