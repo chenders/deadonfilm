@@ -505,8 +505,11 @@ export async function cleanupWithClaude(
  * @returns Estimated cost in USD
  */
 export function estimateCleanupCost(rawSources: RawSourceData[]): number {
-  // Rough estimate: 4 chars per token for input
-  const totalChars = rawSources.reduce((sum, s) => sum + s.text.length, 0)
+  // Rough estimate: 4 chars per token for input, capped at budget
+  const totalChars = Math.min(
+    rawSources.reduce((sum, s) => sum + s.text.length, 0),
+    MAX_TOTAL_SOURCE_CHARS
+  )
   const estimatedInputTokens = Math.ceil(totalChars / 4) + 500 // Add 500 for prompt overhead
   const estimatedOutputTokens = 800 // Average expected output
 

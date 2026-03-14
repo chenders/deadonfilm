@@ -269,6 +269,34 @@ describe("claude-cleanup", () => {
       // The UGC source text should still appear (at least 500 B's)
       expect(prompt).toContain("B".repeat(500))
     })
+
+    it("falls back to equal shares when all reliability scores are zero", () => {
+      const sources: RawSourceData[] = [
+        {
+          sourceName: "Source A",
+          sourceType: DataSourceType.WIKIPEDIA,
+          confidence: 0.5,
+          reliabilityScore: 0,
+          text: "A".repeat(50_000),
+        },
+        {
+          sourceName: "Source B",
+          sourceType: DataSourceType.WIKIDATA,
+          confidence: 0.5,
+          reliabilityScore: 0,
+          text: "B".repeat(50_000),
+        },
+      ]
+      // 100K total > 60K budget, all reliability=0 — should use equal shares (30K each)
+      const prompt = buildCleanupPrompt(mockActor, sources)
+      expect(prompt).toContain("[truncated")
+      // Both should get roughly equal budget (~30K each)
+      const matchA = prompt.match(/budget (\d+) chars/)
+      expect(matchA).not.toBeNull()
+      const budgetA = parseInt(matchA![1], 10)
+      expect(budgetA).toBeGreaterThan(25_000)
+      expect(budgetA).toBeLessThan(35_000)
+    })
   })
 
   describe("manner validation with DeathMannerSchema", () => {
