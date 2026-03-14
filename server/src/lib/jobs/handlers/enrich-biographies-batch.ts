@@ -15,7 +15,8 @@ import { getPool } from "../../db.js"
 import { BaseJobHandler } from "./base.js"
 import { JobType, QueueName, type JobResult, type EnrichBiographiesBatchPayload } from "../types.js"
 import { createBioEnrichmentPipeline } from "../../biography-sources/debriefer/adapter.js"
-import { RunLogger } from "../../run-logger.js"
+// RunLogger removed — per-source logs now come from debriefer lifecycle hooks
+// via result.logEntries, merged into actorLogs and stored in bio_enrichment_run_actors
 import {
   writeBiographyToProduction,
   writeBiographyToStaging,
@@ -40,7 +41,7 @@ export interface EnrichBiographiesBatchResult {
 /** Log entry stored per-actor in JSONB */
 interface LogEntry {
   timestamp: string
-  level: "info" | "warn" | "error"
+  level: "info" | "warn" | "error" | "debug"
   message: string
 }
 
@@ -132,7 +133,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       // 2. Create enrichment pipeline (debriefer adapter + Claude synthesis)
       const enrichActor = createBioEnrichmentPipeline({
         confidenceThreshold: confidenceThreshold ?? 0.6,
-        earlyStopThreshold: earlyStopSourceCount === 0 ? undefined : (earlyStopSourceCount ?? 3),
+        earlyStopThreshold: earlyStopSourceCount === 0 ? Infinity : (earlyStopSourceCount ?? 3),
         maxCostPerActor: maxCostPerActor ?? 0.5,
         maxTotalCost: maxTotalCost ?? 10.0,
         free: sourceCategories?.free ?? true,
@@ -143,12 +144,6 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
         archives: sourceCategories?.archives ?? true,
         books: sourceCategories?.books ?? true,
       })
-
-      // Wire up RunLogger for DB log capture if we have a run ID
-      let runLogger: RunLogger | null = null
-      if (runId) {
-        runLogger = new RunLogger("biography", runId)
-      }
 
       // 3. Process each actor
       const results: EnrichBiographiesBatchResult["results"] = []
@@ -253,7 +248,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
             actorLogs.push(
               ...result.logEntries.map((le) => ({
                 timestamp: le.timestamp,
-                level: le.level as "info" | "warn" | "error",
+                level: le.level as LogEntry["level"],
                 message: le.message,
               }))
             )
@@ -273,7 +268,6 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
               { totalCostUsd, maxTotalCost },
               "Batch total cost limit reached, stopping early"
             )
-            await runLogger?.flush()
             if (runId) {
               await this.completeBioEnrichmentRun(db, runId, {
                 actorsProcessed: i + 1,
@@ -334,9 +328,6 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
           }
         }
       }
-
-      // Flush any remaining buffered run logs before completing
-      await runLogger?.flush()
 
       // Complete the run
       if (runId) {
