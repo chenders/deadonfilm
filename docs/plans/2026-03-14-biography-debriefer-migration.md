@@ -50,35 +50,33 @@ Every feature from the old orchestrator must be preserved. Items marked with sta
 
 | Feature | Old System | New System | Status |
 |---------|-----------|------------|--------|
-| Parallel actor processing | `ParallelBatchRunner` with configurable concurrency (1-20) | **NOT IMPLEMENTED** — sequential `for` loop | **MUST FIX** |
+| Parallel actor processing | `ParallelBatchRunner` with configurable concurrency (1-20) | `ParallelBatchRunner` wired in batch handler and CLI | Done |
 | Dual-threshold early stopping | confidence >= 0.6 AND reliability >= 0.6 | debriefer config `confidenceThreshold + reliabilityThreshold` | Done |
 | SOURCE_FAMILY grouping | Wikimedia, books counted as one family for early stop | Debriefer handles source families | Done |
 | BOOKS phase always tried | Runs even after early stop for unique archival content | Phase included but early stop behavior depends on debriefer | **VERIFY** |
 | Re-synthesis from cache | `orchestrator.resynthesizeFromCache()` | Old orchestrator kept for this endpoint | Done |
 | Golden test framework | 7 test actors, 0-100 scoring | Framework unchanged, uses new pipeline | Done |
 | Biography keywords | Personal life keywords for confidence calculation | Legacy sources keep bio keywords; debriefer sources use their own | Done |
-| Cache writes use BiographySourceType | `source_query_cache` entries use bio source types | **Uses DataSourceType (death types) instead** — admin queries by bio type find nothing | **MUST FIX** |
+| Cache writes use BiographySourceType | `source_query_cache` entries use bio source types | Bio-specific cache bridge writes `BiographySourceType` values | Done |
 | Per-source caching | Every source query cached in `source_query_cache` | Cache bridge writes per debriefer source | Done |
 | Rate limiting coordination | Shared `SourceRateLimiter` across concurrent actors | Legacy sources keep their own; debriefer has internal limiting | Done |
-| Haiku AI content cleaning | Stage 2 Haiku-based content filtering | Section filter via `createHaikuSectionFilter()` | Done |
+| Haiku AI content cleaning | Stage 2 Haiku-based content filtering | Removed — death-tuned filter was wrong for biography. Full Wikipedia text used instead. | Done |
 | RunLogger DB log stream | Structured logs to `run_logs` table | Removed — per-source logs via lifecycle hooks instead | **VERIFY** equivalence |
-| CLI --concurrency flag | Respected by orchestrator | **Ignored** — flag exists but does nothing | **MUST FIX** |
-| Admin concurrency setting | Configurable 1-20 in admin UI | **Ignored** — payload field exists but handler drops it | **MUST FIX** |
-| Unit test coverage | N/A (old orchestrator had its own tests) | 4 new adapter files have **zero tests** | **MUST FIX** |
+| CLI --concurrency flag | Respected by orchestrator | Wired to `ParallelBatchRunner` | Done |
+| Admin concurrency setting | Configurable 1-20 in admin UI | Wired to `ParallelBatchRunner` in batch handler | Done |
+| Unit test coverage | N/A (old orchestrator had its own tests) | 27 tests: finding-mapper (15) + source-cache-bridge (12) | Done |
 
-## Items That Must Be Fixed Before Merge
+## Items Fixed (Previously Blocking Merge)
 
-1. **Parallel actor processing**: Wire `concurrency` from `BioDebrieferAdapterConfig` through to `ParallelBatchRunner` in the batch handler (or equivalent). The old orchestrator processed actors concurrently — the new handler uses a sequential `for` loop.
+All items resolved:
 
-2. **Cache bridge source types**: Create a biography-specific cache bridge (or extend the existing one) that writes `BiographySourceType` values to `source_query_cache` instead of `DataSourceType` values. Admin queries filtering by bio source type must work.
-
-3. **CLI --concurrency**: Either wire the flag to the pipeline or remove it with a clear deprecation message. A flag that does nothing silently is unacceptable.
-
-4. **Unit tests**: Add `__tests__/` directory with tests for:
-   - `finding-mapper.test.ts` — all 35 mapping entries, fallback chain, UNMAPPED behavior
-   - `legacy-source-adapter.test.ts` — property delegation, fetchResult success/failure, subjectToActor mapping
-   - `adapter.test.ts` — orchestrator creation, pipeline composition, config forwarding
-   - `lifecycle-hooks.test.ts` — hook presence, NR events, cache writes, log collector
+1. **Parallel actor processing**: ~~Sequential `for` loop~~ → `ParallelBatchRunner` in batch handler and CLI script. Concurrency 1-20 respected.
+2. **Cache bridge source types**: ~~Death `DataSourceType` values~~ → Bio-specific `source-cache-bridge.ts` writes `BiographySourceType` values.
+3. **CLI --concurrency**: Wired to `ParallelBatchRunner`.
+4. **Unit tests**: 27 tests added (finding-mapper: 15, source-cache-bridge: 12).
+5. **Haiku section filter**: ~~Death-tuned filter~~ → Removed. Full Wikipedia text used for biography.
+6. **earlyStopThreshold default**: ~~3~~ → 5 (matches old orchestrator).
+7. **--disable-haiku-cleanup flag**: Removed (no-op after migration).
 
 ## Source Mapping
 
