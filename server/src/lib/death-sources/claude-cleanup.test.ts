@@ -61,8 +61,8 @@ describe("claude-cleanup", () => {
     it("includes all source data with confidence percentages", () => {
       const prompt = buildCleanupPrompt(mockActor, mockSources)
 
-      expect(prompt).toContain("--- Wikipedia (confidence: 85%) ---")
-      expect(prompt).toContain("--- Wikidata (confidence: 90%) ---")
+      expect(prompt).toContain("--- Wikipedia (confidence: 85%, reliability: 50%) ---")
+      expect(prompt).toContain("--- Wikidata (confidence: 90%, reliability: 50%) ---")
       expect(prompt).toContain("stomach cancer at UCLA Medical Center")
     })
 
@@ -234,10 +234,17 @@ describe("claude-cleanup", () => {
       const prompt = buildCleanupPrompt(mockActor, sources)
       expect(prompt).toContain("[truncated")
       // Wikipedia (reliability 0.85) should get more budget than Google (0.7)
-      // Wikipedia share: 0.85/(0.85+0.7) * 60K ≈ 32.9K
-      // Google share: 0.7/(0.85+0.7) * 60K ≈ 27.1K
-      expect(prompt).toContain("reliability 85%")
-      expect(prompt).toContain("reliability 70%")
+      // Wikipedia share: 0.85/(0.85+0.7) * 60K ≈ 32903
+      // Google share: 0.7/(0.85+0.7) * 60K ≈ 27097
+      const wikiMatch = prompt.match(/budget (\d+) chars based on reliability 85%/)
+      const googleMatch = prompt.match(/budget (\d+) chars based on reliability 70%/)
+      expect(wikiMatch).not.toBeNull()
+      expect(googleMatch).not.toBeNull()
+      const wikiBudget = parseInt(wikiMatch![1], 10)
+      const googleBudget = parseInt(googleMatch![1], 10)
+      expect(wikiBudget).toBeGreaterThan(googleBudget)
+      expect(wikiBudget).toBeGreaterThan(30_000)
+      expect(googleBudget).toBeGreaterThan(25_000)
     })
 
     it("gives every source at least MIN_SOURCE_CHARS", () => {

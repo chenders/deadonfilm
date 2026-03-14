@@ -161,8 +161,10 @@ export function buildCleanupPrompt(actor: ActorForEnrichment, rawSources: RawSou
   } else {
     // Allocate budget proportionally by reliability score
     const totalReliability = cleaned.reduce((sum, c) => sum + c.reliability, 0)
+    const safeTotalReliability = totalReliability > 0 ? totalReliability : cleaned.length // equal shares if all zero
     truncatedTexts = cleaned.map((c) => {
-      const share = (c.reliability / totalReliability) * MAX_TOTAL_SOURCE_CHARS
+      const effectiveReliability = totalReliability > 0 ? c.reliability : 1
+      const share = (effectiveReliability / safeTotalReliability) * MAX_TOTAL_SOURCE_CHARS
       const limit = Math.max(Math.round(share), MIN_SOURCE_CHARS)
       if (c.text.length <= limit) return c.text
       return (
@@ -174,10 +176,7 @@ export function buildCleanupPrompt(actor: ActorForEnrichment, rawSources: RawSou
 
   const rawDataSection = cleaned
     .map((c, i) => {
-      const reliabilityLabel =
-        c.source.reliabilityScore !== undefined
-          ? `, reliability: ${(c.source.reliabilityScore * 100).toFixed(0)}%`
-          : ""
+      const reliabilityLabel = `, reliability: ${(c.reliability * 100).toFixed(0)}%`
       return `--- ${c.source.sourceName} (confidence: ${(c.source.confidence * 100).toFixed(0)}%${reliabilityLabel}) ---\n${truncatedTexts[i]}`
     })
     .join("\n\n")
