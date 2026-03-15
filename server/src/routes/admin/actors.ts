@@ -1276,14 +1276,14 @@ router.post("/:id(\\d+)/enrich-bio-inline", async (req: Request, res: Response):
     const actor = actorResult.rows[0]
 
     // Dynamic imports to avoid loading all sources at route module load
-    const { BiographyEnrichmentOrchestrator } =
-      await import("../../lib/biography-sources/orchestrator.js")
+    const { createBioEnrichmentPipeline } =
+      await import("../../lib/biography-sources/debriefer/adapter.js")
     const { writeBiographyToProduction } =
       await import("../../lib/biography-enrichment-db-writer.js")
 
-    // Run orchestrator
-    const orchestrator = new BiographyEnrichmentOrchestrator()
-    const result = await orchestrator.enrichActor(actor)
+    // Run enrichment pipeline (debriefer adapter + Claude synthesis)
+    const enrichActor = createBioEnrichmentPipeline({})
+    const result = await enrichActor(actor)
 
     const durationMs = Date.now() - startTime
 

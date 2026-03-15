@@ -19,13 +19,11 @@ vi.mock("../../db.js", () => ({
   })),
 }))
 
-// Mock biography orchestrator
+// Mock biography debriefer adapter
 const mockEnrichActor = vi.fn()
 
-vi.mock("../../biography-sources/orchestrator.js", () => ({
-  BiographyEnrichmentOrchestrator: function MockOrchestrator() {
-    return { enrichActor: mockEnrichActor }
-  },
+vi.mock("../../biography-sources/debriefer/adapter.js", () => ({
+  createBioEnrichmentPipeline: () => mockEnrichActor,
 }))
 
 // Mock biography db writer
@@ -315,14 +313,17 @@ describe("EnrichBiographiesBatchHandler", () => {
       expect(result.data?.actorsProcessed).toBe(2)
       expect(result.data?.actorsEnriched).toBe(1)
       expect(result.data?.actorsFailed).toBe(1)
-      expect(result.data?.results[0]).toEqual({
+
+      // Results may arrive in any order due to parallel processing
+      const sortedResults = [...(result.data?.results ?? [])].sort((a, b) => a.actorId - b.actorId)
+      expect(sortedResults[0]).toEqual({
         actorId: 100,
         actorName: "John Wayne",
         enriched: false,
         error: "API timeout",
         costUsd: 0,
       })
-      expect(result.data?.results[1]).toEqual({
+      expect(sortedResults[1]).toEqual({
         actorId: 200,
         actorName: "Marlon Brando",
         enriched: true,
@@ -344,29 +345,30 @@ describe("EnrichBiographiesBatchHandler", () => {
       const job = createMockJob({ actorIds: [100, 200, 300] })
       const result = await handler.process(job as any)
 
-      expect(result.data).toEqual({
-        actorsProcessed: 3,
-        actorsEnriched: 1,
-        actorsFailed: 1,
-        totalCostUsd: 0.005 + 0.001, // success + no content costs
-        results: [
-          { actorId: 100, actorName: "John Wayne", enriched: true, costUsd: 0.005 },
-          {
-            actorId: 200,
-            actorName: "Marlon Brando",
-            enriched: false,
-            error: "No biographical data found from any source",
-            costUsd: 0.001,
-          },
-          {
-            actorId: 300,
-            actorName: "James Dean",
-            enriched: false,
-            error: "Network error",
-            costUsd: 0,
-          },
-        ],
-      })
+      expect(result.data?.actorsProcessed).toBe(3)
+      expect(result.data?.actorsEnriched).toBe(1)
+      expect(result.data?.actorsFailed).toBe(1)
+      expect(result.data?.totalCostUsd).toBeCloseTo(0.005 + 0.001) // success + no content costs
+
+      // Results may arrive in any order due to parallel processing
+      const sortedResults = [...(result.data?.results ?? [])].sort((a, b) => a.actorId - b.actorId)
+      expect(sortedResults).toEqual([
+        { actorId: 100, actorName: "John Wayne", enriched: true, costUsd: 0.005 },
+        {
+          actorId: 200,
+          actorName: "Marlon Brando",
+          enriched: false,
+          error: "No biographical data found from any source",
+          costUsd: 0.001,
+        },
+        {
+          actorId: 300,
+          actorName: "James Dean",
+          enriched: false,
+          error: "Network error",
+          costUsd: 0,
+        },
+      ])
     })
 
     it("should update job progress", async () => {

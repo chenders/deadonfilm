@@ -7,6 +7,7 @@
  */
 
 import { ReliabilityTier } from "../death-sources/types.js"
+import type { LogEntry } from "../death-sources/debriefer/lifecycle-hooks.js"
 
 // ============================================================================
 // Source Types
@@ -77,6 +78,9 @@ export enum BiographySourceType {
   // AI Utility (internal)
   GEMINI_BIO_SECTION_SELECTOR = "gemini-bio-section-selector",
   HAIKU_CONTENT_CLEANER = "haiku-content-cleaner",
+
+  // Unmapped (fallback for unknown debriefer source types)
+  UNMAPPED = "unmapped-bio",
 }
 
 // ============================================================================
@@ -220,6 +224,7 @@ export interface RawBiographySourceData {
   confidence: number
   reliabilityTier?: ReliabilityTier
   reliabilityScore?: number
+  costUsd?: number
   publication?: string
   articleTitle?: string
   domain?: string
@@ -270,6 +275,7 @@ export interface BiographyResult {
     processingTimeMs: number
   }
   error?: string
+  logEntries?: LogEntry[]
 }
 
 // ============================================================================
