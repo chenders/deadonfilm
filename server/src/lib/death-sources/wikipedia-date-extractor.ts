@@ -136,12 +136,15 @@ export async function extractDatesWithAI(
   try {
     const anthropic = new Anthropic({ apiKey })
 
-    const message = await anthropic.messages.create({
-      model: CLAUDE_HAIKU_MODEL,
-      max_tokens: 100,
-      messages: [{ role: "user", content: prompt }],
-      // Low temperature for deterministic extraction
-    })
+    const message = await anthropic.messages.create(
+      {
+        model: CLAUDE_HAIKU_MODEL,
+        max_tokens: 100,
+        temperature: 0,
+        messages: [{ role: "user", content: prompt }],
+      },
+      { timeout: 15_000 }
+    )
 
     const responseText = message.content[0]?.type === "text" ? message.content[0].text : ""
     const parsed = parseDateResponse(responseText)

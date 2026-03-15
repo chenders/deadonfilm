@@ -75,13 +75,13 @@ export enum DataSourceType {
   CLAUDE_BATCH = "claude_batch",
   CLAUDE_LINK_SELECTOR = "claude_link_selector", // AI-assisted link selection
   CLAUDE_PAGE_EXTRACTOR = "claude_page_extractor", // AI-assisted page content extraction
-  GEMINI_SECTION_SELECTOR = "gemini_section_selector", // Legacy: AI-assisted Wikipedia section selection (now uses Claude Haiku)
-  GEMINI_DATE_EXTRACTOR = "gemini_date_extractor", // Legacy: AI-assisted Wikipedia date extraction (now uses Claude Haiku)
+  GEMINI_SECTION_SELECTOR = "gemini_section_selector", // Legacy: kept for DB backward compatibility
+  GEMINI_DATE_EXTRACTOR = "gemini_date_extractor", // Legacy: kept for DB backward compatibility
   OPENAI_GPT4O = "openai_gpt4o",
   OPENAI_GPT4O_MINI = "openai_gpt4o_mini",
   PERPLEXITY = "perplexity",
-  GEMINI_PRO = "gemini_pro", // Legacy: kept for DB backward compatibility (source class removed)
-  GEMINI_FLASH = "gemini_flash", // Legacy: now used by ClaudeHaikuDeathSource for DB backward compatibility
+  GEMINI_PRO = "gemini_pro", // Legacy: kept for DB backward compatibility
+  GEMINI_FLASH = "gemini_flash", // Legacy: kept for DB backward compatibility
   GROK = "grok",
   DEEPSEEK = "deepseek",
   MISTRAL = "mistral",

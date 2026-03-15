@@ -41,6 +41,9 @@ export class ClaudeHaikuDeathSource extends BaseDataSource {
   // Rate limit
   protected minDelayMs = 200
 
+  /** Cached Anthropic client instance, reused across lookups */
+  private client = new Anthropic()
+
   isAvailable(): boolean {
     return !!process.env.ANTHROPIC_API_KEY
   }
@@ -63,11 +66,10 @@ export class ClaudeHaikuDeathSource extends BaseDataSource {
     try {
       console.log(`Claude Haiku query for: ${actor.name}`)
 
-      const client = new Anthropic({ apiKey })
-
-      const message = await client.messages.create({
+      const message = await this.client.messages.create({
         model: HAIKU_MODEL,
         max_tokens: 2000,
+        temperature: 0,
         messages: [
           {
             role: "user",
