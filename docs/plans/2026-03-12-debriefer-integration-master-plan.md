@@ -18,8 +18,10 @@ This plan consolidates all debriefer integration work for deadonfilm. It superse
 | C | Death integration gaps (deadonfilm) | Done |
 | D | Job handler migration + cleanup | **Done** |
 | E | Test & verify on test environment | **Done** |
-| F | Biography enrichment migration | Not started |
+| F | Biography enrichment migration | **Done** |
 | G | Publish debriefer to npm | **Done** |
+| H | Consolidate on Claude (remove Gemini) | **Done** |
+| I | Extract browser/CAPTCHA infrastructure to debriefer | Not started |
 
 ---
 
@@ -143,8 +145,66 @@ Published `debriefer` and `debriefer-sources` to npm with provenance attestation
 - Port 5438, database name `deadonfilm_test`
 - To reset: `docker compose stop app worker cron` → drop/recreate DB → `pg_restore` → restart
 
+## Phase H: Consolidate on Claude — Remove Gemini (DONE)
+
+Replaced all Gemini usage with Claude equivalents. Single AI provider (Anthropic), single API key (`ANTHROPIC_API_KEY`). See `docs/plans/2026-03-14-deadonfilm-claude-consolidation.md` for details.
+
+- [x] Wikipedia date extraction → Claude Haiku 4.5
+- [x] Biography section selector → `@debriefer/ai` section filter
+- [x] Death section selector → deleted (already replaced by haiku-section-selector.ts)
+- [x] GeminiFlashSource → ClaudeHaikuDeathSource
+- [x] GeminiProSource → dropped (web search sources are better)
+- [x] Upgraded to `@debriefer/core@2.0.0`, `@debriefer/sources@2.0.0`, `@debriefer/ai@2.0.0`
+
+---
+
+## Phase I: Extract Browser/CAPTCHA Infrastructure to Debriefer (NOT STARTED)
+
+Move the browser stealth, CAPTCHA solving, and page fetching infrastructure from deadonfilm into the debriefer package ecosystem so debriefer can fetch data independently.
+
+Currently deadonfilm injects a `fetchPage` callback into debriefer-sources via the adapter. This means debriefer-sources can't follow links, handle CAPTCHAs, or use archive fallbacks without a host application wiring them up. The browser infrastructure is generic research tooling, not deadonfilm-specific.
+
+### Files to extract from deadonfilm
+
+| File | Purpose |
+|------|---------|
+| `server/src/lib/death-sources/browser-fetch.ts` | Playwright browser pool with fingerprint-injector stealth |
+| `server/src/lib/death-sources/browser-auth/captcha/solver.ts` | 2Captcha/CapSolver integration |
+| `server/src/lib/death-sources/browser-auth/captcha/detector.ts` | CAPTCHA detection (DDG anomaly-modal, etc.) |
+| `server/src/lib/death-sources/browser-auth/stealth.ts` | Fingerprint injection config |
+| `server/src/lib/shared/duckduckgo-search.ts` | DDG search with browser fallback chain |
+| `server/src/lib/shared/fetch-page-with-fallbacks.ts` | 4-step page fetch: direct → archive.org → archive.is → browser+solver |
+| `server/src/lib/shared/readability-extract.ts` | Readability + jsdom article extraction |
+| `server/src/lib/death-sources/archive-fallback.ts` | archive.org/archive.is fallback |
+
+### Target architecture
+
+```
+@debriefer/sources (smart fetchers with built-in fallbacks)
+  → Built-in fetch pipeline per source
+    → direct fetch → archive.org → browser stealth → CAPTCHA solver
+  → No fetchPage callback injection needed from host app
+```
+
+### New package (option)
+
+Could be a new `@debriefer/browser` package or integrated directly into `@debriefer/sources`. The browser package would provide:
+- `createFetchPage()` factory that returns a fetchPage callback with full fallback chain
+- `BrowserPool` for managing Playwright instances
+- CAPTCHA detection and solving
+- DDG search with stealth
+
+### What changes in deadonfilm after extraction
+
+- Remove `fetchPage` callback injection from death and biography adapters
+- Remove `browser-fetch.ts`, `browser-auth/`, `fetch-page-with-fallbacks.ts` etc. from deadonfilm
+- Debriefer-sources handle their own page fetching natively
+- Deadonfilm's adapter becomes simpler (no infrastructure injection)
+
+---
+
 ### Debriefer Packages
-- Published to npm: `debriefer@^1.0.1`, `debriefer-sources@^1.0.1`
+- Published to npm: `@debriefer/core@^2.0.0`, `@debriefer/sources@^2.0.0`, `@debriefer/ai@^2.0.0`
 - Source: github.com/chenders/debriefer
 - Publish workflow: create a GitHub Release → auto-publishes with provenance
 - NPM_TOKEN secret in debriefer repo (90-day granular token, expires ~June 2026)
