@@ -200,6 +200,7 @@ export function createBioEnrichmentPipeline(
   const processActor = createBioDebriefOrchestrator(config)
 
   return async (actor: ActorForBiography): Promise<BiographyResult> => {
+    const pipelineStart = Date.now()
     const debriefResult = await processActor(actor)
 
     // Run Claude synthesis if we have raw sources
@@ -236,9 +237,13 @@ export function createBioEnrichmentPipeline(
         totalCostUsd: sourceCostUsd + synthesisCostUsd,
         sourceCostUsd,
         synthesisCostUsd,
-        processingTimeMs: debriefResult.durationMs,
+        processingTimeMs: Date.now() - pipelineStart,
       },
-      error: synthesisResult?.error,
+      error:
+        synthesisResult?.error ??
+        (debriefResult.rawSources.length === 0
+          ? "No biographical data found from any source"
+          : undefined),
       logEntries: debriefResult.logEntries,
     }
   }
