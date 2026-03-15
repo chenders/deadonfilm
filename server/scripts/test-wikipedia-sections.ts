@@ -2,7 +2,6 @@
 import "dotenv/config"
 import { Command } from "commander"
 import { WikipediaSource } from "../src/lib/death-sources/sources/wikipedia.js"
-import { isAISectionSelectionAvailable } from "../src/lib/death-sources/wikipedia-section-selector.js"
 import { setIgnoreCache } from "../src/lib/death-sources/base-source.js"
 
 const program = new Command()
@@ -44,44 +43,15 @@ async function main() {
   try {
     const source = new WikipediaSource()
 
-    // Enable AI section selection if requested
+    // Note: AI section selection has been removed from the legacy WikipediaSource.
+    // The debriefer adapter uses haiku-section-selector.ts for AI section selection.
     if (opts.aiSelection) {
-      console.log("AI section selection: ENABLED")
-      console.log("isAISectionSelectionAvailable():", isAISectionSelectionAvailable())
-      console.log("GOOGLE_AI_API_KEY set:", !!process.env.GOOGLE_AI_API_KEY)
-      if (!isAISectionSelectionAvailable()) {
-        console.error("ERROR: GOOGLE_AI_API_KEY not set. AI section selection requires this key.")
-        console.error("Get one at: https://aistudio.google.com/app/apikey")
-        process.exit(1)
-      }
-
-      const wikipediaOptions: {
-        useAISectionSelection: boolean
-        followLinkedArticles?: boolean
-        maxLinkedArticles?: number
-      } = {
-        useAISectionSelection: true,
-      }
-
-      if (opts.followLinks) {
-        console.log("Link following: ENABLED")
-        wikipediaOptions.followLinkedArticles = true
-        if (opts.maxLinks) {
-          wikipediaOptions.maxLinkedArticles = opts.maxLinks
-          console.log(`Max linked articles: ${opts.maxLinks}`)
-        }
-      } else {
-        console.log("Link following: disabled (use --follow-links to enable)")
-      }
-
-      source.setWikipediaOptions(wikipediaOptions)
-      console.log(`Called setWikipediaOptions(${JSON.stringify(wikipediaOptions)})`)
-    } else {
-      console.log("AI section selection: disabled (use --ai-selection to enable)")
-      if (opts.followLinks) {
-        console.log("Note: --follow-links requires --ai-selection to be enabled")
-      }
+      console.log("Note: --ai-selection is no longer supported in the legacy Wikipedia source.")
+      console.log(
+        "AI section selection is handled by the debriefer adapter (haiku-section-selector)."
+      )
     }
+    console.log("Using regex-based section selection")
 
     // Use provided ID or generate one from the actor name
     // Note: Generated IDs may cause cache write failures if actor doesn't exist in DB

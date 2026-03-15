@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import type { ResearchSubject, DebriefResult, ScoredFinding } from "debriefer"
+import type { ResearchSubject, DebriefResult, ScoredFinding } from "@debriefer/core"
 import { createLifecycleHooks, resetNewRelicCache } from "../lifecycle-hooks.js"
 import type { NewRelicAgent } from "../lifecycle-hooks.js"
 

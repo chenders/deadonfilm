@@ -35,8 +35,8 @@ const { MockOrchestrator } = vi.hoisted(() => {
   return { MockOrchestrator }
 })
 
-vi.mock("debriefer", async () => {
-  const actual = await vi.importActual("debriefer")
+vi.mock("@debriefer/core", async () => {
+  const actual = await vi.importActual("@debriefer/core")
   return { ...actual, ResearchOrchestrator: MockOrchestrator }
 })
 
@@ -103,9 +103,8 @@ vi.mock("../../sources/tmz.js", () => ({ TMZSource: MockUnavailableSource }))
 vi.mock("../../sources/google-news-rss.js", () => ({ GoogleNewsRSSSource: MockUnavailableSource }))
 vi.mock("../../sources/ia-books.js", () => ({ IABooksDeathSource: MockUnavailableSource }))
 vi.mock("../../sources/familysearch.js", () => ({ FamilySearchSource: MockUnavailableSource }))
-vi.mock("../../ai-providers/gemini.js", () => ({
-  GeminiFlashSource: MockUnavailableSource,
-  GeminiProSource: MockUnavailableSource,
+vi.mock("../../ai-providers/claude-haiku.js", () => ({
+  ClaudeHaikuDeathSource: MockUnavailableSource,
 }))
 vi.mock("../../ai-providers/groq.js", () => ({ GroqLlamaSource: MockUnavailableSource }))
 vi.mock("../../ai-providers/openai.js", () => ({
@@ -118,7 +117,7 @@ vi.mock("../../ai-providers/grok.js", () => ({ GrokSource: MockUnavailableSource
 vi.mock("../../ai-providers/perplexity.js", () => ({ PerplexitySource: MockUnavailableSource }))
 
 import { debriefActor } from "../adapter.js"
-import type { ResearchConfig, ResearchSubject } from "debriefer"
+import type { ResearchConfig, ResearchSubject } from "@debriefer/core"
 import { DataSourceType, ReliabilityTier } from "../../types.js"
 
 const testActor: ActorForEnrichment = {

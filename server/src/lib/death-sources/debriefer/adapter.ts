@@ -11,14 +11,14 @@
  * RawSourceData[] ready for cleanupWithClaude().
  */
 
-import { ResearchOrchestrator, NoopSynthesizer } from "debriefer"
+import { ResearchOrchestrator, NoopSynthesizer } from "@debriefer/core"
 import type {
   ResearchSubject,
   ScoredFinding,
   SourcePhaseGroup,
   ResearchConfig,
   MinimalSource,
-} from "debriefer"
+} from "@debriefer/core"
 
 // Debriefer-sources: standard implementations
 import {
@@ -51,7 +51,7 @@ import {
   trove,
   europeana,
   internetArchive,
-} from "debriefer-sources"
+} from "@debriefer/sources"
 
 // Legacy deadonfilm-only sources (wrapped via LegacySourceAdapter)
 import { adaptLegacySources } from "./legacy-source-adapter.js"
@@ -78,7 +78,7 @@ import { IABooksDeathSource } from "../sources/ia-books.js"
 import { FamilySearchSource } from "../sources/familysearch.js"
 
 // AI providers (all legacy, ordered by ascending cost)
-import { GeminiFlashSource, GeminiProSource } from "../ai-providers/gemini.js"
+import { ClaudeHaikuDeathSource } from "../ai-providers/claude-haiku.js"
 import { GroqLlamaSource } from "../ai-providers/groq.js"
 import { GPT4oMiniSource, GPT4oSource } from "../ai-providers/openai.js"
 import { DeepSeekSource } from "../ai-providers/deepseek.js"
@@ -330,12 +330,11 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
   // stopping at first success to minimize API costs.
   if (config.ai) {
     const aiSources = adaptLegacySources([
-      new GeminiFlashSource(), // ~$0.0001
+      new ClaudeHaikuDeathSource(), // ~$0.0001
       new GroqLlamaSource(), // ~$0.0002
       new GPT4oMiniSource(), // ~$0.0003
       new DeepSeekSource(),
       new MistralSource(),
-      new GeminiProSource(),
       new GrokSource(),
       new PerplexitySource(),
       new GPT4oSource(), // ~$0.01

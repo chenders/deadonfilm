@@ -12,7 +12,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk"
-import type { WikipediaSection, AsyncSectionFilter } from "debriefer-sources"
+import type { WikipediaSection, AsyncSectionFilter } from "@debriefer/sources"
 
 const HAIKU_MODEL = "claude-haiku-4-5-20251001"
 

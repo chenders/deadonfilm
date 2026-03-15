@@ -6,15 +6,14 @@
  * to help determine if requiring sources is worth the potential data loss trade-off.
  *
  * For each actor:
- * 1. Runs Gemini Pro WITH source requirement (current prompt)
- * 2. Runs Gemini Pro WITHOUT source requirement (old prompt)
+ * 1. Runs Claude Haiku WITH source requirement (current prompt)
+ * 2. Runs Claude Haiku WITHOUT source requirement (old prompt)
  * 3. Stores both results in enrichment_ab_tests table for comparison
  * 4. Tracks cost and stops when budget exceeded
  *
- * Uses Gemini Pro exclusively because:
- * - It has search grounding for URLs
+ * Uses Claude Haiku exclusively because:
  * - Consistent model for fair comparison
- * - Lower cost than GPT-4 (~$0.002/query)
+ * - Very low cost (~$0.0001/query)
  *
  * Usage:
  *   npm run ab-test:sources -- [options]
@@ -29,7 +28,7 @@
 import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { Pool } from "pg"
-import { GeminiProSource } from "../src/lib/death-sources/ai-providers/gemini.js"
+import { ClaudeHaikuDeathSource } from "../src/lib/death-sources/ai-providers/claude-haiku.js"
 import { setIgnoreCache } from "../src/lib/death-sources/base-source.js"
 import type { ActorForEnrichment } from "../src/lib/death-sources/types.js"
 import type { ActorForEnrichmentQuery } from "../src/lib/db/actors.js"
@@ -112,17 +111,17 @@ async function runABTest(options: {
       console.log(`Actors to test: ${options.count}`)
     }
     console.log(`Budget limit: $${options.budget.toFixed(2)}`)
-    console.log(`Using: Gemini Pro with search grounding`)
+    console.log(`Using: Claude Haiku`)
     console.log("=".repeat(60))
 
     // Bypass cache for A/B testing to get fresh results
     setIgnoreCache(true)
 
-    // Check if Gemini is available
-    const gemini = new GeminiProSource()
-    if (!gemini.isAvailable()) {
+    // Check if Claude Haiku is available
+    const claudeHaiku = new ClaudeHaikuDeathSource()
+    if (!claudeHaiku.isAvailable()) {
       console.error(
-        "\n❌ Gemini Pro is not available. Please set GOOGLE_AI_API_KEY environment variable."
+        "\n❌ Claude Haiku is not available. Please set ANTHROPIC_API_KEY environment variable."
       )
       process.exit(1)
     }
@@ -218,8 +217,8 @@ async function runABTest(options: {
       // Test 1: WITH source requirement (requireSources = true)
       console.log("  Running WITH source requirement...")
       try {
-        gemini.setRequireSources(true)
-        const lookupResult = await gemini.lookup(actor)
+        claudeHaiku.setRequireSources(true)
+        const lookupResult = await claudeHaiku.lookup(actor)
 
         if (!lookupResult.success || !lookupResult.data?.circumstances) {
           console.log(`    No death info found (with sources)`)
@@ -251,8 +250,8 @@ async function runABTest(options: {
       // Test 2: WITHOUT source requirement (requireSources = false)
       console.log("  Running WITHOUT source requirement...")
       try {
-        gemini.setRequireSources(false)
-        const lookupResult = await gemini.lookup(actor)
+        claudeHaiku.setRequireSources(false)
+        const lookupResult = await claudeHaiku.lookup(actor)
 
         if (!lookupResult.success || !lookupResult.data?.circumstances) {
           console.log(`    No death info found (without sources)`)

@@ -15,8 +15,13 @@
  * - Per-source cost attribution via costUsd pass-through
  */
 
-import { ResearchOrchestrator, NoopSynthesizer } from "debriefer"
-import type { ResearchSubject, ScoredFinding, SourcePhaseGroup, ResearchConfig } from "debriefer"
+import { ResearchOrchestrator, NoopSynthesizer } from "@debriefer/core"
+import type {
+  ResearchSubject,
+  ScoredFinding,
+  SourcePhaseGroup,
+  ResearchConfig,
+} from "@debriefer/core"
 
 // Debriefer-sources: standard implementations (28 shared with death enrichment)
 import {
@@ -49,7 +54,7 @@ import {
   trove,
   europeana,
   internetArchive,
-} from "debriefer-sources"
+} from "@debriefer/sources"
 
 // Biography-specific adapter components
 import { adaptBioLegacySources } from "./legacy-source-adapter.js"
@@ -72,7 +77,8 @@ const log = logger.child({ name: "bio-debriefer-adapter" })
 import { fetchPageWithFallbacks } from "../../shared/fetch-page-with-fallbacks.js"
 import { extractArticleContent } from "../../shared/readability-extract.js"
 
-// Person validator (shared with death)
+// AI defaults for section filtering and person validation
+import { createAIDefaults } from "@debriefer/ai"
 import { createPersonValidator } from "../../death-sources/debriefer/person-validator.js"
 
 // Biography-only legacy source classes (no debriefer-sources equivalents)
@@ -281,6 +287,10 @@ function buildBioPhases(config: BioDebrieferAdapterConfig): SourcePhaseGroup<Res
       sources: [
         wikidata(),
         wikipedia({
+          asyncSectionFilter: createAIDefaults({
+            researchGoal:
+              "Find biographical information: childhood, family background, early life, education, personal life, relationships, personal struggles",
+          }).sectionFilter,
           validatePerson: createPersonValidator({ useAIDateValidation: true }),
           disambiguationSuffixes: [
             "_(actor)",

@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest"
 import { mapFindings, mapSourceType, mapReliabilityTier } from "../finding-mapper.js"
 import { DataSourceType, ReliabilityTier } from "../../types.js"
-import type { ScoredFinding } from "debriefer"
-import { ReliabilityTier as DebrieferTier } from "debriefer"
+import type { ScoredFinding } from "@debriefer/core"
+import { ReliabilityTier as DebrieferTier } from "@debriefer/core"
 
 describe("mapSourceType", () => {
   it("maps deadonfilm-native source types directly", () => {

@@ -7,7 +7,7 @@
  * values (e.g., "ap_news", "google_search"). This module handles the mapping.
  */
 
-import type { ScoredFinding } from "debriefer"
+import type { ScoredFinding } from "@debriefer/core"
 import type { RawSourceData } from "../types.js"
 import { DataSourceType, ReliabilityTier } from "../types.js"
 import { logger } from "../../logger.js"

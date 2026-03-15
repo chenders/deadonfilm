@@ -10,8 +10,8 @@
  * handling. Debriefer's orchestrator handles phase coordination and early stopping.
  */
 
-import { BaseResearchSource, type ReliabilityTier as DebrieferTier } from "debriefer"
-import type { ResearchSubject, RawFinding } from "debriefer"
+import { BaseResearchSource, type ReliabilityTier as DebrieferTier } from "@debriefer/core"
+import type { ResearchSubject, RawFinding } from "@debriefer/core"
 import type { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment } from "../types.js"
 

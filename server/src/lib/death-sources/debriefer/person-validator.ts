@@ -12,7 +12,7 @@
  * 4. Return false on mismatch → debriefer tries disambiguation suffixes
  */
 
-import type { ResearchSubject } from "debriefer"
+import type { ResearchSubject } from "@debriefer/core"
 import { extractDatesWithAI, isAIDateExtractionAvailable } from "../wikipedia-date-extractor.js"
 import { logger } from "../../logger.js"
 

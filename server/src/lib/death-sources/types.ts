@@ -75,13 +75,13 @@ export enum DataSourceType {
   CLAUDE_BATCH = "claude_batch",
   CLAUDE_LINK_SELECTOR = "claude_link_selector", // AI-assisted link selection
   CLAUDE_PAGE_EXTRACTOR = "claude_page_extractor", // AI-assisted page content extraction
-  GEMINI_SECTION_SELECTOR = "gemini_section_selector", // AI-assisted Wikipedia section selection
-  GEMINI_DATE_EXTRACTOR = "gemini_date_extractor", // AI-assisted Wikipedia date extraction
+  GEMINI_SECTION_SELECTOR = "gemini_section_selector", // Legacy: AI-assisted Wikipedia section selection (now uses Claude Haiku)
+  GEMINI_DATE_EXTRACTOR = "gemini_date_extractor", // Legacy: AI-assisted Wikipedia date extraction (now uses Claude Haiku)
   OPENAI_GPT4O = "openai_gpt4o",
   OPENAI_GPT4O_MINI = "openai_gpt4o_mini",
   PERPLEXITY = "perplexity",
-  GEMINI_PRO = "gemini_pro",
-  GEMINI_FLASH = "gemini_flash",
+  GEMINI_PRO = "gemini_pro", // Legacy: kept for DB backward compatibility (source class removed)
+  GEMINI_FLASH = "gemini_flash", // Legacy: now used by ClaudeHaikuDeathSource for DB backward compatibility
   GROK = "grok",
   DEEPSEEK = "deepseek",
   MISTRAL = "mistral",
@@ -718,19 +718,21 @@ export const DEFAULT_MAX_STORIES_PER_SOURCE = 3
  */
 export interface WikipediaOptions {
   /**
-   * Use AI (Gemini Flash) to select relevant sections instead of regex patterns.
+   * Use AI to select relevant sections instead of regex patterns.
    * This can capture non-obvious sections like "Hunting and Fishing" or "Controversies"
    * that may contain death/health/incident information.
-   * Default: true (requires GOOGLE_AI_API_KEY, falls back to regex if unavailable)
+   * Default: true (requires ANTHROPIC_API_KEY, falls back to regex if unavailable)
+   *
+   * Note: The debriefer adapter uses haiku-section-selector.ts (Claude Haiku).
+   * The legacy WikipediaSource no longer supports AI section selection.
    */
   useAISectionSelection?: boolean
   /**
    * Which AI model to use for section selection.
-   * Default: "gemini-flash" (cheapest at ~$0.0001/query)
+   * Default: "gemini-flash" (legacy value, kept for config compatibility)
    *
-   * NOTE: This option is reserved for future use. The current implementation
-   * uses a hardcoded model (gemini-2.0-flash) in wikipedia-section-selector.ts.
-   * When additional models are supported, this option will control model selection.
+   * NOTE: This option is no longer used. Section selection is handled by
+   * haiku-section-selector.ts in the debriefer adapter.
    */
   sectionSelectionModel?: "gemini-flash"
   /**
@@ -765,9 +767,9 @@ export interface WikipediaOptions {
    */
   validatePersonDates?: boolean
   /**
-   * Use AI (Gemini Flash) to extract birth/death years from Wikipedia intro text
+   * Use AI (Claude Haiku) to extract birth/death years from Wikipedia intro text
    * instead of regex. Falls back to regex if AI is unavailable.
-   * Default: true
+   * Default: true (requires ANTHROPIC_API_KEY)
    */
   useAIDateValidation?: boolean
 }
