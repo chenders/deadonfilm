@@ -1,13 +1,30 @@
-import { describe, it, expect, vi, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { getCaptchaSolverConfig } from "./captcha-config.js"
 
 describe("getCaptchaSolverConfig", () => {
+  const envSnapshot: Record<string, string | undefined> = {}
+
+  beforeEach(() => {
+    // Snapshot env vars that tests may mutate
+    for (const key of ["CAPTCHA_SOLVER_PROVIDER", "TWOCAPTCHA_API_KEY", "CAPSOLVER_API_KEY"]) {
+      envSnapshot[key] = process.env[key]
+    }
+  })
+
   afterEach(() => {
     vi.unstubAllEnvs()
+    // Restore any deleted env vars that vi.unstubAllEnvs() won't restore
+    for (const [key, value] of Object.entries(envSnapshot)) {
+      if (value === undefined) {
+        delete process.env[key]
+      } else {
+        process.env[key] = value
+      }
+    }
   })
 
   it("returns undefined when CAPTCHA_SOLVER_PROVIDER is not set", () => {
-    delete process.env.CAPTCHA_SOLVER_PROVIDER
+    vi.stubEnv("CAPTCHA_SOLVER_PROVIDER", "")
     expect(getCaptchaSolverConfig()).toBeUndefined()
   })
 
@@ -32,7 +49,7 @@ describe("getCaptchaSolverConfig", () => {
 
   it("returns undefined when 2captcha provider is set but TWOCAPTCHA_API_KEY is missing", () => {
     vi.stubEnv("CAPTCHA_SOLVER_PROVIDER", "2captcha")
-    delete process.env.TWOCAPTCHA_API_KEY
+    vi.stubEnv("TWOCAPTCHA_API_KEY", "")
     vi.stubEnv("CAPSOLVER_API_KEY", "wrong-key")
     expect(getCaptchaSolverConfig()).toBeUndefined()
   })
@@ -40,7 +57,7 @@ describe("getCaptchaSolverConfig", () => {
   it("returns undefined when capsolver provider is set but CAPSOLVER_API_KEY is missing", () => {
     vi.stubEnv("CAPTCHA_SOLVER_PROVIDER", "capsolver")
     vi.stubEnv("TWOCAPTCHA_API_KEY", "wrong-key")
-    delete process.env.CAPSOLVER_API_KEY
+    vi.stubEnv("CAPSOLVER_API_KEY", "")
     expect(getCaptchaSolverConfig()).toBeUndefined()
   })
 })
