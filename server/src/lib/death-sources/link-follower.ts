@@ -24,9 +24,13 @@ import { extractArticleContent } from "../shared/readability-extract.js"
 import { DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "./base-source.js"
 import { shouldUseBrowserFetch, isBlockedResponse, browserFetchPage } from "./browser-fetch.js"
 import { shouldUseArchiveFallback, searchArchiveIsWithBrowser } from "./archive-fallback.js"
-import { getBrowserAuthConfig } from "./browser-auth/config.js"
-import { WashingtonPostLoginHandler } from "./browser-auth/login-handlers/washingtonpost.js"
-import { loadSession, saveSession, applySessionToContext } from "./browser-auth/session-manager.js"
+import {
+  getBrowserAuthConfig,
+  WashingtonPostLoginHandler,
+  loadSession,
+  saveSession,
+  applySessionToContext,
+} from "./browser-auth/index.js"
 import { chromium } from "playwright-core"
 
 import { consoleLog } from "./logger.js"
