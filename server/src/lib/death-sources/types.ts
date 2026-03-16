@@ -82,6 +82,7 @@ export enum DataSourceType {
   PERPLEXITY = "perplexity",
   GEMINI_PRO = "gemini_pro", // Legacy: kept for DB backward compatibility
   GEMINI_FLASH = "gemini_flash", // Legacy: kept for DB backward compatibility
+  CLAUDE_HAIKU = "claude_haiku", // Claude Haiku AI provider (replaced Gemini Flash)
   GROK = "grok",
   DEEPSEEK = "deepseek",
   MISTRAL = "mistral",
@@ -719,20 +720,15 @@ export const DEFAULT_MAX_STORIES_PER_SOURCE = 3
 export interface WikipediaOptions {
   /**
    * Use AI to select relevant sections instead of regex patterns.
-   * This can capture non-obvious sections like "Hunting and Fishing" or "Controversies"
-   * that may contain death/health/incident information.
-   * Default: true (requires ANTHROPIC_API_KEY, falls back to regex if unavailable)
-   *
-   * Note: The debriefer adapter uses haiku-section-selector.ts (Claude Haiku).
-   * The legacy WikipediaSource no longer supports AI section selection.
+   * Only used by the debriefer adapter (haiku-section-selector.ts, Claude Haiku).
+   * The legacy WikipediaSource uses regex-only section selection regardless of this flag.
+   * Default: true
    */
   useAISectionSelection?: boolean
   /**
-   * Which AI model to use for section selection.
-   * Default: "gemini-flash" (legacy value, kept for config compatibility)
-   *
-   * NOTE: This option is no longer used. Section selection is handled by
-   * haiku-section-selector.ts in the debriefer adapter.
+   * @deprecated No longer used. Section selection is handled by
+   * haiku-section-selector.ts (Claude Haiku) in the debriefer adapter.
+   * Kept for config backward compatibility only.
    */
   sectionSelectionModel?: "gemini-flash"
   /**

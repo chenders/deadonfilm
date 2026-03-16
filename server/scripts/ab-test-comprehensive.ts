@@ -255,8 +255,9 @@ async function runComprehensiveTest(count: number) {
     // At this point runId is guaranteed non-null
     const currentRunId: number = runId
 
-    // Initialize providers with increased token limits for A/B testing
-    // This avoids truncation bias but is not used in production
+    // Initialize providers for A/B testing
+    // Perplexity gets increased token limit to avoid truncation bias
+    // Claude Haiku uses its default 2000 max_tokens (sufficient for death extraction)
     const claudeHaiku = new ClaudeHaikuDeathSource()
     const perplexity = new PerplexitySource()
     perplexity["maxTokens"] = 8192

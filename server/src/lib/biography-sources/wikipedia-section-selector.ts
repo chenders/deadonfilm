@@ -2,8 +2,9 @@
  * Wikipedia section selection for biography enrichment (regex fallback only).
  *
  * AI-powered section selection is now handled by @debriefer/ai in the
- * debriefer adapter. This file is kept for the legacy orchestrator's
- * resynthesizeFromCache path, which uses regex fallback only.
+ * debriefer adapter. This file provides regex-based section selection used by:
+ * - WikipediaBiographySource (server/src/lib/biography-sources/sources/wikipedia.ts)
+ * - Legacy orchestrator's resynthesizeFromCache path
  *
  * The Gemini dependency has been removed as part of the Claude consolidation.
  */

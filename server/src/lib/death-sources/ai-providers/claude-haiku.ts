@@ -32,7 +32,7 @@ const HAIKU_MODEL = "claude-haiku-4-5-20251001"
  */
 export class ClaudeHaikuDeathSource extends BaseDataSource {
   readonly name = "Claude Haiku"
-  readonly type = DataSourceType.GEMINI_FLASH // Reuse enum for backward compatibility with DB records
+  readonly type = DataSourceType.CLAUDE_HAIKU
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.0001
   readonly reliabilityTier = ReliabilityTier.AI_MODEL
@@ -41,8 +41,18 @@ export class ClaudeHaikuDeathSource extends BaseDataSource {
   // Rate limit
   protected minDelayMs = 200
 
-  /** Cached Anthropic client instance, reused across lookups */
-  private client = new Anthropic()
+  /** Cached Anthropic client instance, lazy-initialized with explicit config */
+  private client: Anthropic | null = null
+
+  private getClient(): Anthropic {
+    if (!this.client) {
+      this.client = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY,
+        timeout: 30_000, // 30s timeout aligned with requestTimeoutMs
+      })
+    }
+    return this.client
+  }
 
   isAvailable(): boolean {
     return !!process.env.ANTHROPIC_API_KEY
@@ -66,7 +76,7 @@ export class ClaudeHaikuDeathSource extends BaseDataSource {
     try {
       console.log(`Claude Haiku query for: ${actor.name}`)
 
-      const message = await this.client.messages.create({
+      const message = await this.getClient().messages.create({
         model: HAIKU_MODEL,
         max_tokens: 2000,
         temperature: 0,
