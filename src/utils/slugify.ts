@@ -43,7 +43,8 @@ export function extractYearFromSlug(slug: string): string | null {
 }
 
 /**
- * Creates a URL-safe slug from an actor name and ID
+ * Creates a URL-safe slug from an actor name and internal database ID.
+ * The ID comes from the API response (actors.id), not the TMDB person ID.
  * Example: "John Wayne", ID 4165 → "john-wayne-4165"
  * Example: "Björk", ID 47 → "bjork-47"
  * Example: "José García", ID 123 → "jose-garcia-123"
@@ -55,7 +56,8 @@ export function createActorSlug(name: string, id: number): string {
 }
 
 /**
- * Extracts the TMDB actor ID from a slug
+ * Extracts the actor ID from a slug.
+ * This is an internal database ID, not the TMDB person ID.
  * Example: "john-wayne-4165" → 4165
  */
 export function extractActorId(slug: string): number {

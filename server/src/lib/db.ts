@@ -60,10 +60,10 @@ export type {
 } from "./db/types.js"
 
 // Re-export movie functions for backward compatibility
-export { getMovie, upsertMovie } from "./db/movies.js"
+export { getMovie, upsertMovie, getMovieWithCast } from "./db/movies.js"
 
 // Re-export movie types for backward compatibility
-export type { MovieRecord } from "./db/types.js"
+export type { MovieRecord, MovieCastRow } from "./db/types.js"
 
 // Re-export show functions for backward compatibility
 export {
@@ -75,10 +75,12 @@ export {
   getEpisodes,
   getEpisodeCountsBySeasonFromDb,
   upsertEpisode,
+  getShowWithCast,
+  getShowCastBySeason,
 } from "./db/shows.js"
 
 // Re-export show types for backward compatibility
-export type { ShowRecord, SeasonRecord, EpisodeRecord } from "./db/types.js"
+export type { ShowRecord, SeasonRecord, EpisodeRecord, ShowCastRow } from "./db/types.js"
 
 // Re-export appearances functions for backward compatibility
 export {

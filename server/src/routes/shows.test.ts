@@ -15,6 +15,7 @@ vi.mock("../lib/tmdb.js", () => ({
 vi.mock("../lib/db.js", () => ({
   getActors: vi.fn(),
   batchUpsertActors: vi.fn(),
+  getShowWithCast: vi.fn(),
   upsertShow: vi.fn(),
   getSeasons: vi.fn(),
   getDeceasedActorsForShow: vi.fn(),
@@ -22,9 +23,12 @@ vi.mock("../lib/db.js", () => ({
   getShow: vi.fn().mockResolvedValue(null), // For aggregate score lookup
 }))
 
+vi.mock("../lib/db-helpers.js", () => ({
+  getActorsIfAvailable: vi.fn(),
+}))
+
 vi.mock("../lib/mortality-stats.js", () => ({
   calculateMovieMortality: vi.fn(),
-  calculateYearsLost: vi.fn(),
 }))
 
 vi.mock("newrelic", () => ({
@@ -49,8 +53,10 @@ import {
   getDeceasedActorsForShow,
   getLivingActorsForShow,
   batchUpsertActors,
+  getShowWithCast,
   getShow as getShowFromDb,
 } from "../lib/db.js"
+import { getActorsIfAvailable } from "../lib/db-helpers.js"
 import { calculateMovieMortality } from "../lib/mortality-stats.js"
 import newrelic from "newrelic"
 
@@ -145,7 +151,9 @@ describe("getShow route", () => {
       ])
     )
     vi.mocked(getActors).mockResolvedValue(new Map())
-    vi.mocked(batchUpsertActors).mockResolvedValue(new Map())
+    vi.mocked(getShowWithCast).mockResolvedValue([])
+    vi.mocked(batchUpsertActors).mockResolvedValue(new Map([[101, 1001]]))
+    vi.mocked(getActorsIfAvailable).mockResolvedValue(new Map())
     vi.mocked(upsertShow).mockResolvedValue()
     vi.mocked(getSeasons).mockResolvedValue([])
     vi.mocked(getDeceasedActorsForShow).mockResolvedValue([])
@@ -214,6 +222,7 @@ describe("getShow route", () => {
           name: "Test Show",
           firstAirYear: 1990,
           isEnded: true,
+          dbFirst: false,
           responseTimeMs: expect.any(Number),
         })
       )
@@ -276,7 +285,7 @@ describe("getShow route", () => {
         expect.objectContaining({
           deceased: expect.arrayContaining([
             expect.objectContaining({
-              id: 20753,
+              id: 1,
               name: "Fred Willard",
               causeOfDeath: "Cardiac arrest",
               totalEpisodes: 3,
@@ -288,6 +297,8 @@ describe("getShow route", () => {
 
     it("skips duplicate actors already in TMDB aggregate credits", async () => {
       vi.mocked(getTVShowDetails).mockResolvedValue(createMockShow("Ended"))
+      // Map TMDB ID 101 to internal ID 1 (same as dbActor.id) for dedup
+      vi.mocked(batchUpsertActors).mockResolvedValue(new Map([[101, 1]]))
       // Actor 101 is in TMDB aggregate credits AND is deceased
       vi.mocked(batchGetPersonDetails).mockResolvedValue(
         new Map([
@@ -336,9 +347,9 @@ describe("getShow route", () => {
       expect(jsonSpy).toHaveBeenCalled()
       const response = jsonSpy.mock.calls[0][0]
       expect(response).toHaveProperty("deceased")
-      // Actor 101 should only appear once in deceased list
+      // Actor should only appear once in deceased list (internal ID 1)
       const actorIds = response.deceased.map((d: { id: number }) => d.id)
-      expect(actorIds.filter((id: number) => id === 101).length).toBe(1)
+      expect(actorIds.filter((id: number) => id === 1).length).toBe(1)
     })
 
     it("handles database errors gracefully without crashing the route", async () => {
@@ -434,7 +445,7 @@ describe("getShow route", () => {
       await getShow(mockReq as Request, mockRes as Response)
 
       const response = jsonSpy.mock.calls[0][0]
-      const dbActor = response.deceased.find((d: { id: number }) => d.id === 999)
+      const dbActor = response.deceased.find((d: { id: number }) => d.id === 1)
 
       expect(dbActor).toBeDefined()
       expect(dbActor.episodes).toHaveLength(2)

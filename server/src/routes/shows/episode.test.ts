@@ -11,6 +11,10 @@ vi.mock("../../lib/tmdb.js", () => ({
   batchGetPersonDetails: vi.fn(),
 }))
 
+vi.mock("../../lib/db.js", () => ({
+  batchUpsertActors: vi.fn(),
+}))
+
 vi.mock("../../lib/db-helpers.js", () => ({
   getActorsIfAvailable: vi.fn(),
 }))
@@ -27,6 +31,7 @@ import {
   getEpisodeCredits,
   batchGetPersonDetails,
 } from "../../lib/tmdb.js"
+import { batchUpsertActors } from "../../lib/db.js"
 import { getActorsIfAvailable } from "../../lib/db-helpers.js"
 import { calculateMovieMortality } from "../../lib/mortality-stats.js"
 
@@ -121,6 +126,12 @@ describe("getEpisode route", () => {
         ],
       ])
     )
+    vi.mocked(batchUpsertActors).mockResolvedValue(
+      new Map([
+        [101, 7001],
+        [102, 7002],
+      ])
+    )
     vi.mocked(getActorsIfAvailable).mockResolvedValue(new Map())
     vi.mocked(calculateMovieMortality).mockResolvedValue({
       expectedDeaths: 0.5,
@@ -140,7 +151,7 @@ describe("getEpisode route", () => {
         expect.objectContaining({
           living: expect.arrayContaining([
             expect.objectContaining({
-              id: 101,
+              id: 7001, // Internal ID from batchUpsertActors
               name: "Main Actor",
               totalEpisodes: 180, // From aggregate credits, not hardcoded 1
             }),
@@ -158,7 +169,7 @@ describe("getEpisode route", () => {
         expect.objectContaining({
           deceased: expect.arrayContaining([
             expect.objectContaining({
-              id: 102,
+              id: 7002, // Internal ID from batchUpsertActors
               name: "Guest Actor",
               totalEpisodes: 5, // From aggregate credits, not hardcoded 1
             }),
@@ -169,6 +180,7 @@ describe("getEpisode route", () => {
 
     it("falls back to 1 when actor not in aggregate credits", async () => {
       // Actor 103 is in episode credits but not in aggregate credits
+      vi.mocked(batchUpsertActors).mockResolvedValue(new Map([[103, 7003]]))
       vi.mocked(getEpisodeCredits).mockResolvedValue({
         cast: [{ id: 103, name: "Unknown Actor", character: "Extra", profile_path: null }],
         guest_stars: [],
@@ -200,7 +212,7 @@ describe("getEpisode route", () => {
         expect.objectContaining({
           living: expect.arrayContaining([
             expect.objectContaining({
-              id: 103,
+              id: 7003, // Internal ID from batchUpsertActors
               name: "Unknown Actor",
               totalEpisodes: 1, // Fallback when not in aggregate credits
             }),
@@ -220,7 +232,7 @@ describe("getEpisode route", () => {
         expect.objectContaining({
           living: expect.arrayContaining([
             expect.objectContaining({
-              id: 101,
+              id: 7001, // Internal ID from batchUpsertActors
               name: "Main Actor",
               totalEpisodes: 180, // Still uses aggregate credits even without person details
             }),

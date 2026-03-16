@@ -2,7 +2,9 @@
  * Show details route handler.
  *
  * Handles fetching and returning detailed information about a TV show,
- * including cast mortality statistics.
+ * including cast mortality statistics. Uses DB-first pattern: queries
+ * actor_show_appearances for cast with internal actor IDs, falling back
+ * to TMDB if the show hasn't been seeded yet.
  */
 
 import type { Request, Response } from "express"
@@ -14,20 +16,19 @@ import {
 } from "../../lib/tmdb.js"
 import newrelic from "newrelic"
 import {
+  batchUpsertActors,
   upsertShow,
   getDeceasedActorsForShow,
   getLivingActorsForShow,
   getShow as getShowFromDb,
+  getShowWithCast,
   type ActorInput,
   type ShowRecord,
+  type ShowCastRow,
 } from "../../lib/db.js"
-import { getActorsIfAvailable, saveDeceasedToDb } from "../../lib/db-helpers.js"
+import { getActorsIfAvailable } from "../../lib/db-helpers.js"
 import { calculateAge } from "../../lib/date-utils.js"
-import {
-  calculateMovieMortality,
-  calculateYearsLost,
-  type ActorForMortality,
-} from "../../lib/mortality-stats.js"
+import { calculateMovieMortality, type ActorForMortality } from "../../lib/mortality-stats.js"
 import type {
   EpisodeAppearance,
   DeceasedActor,
@@ -55,11 +56,12 @@ export async function getShow(req: Request, res: Response) {
       newrelic.addCustomAttribute(key, value)
     }
 
-    // Fetch show details, aggregate credits, and database record in parallel
-    const [show, credits, dbShow] = await Promise.all([
+    // Fetch show details from TMDB (for overview, status, seasons, genres, language filter)
+    // and try DB for cast + show record, all in parallel
+    const [show, dbShow, dbCast] = await Promise.all([
       getTVShowDetails(showId),
-      getTVShowAggregateCredits(showId),
-      getShowFromDb(showId).catch(() => null), // Gracefully handle if DB unavailable
+      getShowFromDb(showId).catch(() => null),
+      getShowWithCast(showId).catch(() => []),
     ])
 
     // Filter to English-language US shows
@@ -67,211 +69,21 @@ export async function getShow(req: Request, res: Response) {
       return res.status(404).json({ error: { message: "Show not available" } })
     }
 
-    // Get the main character per actor (limit to reduce API calls)
-    const mainCast = credits.cast.slice(0, SHOW_CAST_LIMIT).map((actor) => ({
-      id: actor.id,
-      name: actor.name,
-      profile_path: actor.profile_path,
-      character: actor.roles[0]?.character || "Unknown",
-      totalEpisodes: actor.total_episode_count,
-      order: actor.order,
-      known_for_department: actor.known_for_department,
-    }))
-
-    // Get season numbers for fetching episode details
-    const seasonNumbers = show.seasons
-      .filter((s) => s.season_number > 0) // Exclude specials
-      .map((s) => s.season_number)
-
-    // Skip expensive episode fetching for ended/canceled shows
-    // These shows will never have new episodes, so aggregate credits suffice
     const isShowEnded = ENDED_STATUSES.includes(show.status)
-
-    // Batch fetch person details and optionally episode appearances in parallel
-    const personIds = mainCast.map((c) => c.id)
-    const [personDetails, episodeAppearances] = await Promise.all([
-      batchGetPersonDetails(personIds),
-      isShowEnded
-        ? Promise.resolve(new Map<number, EpisodeAppearance[]>())
-        : fetchEpisodeAppearances(showId, seasonNumbers),
-    ])
-
-    // Check database for existing death info
-    const dbRecords = await getActorsIfAvailable(personIds)
-
-    // Separate deceased and living
     const deceased: DeceasedActor[] = []
     const living: LivingActor[] = []
-    const newDeceasedForDb: ActorInput[] = []
 
-    for (const castMember of mainCast) {
-      const person = personDetails.get(castMember.id)
-      const dbRecord = dbRecords.get(castMember.id)
+    if (dbCast.length > 0) {
+      // ── DB-first path: build cast from database (internal actor IDs) ──
+      // All actor data including death info comes from a single SQL JOIN.
+      // Skips TMDB aggregate credits and person detail calls entirely.
+      buildShowCastFromDbRows(dbCast, deceased, living)
+    } else {
+      // ── TMDB fallback path: fetch credits + person details, seed to DB ──
+      await buildShowCastFromTmdb(showId, isShowEnded, deceased, living)
 
-      if (!person) {
-        living.push({
-          id: castMember.id,
-          name: castMember.name,
-          character: castMember.character,
-          profile_path: castMember.profile_path,
-          birthday: null,
-          age: null,
-          totalEpisodes: castMember.totalEpisodes,
-          episodes: episodeAppearances.get(castMember.id) || [],
-        })
-        continue
-      }
-
-      if (person.deathday) {
-        const tmdbUrl = `https://www.themoviedb.org/person/${person.id}`
-
-        deceased.push({
-          id: person.id,
-          name: person.name,
-          character: castMember.character,
-          profile_path: person.profile_path,
-          birthday: person.birthday,
-          deathday: person.deathday,
-          causeOfDeath: dbRecord?.cause_of_death || null,
-          causeOfDeathSource: dbRecord?.cause_of_death_source || null,
-          causeOfDeathDetails: dbRecord?.cause_of_death_details || null,
-          causeOfDeathDetailsSource: dbRecord?.cause_of_death_details_source || null,
-          wikipediaUrl: dbRecord?.wikipedia_url || null,
-          tmdbUrl,
-          ageAtDeath: dbRecord?.age_at_death ?? null,
-          yearsLost: dbRecord?.years_lost ?? null,
-          totalEpisodes: castMember.totalEpisodes,
-          episodes: episodeAppearances.get(castMember.id) || [],
-        })
-
-        // Track new deceased persons to save to database
-        if (!dbRecord) {
-          const yearsLostResult = await calculateYearsLost(person.birthday, person.deathday)
-
-          newDeceasedForDb.push({
-            tmdb_id: person.id,
-            name: person.name,
-            birthday: person.birthday,
-            deathday: person.deathday,
-            cause_of_death: null,
-            cause_of_death_source: null,
-            cause_of_death_details: null,
-            cause_of_death_details_source: null,
-            wikipedia_url: null,
-            profile_path: person.profile_path,
-            age_at_death: yearsLostResult?.ageAtDeath ?? null,
-            expected_lifespan: yearsLostResult?.expectedLifespan ?? null,
-            years_lost: yearsLostResult?.yearsLost ?? null,
-            known_for_department: castMember.known_for_department ?? null,
-          })
-        }
-      } else {
-        living.push({
-          id: person.id,
-          name: person.name,
-          character: castMember.character,
-          profile_path: person.profile_path,
-          birthday: person.birthday,
-          age: calculateAge(person.birthday),
-          totalEpisodes: castMember.totalEpisodes,
-          episodes: episodeAppearances.get(castMember.id) || [],
-        })
-      }
-    }
-
-    // Save new deceased persons to database in background
-    if (newDeceasedForDb.length > 0) {
-      saveDeceasedToDb(newDeceasedForDb)
-    }
-
-    // Fetch deceased guest stars from database (seeded by seed-episodes-full)
-    // These may not appear in aggregate credits but are in episode-level data
-    if (process.env.DATABASE_URL) {
-      try {
-        const dbDeceasedActors = await getDeceasedActorsForShow(showId)
-        const existingIds = new Set(deceased.map((d) => d.id))
-
-        for (const dbActor of dbDeceasedActors) {
-          // Skip actors without TMDB IDs for now (non-TMDB actors from TVmaze/TheTVDB)
-          if (dbActor.tmdb_id === null) {
-            continue
-          }
-
-          // Skip if already in deceased list from TMDB aggregate credits
-          if (existingIds.has(dbActor.tmdb_id)) {
-            continue
-          }
-
-          // Convert database actor to DeceasedActor format
-          const tmdbUrl = `https://www.themoviedb.org/person/${dbActor.tmdb_id}`
-          const firstEpisode = dbActor.episodes[0]
-
-          deceased.push({
-            id: dbActor.tmdb_id,
-            name: dbActor.name,
-            character: firstEpisode?.character_name || "Guest",
-            profile_path: dbActor.profile_path,
-            birthday: dbActor.birthday,
-            deathday: dbActor.deathday,
-            causeOfDeath: dbActor.cause_of_death,
-            causeOfDeathSource: dbActor.cause_of_death_source,
-            causeOfDeathDetails: dbActor.cause_of_death_details,
-            causeOfDeathDetailsSource: dbActor.cause_of_death_details_source,
-            wikipediaUrl: dbActor.wikipedia_url,
-            tmdbUrl,
-            ageAtDeath: dbActor.age_at_death,
-            yearsLost: dbActor.years_lost,
-            totalEpisodes: dbActor.total_episodes,
-            episodes: dbActor.episodes.map((ep) => ({
-              seasonNumber: ep.season_number,
-              episodeNumber: ep.episode_number,
-              episodeName: ep.episode_name || `Episode ${ep.episode_number}`,
-              character: ep.character_name || "Guest",
-            })),
-          })
-        }
-      } catch (error) {
-        console.error("Error fetching deceased actors from database:", error)
-      }
-
-      // Also fetch living guest stars from database (seeded by seed-episodes-full)
-      try {
-        const dbLivingActors = await getLivingActorsForShow(showId)
-        const existingLivingIds = new Set(living.map((l) => l.id))
-
-        for (const dbActor of dbLivingActors) {
-          // Skip actors without TMDB IDs for now (non-TMDB actors from TVmaze/TheTVDB)
-          if (dbActor.tmdb_id === null) {
-            continue
-          }
-
-          // Skip if already in living list from TMDB aggregate credits
-          if (existingLivingIds.has(dbActor.tmdb_id)) {
-            continue
-          }
-
-          // Convert database actor to LivingActor format
-          const firstEpisode = dbActor.episodes[0]
-
-          living.push({
-            id: dbActor.tmdb_id,
-            name: dbActor.name,
-            character: firstEpisode?.character_name || "Guest",
-            profile_path: dbActor.profile_path,
-            birthday: dbActor.birthday,
-            age: calculateAge(dbActor.birthday),
-            totalEpisodes: dbActor.total_episodes,
-            episodes: dbActor.episodes.map((ep) => ({
-              seasonNumber: ep.season_number,
-              episodeNumber: ep.episode_number,
-              episodeName: ep.episode_name || `Episode ${ep.episode_number}`,
-              character: ep.character_name || "Guest",
-            })),
-          })
-        }
-      } catch (error) {
-        console.error("Error fetching living actors from database:", error)
-      }
+      // Supplement with DB guest stars not in TMDB aggregate credits
+      await supplementWithDbGuestStars(showId, deceased, living)
     }
 
     // Sort deceased by death date (most recent first)
@@ -392,6 +204,7 @@ export async function getShow(req: Request, res: Response) {
       expectedDeaths,
       curseScore: mortalitySurpriseScore,
       isEnded: isShowEnded,
+      dbFirst: dbCast.length > 0,
       responseTimeMs: Date.now() - startTime,
     })
 
@@ -402,17 +215,262 @@ export async function getShow(req: Request, res: Response) {
   }
 }
 
-// Fetch episode appearances for all actors in a show with exponential backoff
-async function fetchEpisodeAppearances(
+// ── DB-first path: build cast from database rows ──
+
+function buildShowCastFromDbRows(
+  dbCast: ShowCastRow[],
+  deceased: DeceasedActor[],
+  living: LivingActor[]
+): void {
+  for (const row of dbCast) {
+    const tmdbUrl = row.actor_tmdb_id
+      ? `https://www.themoviedb.org/person/${row.actor_tmdb_id}`
+      : ""
+
+    if (row.deathday) {
+      deceased.push({
+        id: row.actor_id,
+        name: row.name,
+        character: row.character_name || "Unknown",
+        profile_path: row.profile_path,
+        birthday: row.birthday,
+        deathday: row.deathday,
+        causeOfDeath: row.cause_of_death,
+        causeOfDeathSource: row.cause_of_death_source,
+        causeOfDeathDetails: row.cause_of_death_details,
+        causeOfDeathDetailsSource: row.cause_of_death_details_source,
+        wikipediaUrl: row.wikipedia_url,
+        tmdbUrl,
+        ageAtDeath: row.age_at_death,
+        yearsLost: row.years_lost,
+        totalEpisodes: row.total_episodes,
+        episodes: [], // Per-episode details available via season/episode pages
+      })
+    } else {
+      living.push({
+        id: row.actor_id,
+        name: row.name,
+        character: row.character_name || "Unknown",
+        profile_path: row.profile_path,
+        birthday: row.birthday,
+        age: calculateAge(row.birthday),
+        totalEpisodes: row.total_episodes,
+        episodes: [],
+      })
+    }
+  }
+}
+
+// ── TMDB fallback path: fetch credits + person details ──
+
+async function buildShowCastFromTmdb(
   showId: number,
-  seasonNumbers: number[]
-): Promise<Map<number, EpisodeAppearance[]>> {
+  isShowEnded: boolean,
+  deceased: DeceasedActor[],
+  living: LivingActor[]
+): Promise<void> {
+  const credits = await getTVShowAggregateCredits(showId)
+
+  const mainCast = credits.cast.slice(0, SHOW_CAST_LIMIT).map((actor) => ({
+    id: actor.id,
+    name: actor.name,
+    profile_path: actor.profile_path,
+    character: actor.roles[0]?.character || "Unknown",
+    totalEpisodes: actor.total_episode_count,
+    order: actor.order,
+    known_for_department: actor.known_for_department,
+  }))
+
+  // Get season numbers for fetching episode details
+  // (only for ongoing shows — ended shows skip this)
+  const personIds = mainCast.map((c) => c.id)
+  const [personDetails, episodeAppearances] = await Promise.all([
+    batchGetPersonDetails(personIds),
+    isShowEnded
+      ? Promise.resolve(new Map<number, EpisodeAppearance[]>())
+      : fetchEpisodeAppearances(showId),
+  ])
+
+  // Upsert actors to get TMDB ID → internal ID mapping
+  const actorInputs: ActorInput[] = mainCast.map((castMember) => {
+    const person = personDetails.get(castMember.id)
+    return {
+      tmdb_id: castMember.id,
+      name: castMember.name,
+      birthday: person?.birthday ?? null,
+      deathday: person?.deathday ?? null,
+      profile_path: person?.profile_path ?? null,
+      known_for_department: castMember.known_for_department ?? null,
+    }
+  })
+
+  let tmdbToActorId = new Map<number, number>()
+  try {
+    tmdbToActorId = await batchUpsertActors(actorInputs)
+  } catch (error) {
+    console.error("Actor upsert error in show TMDB fallback:", error)
+  }
+
+  // Check database for existing death info
+  const dbRecords = await getActorsIfAvailable(personIds)
+
+  for (const castMember of mainCast) {
+    const person = personDetails.get(castMember.id)
+    const dbRecord = dbRecords.get(castMember.id)
+    const actorId = tmdbToActorId.get(castMember.id) ?? castMember.id
+
+    if (!person) {
+      living.push({
+        id: actorId,
+        name: castMember.name,
+        character: castMember.character,
+        profile_path: castMember.profile_path,
+        birthday: null,
+        age: null,
+        totalEpisodes: castMember.totalEpisodes,
+        episodes: episodeAppearances.get(castMember.id) || [],
+      })
+      continue
+    }
+
+    if (person.deathday) {
+      const tmdbUrl = `https://www.themoviedb.org/person/${person.id}`
+      deceased.push({
+        id: actorId,
+        name: person.name,
+        character: castMember.character,
+        profile_path: person.profile_path,
+        birthday: person.birthday,
+        deathday: person.deathday,
+        causeOfDeath: dbRecord?.cause_of_death || null,
+        causeOfDeathSource: dbRecord?.cause_of_death_source || null,
+        causeOfDeathDetails: dbRecord?.cause_of_death_details || null,
+        causeOfDeathDetailsSource: dbRecord?.cause_of_death_details_source || null,
+        wikipediaUrl: dbRecord?.wikipedia_url || null,
+        tmdbUrl,
+        ageAtDeath: dbRecord?.age_at_death ?? null,
+        yearsLost: dbRecord?.years_lost ?? null,
+        totalEpisodes: castMember.totalEpisodes,
+        episodes: episodeAppearances.get(castMember.id) || [],
+      })
+    } else {
+      living.push({
+        id: actorId,
+        name: person.name,
+        character: castMember.character,
+        profile_path: person.profile_path,
+        birthday: person.birthday,
+        age: calculateAge(person.birthday),
+        totalEpisodes: castMember.totalEpisodes,
+        episodes: episodeAppearances.get(castMember.id) || [],
+      })
+    }
+  }
+}
+
+// ── Supplement TMDB cast with DB guest stars ──
+
+async function supplementWithDbGuestStars(
+  showId: number,
+  deceased: DeceasedActor[],
+  living: LivingActor[]
+): Promise<void> {
+  if (!process.env.DATABASE_URL) return
+
+  // Fetch deceased guest stars from database (seeded by seed-episodes-full)
+  try {
+    const dbDeceasedActors = await getDeceasedActorsForShow(showId)
+    // Use internal actor IDs for dedup (deceased[].id is now internal ID)
+    const existingIds = new Set(deceased.map((d) => d.id))
+
+    for (const dbActor of dbDeceasedActors) {
+      // Skip if already in deceased list (compare by internal ID)
+      if (existingIds.has(dbActor.id)) {
+        continue
+      }
+
+      const tmdbUrl = dbActor.tmdb_id ? `https://www.themoviedb.org/person/${dbActor.tmdb_id}` : ""
+      const firstEpisode = dbActor.episodes[0]
+
+      deceased.push({
+        id: dbActor.id, // Internal actor ID
+        name: dbActor.name,
+        character: firstEpisode?.character_name || "Guest",
+        profile_path: dbActor.profile_path,
+        birthday: dbActor.birthday,
+        deathday: dbActor.deathday,
+        causeOfDeath: dbActor.cause_of_death,
+        causeOfDeathSource: dbActor.cause_of_death_source,
+        causeOfDeathDetails: dbActor.cause_of_death_details,
+        causeOfDeathDetailsSource: dbActor.cause_of_death_details_source,
+        wikipediaUrl: dbActor.wikipedia_url,
+        tmdbUrl,
+        ageAtDeath: dbActor.age_at_death,
+        yearsLost: dbActor.years_lost,
+        totalEpisodes: dbActor.total_episodes,
+        episodes: dbActor.episodes.map((ep) => ({
+          seasonNumber: ep.season_number,
+          episodeNumber: ep.episode_number,
+          episodeName: ep.episode_name || `Episode ${ep.episode_number}`,
+          character: ep.character_name || "Guest",
+        })),
+      })
+    }
+  } catch (error) {
+    console.error("Error fetching deceased actors from database:", error)
+  }
+
+  // Also fetch living guest stars from database
+  try {
+    const dbLivingActors = await getLivingActorsForShow(showId)
+    const existingLivingIds = new Set(living.map((l) => l.id))
+
+    for (const dbActor of dbLivingActors) {
+      // Skip if already in living list (compare by internal ID)
+      if (existingLivingIds.has(dbActor.id)) {
+        continue
+      }
+
+      living.push({
+        id: dbActor.id, // Internal actor ID
+        name: dbActor.name,
+        character: dbActor.episodes[0]?.character_name || "Guest",
+        profile_path: dbActor.profile_path,
+        birthday: dbActor.birthday,
+        age: calculateAge(dbActor.birthday),
+        totalEpisodes: dbActor.total_episodes,
+        episodes: dbActor.episodes.map((ep) => ({
+          seasonNumber: ep.season_number,
+          episodeNumber: ep.episode_number,
+          episodeName: ep.episode_name || `Episode ${ep.episode_number}`,
+          character: ep.character_name || "Guest",
+        })),
+      })
+    }
+  } catch (error) {
+    console.error("Error fetching living actors from database:", error)
+  }
+}
+
+// ── Episode appearances fetcher (TMDB, for ongoing shows only) ──
+
+async function fetchEpisodeAppearances(showId: number): Promise<Map<number, EpisodeAppearance[]>> {
   const actorEpisodes = new Map<number, EpisodeAppearance[]>()
+
+  // Get season numbers from show details
+  let show
+  try {
+    show = await getTVShowDetails(showId)
+  } catch {
+    return actorEpisodes
+  }
+
+  const seasonNumbers = show.seasons.filter((s) => s.season_number > 0).map((s) => s.season_number)
 
   // Fetch all seasons in parallel (with small batches to avoid rate limits)
   const batchSize = 3
-  let baseDelay = 100 // Start with 100ms delay
-  const maxDelay = 2000 // Max 2 seconds between batches
+  let baseDelay = 100
+  const maxDelay = 2000
 
   for (let i = 0; i < seasonNumbers.length; i += batchSize) {
     const batch = seasonNumbers.slice(i, i + batchSize)
@@ -426,7 +484,6 @@ async function fetchEpisodeAppearances(
 
         for (const season of seasons) {
           for (const episode of season.episodes) {
-            // Process guest stars from each episode
             for (const guestStar of episode.guest_stars || []) {
               const existing = actorEpisodes.get(guestStar.id) || []
               existing.push({
@@ -440,9 +497,8 @@ async function fetchEpisodeAppearances(
           }
         }
 
-        // Success - reset delay on successful batch
         baseDelay = 100
-        break // Exit retry loop on success
+        break
       } catch (error) {
         retryCount++
         const isRateLimit =
@@ -450,21 +506,19 @@ async function fetchEpisodeAppearances(
           (error.message.includes("429") || error.message.includes("rate"))
 
         if (isRateLimit && retryCount <= maxRetries) {
-          // Exponential backoff: 200ms, 400ms, 800ms
           const backoffDelay = baseDelay * Math.pow(2, retryCount)
           console.warn(
             `Rate limit hit for show ${showId}, retrying in ${backoffDelay}ms (attempt ${retryCount}/${maxRetries})`
           )
           await new Promise((resolve) => setTimeout(resolve, backoffDelay))
-          baseDelay = Math.min(backoffDelay, maxDelay) // Increase base delay for future batches
+          baseDelay = Math.min(backoffDelay, maxDelay)
         } else {
           console.error(`Error fetching season details for show ${showId}:`, error)
-          break // Exit retry loop on non-rate-limit error or max retries exceeded
+          break
         }
       }
     }
 
-    // Delay between batches (respects increased delay from rate limits)
     if (i + batchSize < seasonNumbers.length) {
       await new Promise((resolve) => setTimeout(resolve, baseDelay))
     }
@@ -473,7 +527,8 @@ async function fetchEpisodeAppearances(
   return actorEpisodes
 }
 
-// Cache show in database in background
+// ── Background caching ──
+
 interface CacheShowParams {
   show: {
     id: number
