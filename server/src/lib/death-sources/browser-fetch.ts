@@ -12,7 +12,7 @@ import {
   getStealthLaunchArgs,
   fetchPageWithFallbacks,
 } from "@debriefer/browser"
-import type { BrowserFetchConfig } from "./types.js"
+import type { BrowserFetchConfig, FetchedPage } from "./types.js"
 
 // ============================================================================
 // Browser singleton
@@ -110,19 +110,21 @@ export function isBlockedResponse(status: number, body?: string): boolean {
   return false
 }
 
+/** Map @debriefer/browser fetchMethod values to FetchedPage fetchMethod values. */
+function mapFetchMethod(
+  method: "direct" | "archive.org" | "archive.is" | "archive.is-browser" | "none"
+): FetchedPage["fetchMethod"] {
+  if (method === "direct") return "fetch"
+  if (method === "archive.is" || method === "archive.is-browser") return "archive.is"
+  if (method === "archive.org") return "fetch" // archive.org content is fetched via HTTP
+  return "browser"
+}
+
 /** Fetch a page using browser with full fallback chain (delegates to @debriefer/browser). */
 export async function browserFetchPage(
   url: string,
   _config?: BrowserFetchConfig
-): Promise<{
-  url: string
-  title: string
-  content: string
-  contentLength: number
-  fetchTimeMs: number
-  fetchMethod: string
-  error?: string
-}> {
+): Promise<FetchedPage> {
   const startTime = Date.now()
   const result = await fetchPageWithFallbacks(url, { timeoutMs: 15_000 })
   return {
@@ -131,7 +133,7 @@ export async function browserFetchPage(
     content: result.content,
     contentLength: result.content.length,
     fetchTimeMs: Date.now() - startTime,
-    fetchMethod: result.fetchMethod,
+    fetchMethod: mapFetchMethod(result.fetchMethod),
     error: result.error,
   }
 }
