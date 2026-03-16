@@ -1,14 +1,29 @@
 /**
- * Browser Authentication Module
+ * Browser authentication re-exports from @debriefer/browser.
  *
- * Provides authenticated browser access for paywalled content:
- * - Session persistence with cookie storage
- * - CAPTCHA detection and solving
- * - Site-specific login handlers
+ * This barrel preserves existing import paths for consumers like
+ * link-follower.ts, duckduckgo-search.ts, and browser-fetch.ts.
+ * All implementation now lives in @debriefer/browser.
  */
 
 // Types
-export * from "./types.js"
+export type {
+  BrowserAuthConfig,
+  CaptchaType,
+  CaptchaDetectionResult,
+  CaptchaSolveResult,
+  CaptchaSolverConfig,
+  CaptchaSolverProvider,
+  StoredSession,
+  StoredCookie,
+  SessionManagerConfig,
+  SiteCredential,
+  SiteCredentials,
+  SupportedSite,
+  LoginResult,
+  LoginHandler,
+  AuthenticatedContextResult,
+} from "@debriefer/browser"
 
 // Configuration
 export {
@@ -19,7 +34,7 @@ export {
   hasAnyCredentials,
   hasCredentialsForSite,
   hasCaptchaSolver,
-} from "./config.js"
+} from "@debriefer/browser"
 
 // Session management
 export {
@@ -32,18 +47,11 @@ export {
   listSessions,
   clearExpiredSessions,
   getSessionInfo,
-} from "./session-manager.js"
+} from "@debriefer/browser"
 
-// CAPTCHA detection
-export { detectCaptcha, waitForCaptcha, isChallengePage } from "./captcha/detector.js"
-
-// CAPTCHA solving
-export { solveCaptcha, injectCaptchaToken, getBalance } from "./captcha/solver.js"
-
-// Login handlers
-export { BaseLoginHandler } from "./login-handlers/base-handler.js"
-export { NYTimesLoginHandler } from "./login-handlers/nytimes.js"
-export { WashingtonPostLoginHandler } from "./login-handlers/washingtonpost.js"
+// CAPTCHA detection & solving
+export { detectCaptcha, waitForCaptcha, isChallengePage } from "@debriefer/browser"
+export { solveCaptcha, injectCaptchaToken, getBalance } from "@debriefer/browser"
 
 // Stealth techniques
 export {
@@ -51,21 +59,9 @@ export {
   applyStealthToContext,
   applyStealthToPage,
   getStealthLaunchArgs,
-} from "./stealth.js"
+} from "@debriefer/browser"
 
-// Re-export key types for convenience
-export type {
-  BrowserAuthConfig,
-  SiteCredentials,
-  SiteCredential,
-  SupportedSite,
-  CaptchaSolverConfig,
-  CaptchaSolverProvider,
-  CaptchaType,
-  CaptchaDetectionResult,
-  CaptchaSolveResult,
-  LoginHandler,
-  LoginResult,
-  StoredSession,
-  StoredCookie,
-} from "./types.js"
+// Login handlers
+export { BaseLoginHandler } from "@debriefer/browser"
+export { NYTimesLoginHandler } from "@debriefer/browser"
+export { WashingtonPostLoginHandler } from "@debriefer/browser"

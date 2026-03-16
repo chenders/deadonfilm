@@ -89,12 +89,6 @@ export {
   shutdownBrowser,
   registerBrowserCleanup,
   isBrowserFetchEnabled,
-  setBrowserConfig,
-  getBrowserConfig,
-  isAuthEnabledForUrl,
-  detectPaywall,
-  getAuthenticatedContext,
-  handleAuthenticationFlow,
 } from "./browser-fetch.js"
 
 // Browser authentication (for paywalled sites)
@@ -137,7 +131,6 @@ export {
   type LoginHandler,
   type LoginResult,
   type StoredSession,
-  type PaywallDetectionResult,
   type AuthenticatedContextResult,
 } from "./browser-auth/index.js"
 
