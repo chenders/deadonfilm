@@ -292,7 +292,7 @@ export class EnrichmentRunner {
         books: true,
         maxCostPerActor,
         maxTotalCost,
-        earlyStopThreshold: 3,
+        earlyStopThreshold: Infinity,
         confidenceThreshold,
         reliabilityThreshold: useReliabilityThreshold ? 0.6 : undefined,
       }

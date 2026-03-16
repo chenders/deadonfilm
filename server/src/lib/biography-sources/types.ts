@@ -322,7 +322,7 @@ export const DEFAULT_BIOGRAPHY_CONFIG: BiographyEnrichmentConfig = {
   confidenceThreshold: 0.6,
   reliabilityThreshold: 0.6,
   useReliabilityThreshold: true,
-  earlyStopSourceCount: 5,
+  earlyStopSourceCount: 0, // 0 = disabled (all phases run)
   sourceCategories: {
     free: true,
     reference: true,
