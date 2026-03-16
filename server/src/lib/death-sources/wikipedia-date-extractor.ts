@@ -1,15 +1,16 @@
 /**
- * AI-assisted Wikipedia date extraction using Gemini Flash.
+ * AI-assisted Wikipedia date extraction using Claude Haiku.
  *
  * Extracts birth and death years from Wikipedia intro text using AI instead
  * of regex patterns. This handles complex articles (like Joseph Stalin) where
  * regex matches wrong dates from non-biographical parentheticals.
  *
- * Cost: ~$0.0001 per query using Gemini Flash 2.0
+ * Cost: ~$0.0001 per query using Claude Haiku
  */
 
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
-const GEMINI_FLASH_MODEL = "gemini-2.0-flash"
+import Anthropic from "@anthropic-ai/sdk"
+
+const CLAUDE_HAIKU_MODEL = "claude-haiku-4-5-20251001"
 
 const MIN_VALID_YEAR = 1000
 const MAX_VALID_YEAR = 2100
@@ -31,25 +32,7 @@ export interface DateExtractionResult {
 }
 
 /**
- * Gemini API response structure.
- */
-interface GeminiApiResponse {
-  candidates?: Array<{
-    content: {
-      parts: Array<{
-        text: string
-      }>
-    }
-  }>
-  error?: {
-    code: number
-    message: string
-    status: string
-  }
-}
-
-/**
- * Parsed date response from Gemini.
+ * Parsed date response from Claude.
  */
 interface ParsedDateResponse {
   birthYear: number | null
@@ -57,7 +40,7 @@ interface ParsedDateResponse {
 }
 
 /**
- * Build the prompt for Gemini to extract birth/death years.
+ * Build the prompt for Claude to extract birth/death years.
  */
 function buildDateExtractionPrompt(actorName: string, introText: string): string {
   return `Extract the birth year and death year of "${actorName}" from this Wikipedia introduction text.
@@ -88,7 +71,7 @@ function isValidYear(year: unknown): year is number {
 }
 
 /**
- * Parse the Gemini response to extract birth/death years.
+ * Parse the Claude response to extract birth/death years.
  */
 function parseDateResponse(responseText: string): ParsedDateResponse | null {
   try {
@@ -109,21 +92,14 @@ function parseDateResponse(responseText: string): ParsedDateResponse | null {
 }
 
 /**
- * Get the Gemini API key from environment.
- */
-function getApiKey(): string | undefined {
-  return process.env.GOOGLE_AI_API_KEY
-}
-
-/**
- * Check if AI date extraction is available (API key configured).
+ * Check if AI date extraction is available (Anthropic API key configured).
  */
 export function isAIDateExtractionAvailable(): boolean {
-  return !!getApiKey()
+  return !!process.env.ANTHROPIC_API_KEY
 }
 
 /**
- * Extract birth/death years from Wikipedia intro text using AI (Gemini Flash).
+ * Extract birth/death years from Wikipedia intro text using AI (Claude Haiku).
  *
  * @param actorName - Name of the actor for context
  * @param introText - The introduction text from the Wikipedia article
@@ -133,7 +109,7 @@ export async function extractDatesWithAI(
   actorName: string,
   introText: string
 ): Promise<DateExtractionResult> {
-  const apiKey = getApiKey()
+  const apiKey = process.env.ANTHROPIC_API_KEY
 
   if (!apiKey) {
     return {
@@ -141,7 +117,7 @@ export async function extractDatesWithAI(
       deathYear: null,
       costUsd: 0,
       usedAI: false,
-      error: "Google AI API key not configured (GOOGLE_AI_API_KEY)",
+      error: "Anthropic API key not configured (ANTHROPIC_API_KEY)",
     }
   }
 
@@ -158,51 +134,19 @@ export async function extractDatesWithAI(
   const prompt = buildDateExtractionPrompt(actorName, introText)
 
   try {
-    const url = `${GEMINI_API_BASE}/models/${GEMINI_FLASH_MODEL}:generateContent?key=${apiKey}`
+    const anthropic = new Anthropic({ apiKey })
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const message = await anthropic.messages.create(
+      {
+        model: CLAUDE_HAIKU_MODEL,
+        max_tokens: 100,
+        temperature: 0,
+        messages: [{ role: "user", content: prompt }],
       },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: prompt }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 100,
-        },
-      }),
-      signal: AbortSignal.timeout(15000),
-    })
+      { timeout: 15_000 }
+    )
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      return {
-        birthYear: null,
-        deathYear: null,
-        costUsd: 0,
-        usedAI: false,
-        error: `Gemini API error: ${response.status} - ${errorText}`,
-      }
-    }
-
-    const data = (await response.json()) as GeminiApiResponse
-
-    if (data.error) {
-      return {
-        birthYear: null,
-        deathYear: null,
-        costUsd: 0,
-        usedAI: false,
-        error: `Gemini API error: ${data.error.message}`,
-      }
-    }
-
-    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || ""
+    const responseText = message.content[0]?.type === "text" ? message.content[0].text : ""
     const parsed = parseDateResponse(responseText)
 
     if (!parsed) {

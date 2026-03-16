@@ -6,12 +6,6 @@ vi.mock("../cache.js", () => ({
   setCachedQuery: vi.fn().mockResolvedValue(undefined),
 }))
 
-// Mock the section selector module
-vi.mock("../wikipedia-section-selector.js", () => ({
-  selectRelevantSections: vi.fn(),
-  isAISectionSelectionAvailable: vi.fn().mockReturnValue(false),
-}))
-
 // Mock the date extractor module
 vi.mock("../wikipedia-date-extractor.js", () => ({
   extractDatesWithAI: vi.fn(),
@@ -32,11 +26,7 @@ vi.mock("wtf_wikipedia", () => {
 })
 
 import { WikipediaSource } from "./wikipedia.js"
-import { DataSourceType, DEFAULT_WIKIPEDIA_OPTIONS } from "../types.js"
-import {
-  selectRelevantSections,
-  isAISectionSelectionAvailable,
-} from "../wikipedia-section-selector.js"
+import { DataSourceType } from "../types.js"
 import wtf from "wtf_wikipedia"
 
 // ============================================================================
@@ -76,8 +66,6 @@ function mockDocument(
 describe("WikipediaSource", () => {
   let source: WikipediaSource
   const mockWtfFetch = vi.mocked(wtf.fetch)
-  const mockSelectSections = vi.mocked(selectRelevantSections)
-  const mockIsAIAvailable = vi.mocked(isAISectionSelectionAvailable)
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -404,166 +392,6 @@ describe("WikipediaSource", () => {
       expect(result.success).toBe(true)
       // The catch-all /^death\b/i should match "Death and controversy"
       expect(result.data?.circumstances).toContain("controversial")
-    })
-  })
-
-  describe("linked article fetching", () => {
-    const mockActor = {
-      id: 123,
-      tmdbId: 456,
-      name: "Test Actor",
-      birthday: "1950-01-15",
-      deathday: "2020-03-10",
-      causeOfDeath: null,
-      causeOfDeathDetails: null,
-      popularity: 10.5,
-    }
-
-    beforeEach(() => {
-      // Enable linked article following, disable disambiguation for these tests
-      source.setWikipediaOptions({
-        ...DEFAULT_WIKIPEDIA_OPTIONS,
-        followLinkedArticles: true,
-        handleDisambiguation: false,
-        validatePersonDates: false,
-      })
-    })
-
-    it("includes linked article metadata in rawData when AI selects linked articles", async () => {
-      // Enable AI section selection
-      mockIsAIAvailable.mockReturnValue(true)
-      mockSelectSections.mockResolvedValue({
-        selectedSections: ["Death"],
-        linkedArticles: ["2020_plane_crash"],
-        usedAI: true,
-        reasoning: "The Death section mentions a plane crash event",
-        costUsd: 0.001,
-      })
-
-      source.setWikipediaOptions({
-        useAISectionSelection: true,
-        followLinkedArticles: true,
-        maxLinkedArticles: 2,
-        maxSections: 10,
-        handleDisambiguation: false,
-        validatePersonDates: false,
-      })
-
-      // Main article
-      const mainDoc = mockDocument("Test Actor", [
-        mockSection("", "Test Actor was a famous performer who died in a tragic accident."),
-        mockSection("Career", "He appeared in many notable films throughout his long career."),
-        mockSection(
-          "Death",
-          "Test Actor died in the 2020 plane crash that killed multiple passengers and crew members aboard."
-        ),
-      ])
-
-      // Linked article
-      const linkedDoc = mockDocument("2020 plane crash", [
-        mockSection(
-          "",
-          "The 2020 plane crash occurred on March 10, 2020, killing all 9 people aboard including Test Actor. The helicopter crashed into a hillside in foggy conditions."
-        ),
-        mockSection(
-          "Background",
-          "The flight departed from a local airport in poor weather conditions early that morning."
-        ),
-        mockSection(
-          "Casualties",
-          "All nine passengers and crew died in the crash along with the pilot."
-        ),
-      ])
-
-      mockWtfFetch.mockResolvedValueOnce(mainDoc as never).mockResolvedValueOnce(linkedDoc as never)
-
-      const result = await source.lookup(mockActor)
-
-      expect(result.success).toBe(true)
-      expect(result.source.rawData).toBeDefined()
-      const rawData = result.source.rawData as Record<string, unknown>
-      expect(rawData.linkedArticleCount).toBe(1)
-      expect(rawData.linkedArticlesFollowed).toContain("2020_plane_crash")
-      expect(rawData.aiSectionSelection).toBeDefined()
-      const aiSelection = rawData.aiSectionSelection as Record<string, unknown>
-      expect(aiSelection.usedAI).toBe(true)
-      expect(aiSelection.linkedArticles).toContain("2020_plane_crash")
-    })
-
-    it("handles missing linked articles gracefully", async () => {
-      mockIsAIAvailable.mockReturnValue(true)
-      mockSelectSections.mockResolvedValue({
-        selectedSections: ["Death"],
-        linkedArticles: ["Nonexistent_Article_12345"],
-        usedAI: true,
-        costUsd: 0.001,
-      })
-
-      source.setWikipediaOptions({
-        useAISectionSelection: true,
-        followLinkedArticles: true,
-        maxLinkedArticles: 2,
-        maxSections: 10,
-        handleDisambiguation: false,
-        validatePersonDates: false,
-      })
-
-      const mainDoc = mockDocument("Test Actor", [
-        mockSection("", "Test Actor was a famous performer known worldwide for his roles."),
-        mockSection(
-          "Death",
-          "Died peacefully at home after a long illness on December 15, 2020. He was surrounded by family members at the time of his death."
-        ),
-      ])
-
-      mockWtfFetch.mockResolvedValueOnce(mainDoc as never).mockResolvedValueOnce(null as never) // linked article not found
-
-      const result = await source.lookup(mockActor)
-
-      // Should still succeed with main article content
-      expect(result.success).toBe(true)
-      expect(result.data?.circumstances).toContain("peacefully")
-
-      // Should not have linked article content
-      const rawData = result.source.rawData as Record<string, unknown>
-      expect(rawData.linkedArticleCount).toBeUndefined()
-    })
-
-    it("handles errors when fetching linked articles", async () => {
-      mockIsAIAvailable.mockReturnValue(true)
-      mockSelectSections.mockResolvedValue({
-        selectedSections: ["Death"],
-        linkedArticles: ["Error_Article"],
-        usedAI: true,
-        costUsd: 0.001,
-      })
-
-      source.setWikipediaOptions({
-        useAISectionSelection: true,
-        followLinkedArticles: true,
-        maxLinkedArticles: 2,
-        maxSections: 10,
-        handleDisambiguation: false,
-        validatePersonDates: false,
-      })
-
-      const mainDoc = mockDocument("Test Actor", [
-        mockSection("", "Test Actor was a famous performer known worldwide for many roles."),
-        mockSection(
-          "Death",
-          "Died in tragic circumstances that shocked the world on March 15, 2020. The death came as a shock to fans and the entertainment industry."
-        ),
-      ])
-
-      mockWtfFetch
-        .mockResolvedValueOnce(mainDoc as never)
-        .mockRejectedValueOnce(new Error("Network error")) // linked article fetch fails
-
-      const result = await source.lookup(mockActor)
-
-      // Should still succeed with main article content
-      expect(result.success).toBe(true)
-      expect(result.data?.circumstances).toContain("tragic")
     })
   })
 

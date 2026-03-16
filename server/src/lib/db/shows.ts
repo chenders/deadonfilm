@@ -5,7 +5,7 @@
  */
 
 import { getPool } from "./pool.js"
-import type { ShowRecord, SeasonRecord, EpisodeRecord } from "./types.js"
+import type { ShowRecord, SeasonRecord, EpisodeRecord, ShowCastRow } from "./types.js"
 
 // ============================================================================
 // TV Shows CRUD functions
@@ -261,4 +261,68 @@ export async function upsertEpisode(episode: EpisodeRecord): Promise<void> {
       episode.imdb_episode_id ?? null,
     ]
   )
+}
+
+// ============================================================================
+// Show cast queries (DB-first pattern)
+// ============================================================================
+
+/**
+ * Get aggregate show cast from DB with internal actor IDs and death info.
+ * Returns distinct actors across all episodes with episode counts.
+ */
+export async function getShowWithCast(showTmdbId: number): Promise<ShowCastRow[]> {
+  const db = getPool()
+  const result = await db.query<ShowCastRow>(
+    `SELECT
+       a.id as actor_id, a.tmdb_id as actor_tmdb_id,
+       a.name, a.birthday, a.deathday, a.profile_path,
+       a.cause_of_death, a.cause_of_death_source,
+       a.cause_of_death_details, a.cause_of_death_details_source,
+       a.wikipedia_url, a.age_at_death, a.years_lost,
+       MIN(asa.character_name) as character_name,
+       MIN(asa.billing_order) as billing_order,
+       COUNT(DISTINCT (asa.season_number, asa.episode_number))::int as total_episodes
+     FROM actor_show_appearances asa
+     JOIN actors a ON asa.actor_id = a.id
+     WHERE asa.show_tmdb_id = $1
+     GROUP BY a.id, a.tmdb_id, a.name, a.birthday, a.deathday, a.profile_path,
+              a.cause_of_death, a.cause_of_death_source, a.cause_of_death_details,
+              a.cause_of_death_details_source, a.wikipedia_url, a.age_at_death, a.years_lost
+     ORDER BY MIN(asa.billing_order) ASC NULLS LAST`,
+    [showTmdbId]
+  )
+  return result.rows
+}
+
+/**
+ * Get show cast for a specific season from DB.
+ * Returns actors who appeared in the given season with episode counts for that season.
+ */
+export async function getShowCastBySeason(
+  showTmdbId: number,
+  seasonNumber: number
+): Promise<ShowCastRow[]> {
+  const db = getPool()
+  const result = await db.query<ShowCastRow>(
+    `SELECT
+       a.id as actor_id, a.tmdb_id as actor_tmdb_id,
+       a.name, a.birthday, a.deathday, a.profile_path,
+       a.cause_of_death, a.cause_of_death_source,
+       a.cause_of_death_details, a.cause_of_death_details_source,
+       a.wikipedia_url, a.age_at_death, a.years_lost,
+       MIN(asa.character_name) as character_name,
+       MIN(asa.billing_order) as billing_order,
+       COUNT(DISTINCT asa.episode_number)::int as total_episodes
+     FROM actor_show_appearances asa
+     JOIN actors a ON asa.actor_id = a.id
+     WHERE asa.show_tmdb_id = $1
+       AND asa.season_number = $2
+     GROUP BY a.id, a.tmdb_id, a.name, a.birthday, a.deathday, a.profile_path,
+              a.cause_of_death, a.cause_of_death_source, a.cause_of_death_details,
+              a.cause_of_death_details_source, a.wikipedia_url, a.age_at_death, a.years_lost
+     ORDER BY MIN(asa.billing_order) ASC NULLS LAST`,
+    [showTmdbId, seasonNumber]
+  )
+  return result.rows
 }

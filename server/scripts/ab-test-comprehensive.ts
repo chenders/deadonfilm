@@ -3,9 +3,9 @@
  * Comprehensive A/B Test: Provider × Source Strategy Comparison
  *
  * Tests 6 variants per actor:
- * - Gemini Pro with sources required
- * - Gemini Pro with "reliable" sources required
- * - Gemini Pro with no source requirement
+ * - Claude Haiku with sources required
+ * - Claude Haiku with "reliable" sources required
+ * - Claude Haiku with no source requirement
  * - Perplexity with sources required
  * - Perplexity with "reliable" sources required
  * - Perplexity with no source requirement
@@ -24,7 +24,7 @@
 import "dotenv/config"
 import { Pool } from "pg"
 import { Command } from "commander"
-import { GeminiProSource } from "../src/lib/death-sources/ai-providers/gemini.js"
+import { ClaudeHaikuDeathSource } from "../src/lib/death-sources/ai-providers/claude-haiku.js"
 import { PerplexitySource } from "../src/lib/death-sources/ai-providers/perplexity.js"
 import { setIgnoreCache } from "../src/lib/death-sources/base-source.js"
 import type { ActorForEnrichment } from "../src/lib/death-sources/types.js"
@@ -242,7 +242,12 @@ async function runComprehensiveTest(count: number) {
     console.log(`Testing 6 variants per actor = ${actors.length * 6} total tests`)
 
     // Create test run
-    const testRun = await createTestRun(pool, actors, ["gemini_pro", "perplexity"], [...STRATEGIES])
+    const testRun = await createTestRun(
+      pool,
+      actors,
+      ["claude_haiku", "perplexity"],
+      [...STRATEGIES]
+    )
     runId = testRun.id
     console.log(`\nCreated test run ID: ${runId}`)
     console.log(`Track progress at: http://localhost:5173/admin/ab-tests/comprehensive/${runId}\n`)
@@ -250,10 +255,10 @@ async function runComprehensiveTest(count: number) {
     // At this point runId is guaranteed non-null
     const currentRunId: number = runId
 
-    // Initialize providers with increased token limits for A/B testing
-    // This avoids truncation bias but is not used in production
-    const gemini = new GeminiProSource()
-    gemini["maxOutputTokens"] = 8192
+    // Initialize providers for A/B testing
+    // Perplexity gets increased token limit to avoid truncation bias
+    // Claude Haiku uses its default 2000 max_tokens (sufficient for death extraction)
+    const claudeHaiku = new ClaudeHaikuDeathSource()
     const perplexity = new PerplexitySource()
     perplexity["maxTokens"] = 8192
 
@@ -263,7 +268,7 @@ async function runComprehensiveTest(count: number) {
     const variantResults: Record<string, { found: number; total: number; cost: number }> = {}
 
     // Initialize stats
-    for (const provider of ["gemini_pro", "perplexity"]) {
+    for (const provider of ["claude_haiku", "perplexity"]) {
       for (const strategy of STRATEGIES) {
         const key = `${provider}::${strategy}`
         variantResults[key] = { found: 0, total: 0, cost: 0 }
@@ -288,8 +293,8 @@ async function runComprehensiveTest(count: number) {
       }
 
       // Test all strategies for both providers
-      for (const provider of ["gemini_pro", "perplexity"]) {
-        const source = provider === "gemini_pro" ? gemini : perplexity
+      for (const provider of ["claude_haiku", "perplexity"]) {
+        const source = provider === "claude_haiku" ? claudeHaiku : perplexity
 
         for (const strategy of STRATEGIES) {
           const startTime = Date.now()

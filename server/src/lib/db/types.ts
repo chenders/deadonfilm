@@ -99,6 +99,47 @@ export interface ActorMovieAppearanceRecord {
   appearance_type: MovieAppearanceType
 }
 
+// Cast row from movie cast DB query (actor_movie_appearances JOIN actors)
+export interface MovieCastRow {
+  actor_id: number
+  actor_tmdb_id: number | null
+  name: string
+  birthday: string | null
+  deathday: string | null
+  profile_path: string | null
+  cause_of_death: string | null
+  cause_of_death_source: DeathInfoSource
+  cause_of_death_details: string | null
+  cause_of_death_details_source: DeathInfoSource
+  wikipedia_url: string | null
+  age_at_death: number | null
+  years_lost: number | null
+  expected_lifespan: number | null
+  character_name: string | null
+  billing_order: number | null
+  appearance_type: MovieAppearanceType
+}
+
+// Cast row from show cast DB query (actor_show_appearances JOIN actors, aggregated)
+export interface ShowCastRow {
+  actor_id: number
+  actor_tmdb_id: number | null
+  name: string
+  birthday: string | null
+  deathday: string | null
+  profile_path: string | null
+  cause_of_death: string | null
+  cause_of_death_source: DeathInfoSource
+  cause_of_death_details: string | null
+  cause_of_death_details_source: DeathInfoSource
+  wikipedia_url: string | null
+  age_at_death: number | null
+  years_lost: number | null
+  character_name: string | null
+  billing_order: number | null
+  total_episodes: number
+}
+
 export interface ActorFilmographyMovie {
   movieId: number
   title: string

@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest"
 import { mapFindings, mapSourceType, mapReliabilityTier } from "../finding-mapper.js"
 import { BiographySourceType } from "../../types.js"
 import { ReliabilityTier } from "../../../death-sources/types.js"
-import type { ScoredFinding } from "debriefer"
-import { ReliabilityTier as DebrieferTier } from "debriefer"
+import type { ScoredFinding } from "@debriefer/core"
+import { ReliabilityTier as DebrieferTier } from "@debriefer/core"
 
 describe("mapSourceType", () => {
   it("maps debriefer source types via explicit mapping table", () => {

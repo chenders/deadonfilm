@@ -1,13 +1,12 @@
 /**
- * Wikipedia source for death information.
+ * Legacy Wikipedia source for death information.
  *
  * Uses wtf_wikipedia to fetch and parse Wikipedia articles, producing clean
  * plaintext with no citation markers, footnotes, or HTML artifacts.
  *
- * Supports two section selection modes:
- * 1. Regex-based (default): Uses predefined patterns to find Death/Health sections
- * 2. AI-based (opt-in): Uses Gemini Flash to identify non-obvious sections like
- *    "Hunting and Fishing", "Controversies", etc. that may contain relevant info
+ * Note: The death enrichment adapter now uses debriefer's Wikipedia source
+ * with haiku-section-selector.ts for AI section selection. This legacy source
+ * uses regex-based section selection only.
  */
 
 import wtf from "wtf_wikipedia"
@@ -21,13 +20,17 @@ import type {
   WikipediaOptions,
 } from "../types.js"
 import { DataSourceType, ReliabilityTier, DEFAULT_WIKIPEDIA_OPTIONS } from "../types.js"
-import {
-  selectRelevantSections,
-  isAISectionSelectionAvailable,
-  type SectionSelectionResult,
-  type WikipediaSection,
-} from "../wikipedia-section-selector.js"
 import { extractDatesWithAI, isAIDateExtractionAvailable } from "../wikipedia-date-extractor.js"
+
+/**
+ * Wikipedia section metadata.
+ */
+interface WikipediaSection {
+  index: string
+  line: string
+  level: string
+  anchor: string
+}
 
 export class WikipediaSource extends BaseDataSource {
   readonly name = "Wikipedia"
@@ -215,41 +218,9 @@ export class WikipediaSource extends BaseDataSource {
       }
     }
 
-    // Find relevant sections - use AI selection if enabled and available
-    let relevantSections: WikipediaSection[]
-    let sectionSelectionResult: SectionSelectionResult | null = null
-    let sectionSelectionCost = 0
-
-    const useAI = this.wikipediaOptions.useAISectionSelection && isAISectionSelectionAvailable()
-
-    if (useAI) {
-      console.log(`  Using AI section selection for ${actor.name}`)
-      sectionSelectionResult = await selectRelevantSections(
-        actor.name,
-        wikiSections,
-        this.wikipediaOptions
-      )
-      sectionSelectionCost = sectionSelectionResult.costUsd
-
-      if (sectionSelectionResult.usedAI && sectionSelectionResult.selectedSections.length > 0) {
-        relevantSections = wikiSections.filter((s) =>
-          sectionSelectionResult!.selectedSections.includes(s.line)
-        )
-        console.log(
-          `  AI selected ${relevantSections.length} section(s): ${sectionSelectionResult.selectedSections.join(", ")}`
-        )
-        if (sectionSelectionResult.reasoning) {
-          console.log(`  AI reasoning: ${sectionSelectionResult.reasoning}`)
-        }
-      } else {
-        console.log(
-          `  AI selection failed (${sectionSelectionResult.error || "no sections"}), falling back to regex`
-        )
-        relevantSections = this.findRelevantSections(wikiSections)
-      }
-    } else {
-      relevantSections = this.findRelevantSections(wikiSections)
-    }
+    // Find relevant sections using regex patterns
+    const relevantSections = this.findRelevantSections(wikiSections)
+    const sectionSelectionCost = 0
 
     if (relevantSections.length === 0) {
       return {
@@ -294,25 +265,7 @@ export class WikipediaSource extends BaseDataSource {
       }
     }
 
-    // Fetch content from linked articles if AI selected any
-    let linkedArticleTexts: string[] = []
-    if (
-      sectionSelectionResult?.linkedArticles &&
-      sectionSelectionResult.linkedArticles.length > 0 &&
-      this.wikipediaOptions.followLinkedArticles
-    ) {
-      console.log(
-        `  Fetching ${sectionSelectionResult.linkedArticles.length} linked article(s): ${sectionSelectionResult.linkedArticles.join(", ")}`
-      )
-      linkedArticleTexts = await this.fetchLinkedArticlesContent(
-        sectionSelectionResult.linkedArticles
-      )
-      console.log(`  Retrieved content from ${linkedArticleTexts.length} linked article(s)`)
-    }
-
-    // Combine all section texts with linked article content
-    const allTexts = [...sectionTexts, ...linkedArticleTexts]
-    const cleanedText = allTexts.join("\n\n")
+    const cleanedText = sectionTexts.join("\n\n")
 
     // Extract death information
     const deathInfo = this.extractDeathInfo(cleanedText, actor)
@@ -324,26 +277,11 @@ export class WikipediaSource extends BaseDataSource {
       `  Extracted ${cleanedText.length} chars from ${sectionTexts.length} section(s), confidence: ${confidence.toFixed(2)}`
     )
 
-    // Build raw data with section selection metadata
+    // Build raw data with section metadata
     const rawData: Record<string, unknown> = {
       sectionTitles: relevantSections.map((s) => s.line),
       sectionCount: relevantSections.length,
       textLength: cleanedText.length,
-    }
-
-    if (sectionSelectionResult) {
-      rawData.aiSectionSelection = {
-        usedAI: sectionSelectionResult.usedAI,
-        selectedSections: sectionSelectionResult.selectedSections,
-        linkedArticles: sectionSelectionResult.linkedArticles,
-        reasoning: sectionSelectionResult.reasoning,
-        error: sectionSelectionResult.error,
-      }
-    }
-
-    if (linkedArticleTexts.length > 0) {
-      rawData.linkedArticleCount = linkedArticleTexts.length
-      rawData.linkedArticlesFollowed = sectionSelectionResult?.linkedArticles || []
     }
 
     const sourceEntry = this.createSourceEntry(
@@ -473,81 +411,6 @@ export class WikipediaSource extends BaseDataSource {
     result.sort((a, b) => parseInt(a.index) - parseInt(b.index))
 
     return result
-  }
-
-  /**
-   * Find the Death section or suitable fallback.
-   * @deprecated Use findRelevantSections instead
-   */
-  private findDeathSection(sections: WikipediaSection[]): WikipediaSection | null {
-    const relevant = this.findRelevantSections(sections)
-    return relevant.length > 0 ? relevant[0] : null
-  }
-
-  /**
-   * Fetch content from linked Wikipedia articles using wtf_wikipedia.
-   */
-  private async fetchLinkedArticlesContent(articleTitles: string[]): Promise<string[]> {
-    const results: string[] = []
-
-    for (const articleTitle of articleTitles) {
-      try {
-        const linkedDoc = ((await wtf.fetch(articleTitle)) as WtfDocument | null) ?? null
-        if (!linkedDoc) {
-          console.log(`    Linked article "${articleTitle}" not found`)
-          continue
-        }
-
-        const linkedSections = linkedDoc.sections() as wtf.Section[]
-        const articleContent: string[] = []
-        const humanReadableTitle = articleTitle.replace(/_/g, " ")
-
-        // Get intro text
-        const introSection = linkedSections[0]
-        if (introSection) {
-          const introText = introSection.text({})
-          if (introText && introText.length >= 50) {
-            articleContent.push(`[Linked Article: ${humanReadableTitle}] ${introText}`)
-          }
-        }
-
-        // Map to WikipediaSection for findRelevantSections
-        const linkedWikiSections: WikipediaSection[] = linkedSections.map(
-          (s: wtf.Section, i: number) => ({
-            index: String(i),
-            line: s.title() || "Introduction",
-            level: String(s.depth()),
-            anchor: (s.title() || "Introduction").replace(/ /g, "_"),
-          })
-        )
-
-        // Also fetch any Death/Incident sections from the linked article
-        const deathSections = this.findRelevantSections(linkedWikiSections)
-
-        for (const deathSection of deathSections.slice(0, 2)) {
-          const sectionIndex = parseInt(deathSection.index, 10)
-          const section = linkedSections[sectionIndex]
-          if (!section) continue
-
-          const sectionText = section.text({})
-          if (sectionText && sectionText.length >= 50) {
-            articleContent.push(
-              `[Linked Article: ${humanReadableTitle} - ${deathSection.line}] ${sectionText}`
-            )
-          }
-        }
-
-        if (articleContent.length > 0) {
-          results.push(articleContent.join("\n\n"))
-        }
-      } catch (error) {
-        console.log(
-          `    Error fetching linked article "${articleTitle}": ${error instanceof Error ? error.message : "Unknown error"}`
-        )
-      }
-    }
-
-    return results
   }
 
   /**

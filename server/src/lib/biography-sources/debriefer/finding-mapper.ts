@@ -8,7 +8,7 @@
  * "google-search-bio"). This module handles the mapping.
  */
 
-import type { ScoredFinding } from "debriefer"
+import type { ScoredFinding } from "@debriefer/core"
 import type { RawBiographySourceData } from "../types.js"
 import { BiographySourceType } from "../types.js"
 import { ReliabilityTier } from "../../death-sources/types.js"

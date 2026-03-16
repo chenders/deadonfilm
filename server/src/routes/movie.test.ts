@@ -11,10 +11,16 @@ vi.mock("../lib/tmdb.js", () => ({
 vi.mock("../lib/db.js", () => ({
   getActors: vi.fn(),
   batchUpsertActors: vi.fn(),
-  updateDeathInfo: vi.fn().mockResolvedValue(undefined),
+  updateDeathInfoByActorId: vi.fn().mockResolvedValue(undefined),
   upsertMovie: vi.fn().mockResolvedValue(undefined),
   batchUpsertActorMovieAppearances: vi.fn().mockResolvedValue(undefined),
-  getMovie: vi.fn().mockResolvedValue(null), // For aggregate score lookup
+  getMovie: vi.fn().mockResolvedValue(null),
+  getMovieWithCast: vi.fn().mockResolvedValue([]),
+}))
+
+vi.mock("../lib/db-helpers.js", () => ({
+  getActorsIfAvailable: vi.fn().mockResolvedValue(new Map()),
+  getActorsByInternalIds: vi.fn().mockResolvedValue(new Map()),
 }))
 
 vi.mock("../lib/mortality-stats.js", () => ({
@@ -39,9 +45,10 @@ vi.mock("newrelic", () => ({
   },
 }))
 
-import { getMovie } from "./movie.js"
+import { getMovie, getMovieDeathInfo } from "./movie.js"
 import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from "../lib/tmdb.js"
-import { getActors, batchUpsertActors, getMovie as getMovieFromDb } from "../lib/db.js"
+import { batchUpsertActors, getMovie as getMovieFromDb, getMovieWithCast } from "../lib/db.js"
+import { getActorsByInternalIds } from "../lib/db-helpers.js"
 import { calculateMovieMortality } from "../lib/mortality-stats.js"
 import newrelic from "newrelic"
 import { getCauseOfDeath } from "../lib/wikidata.js"
@@ -98,7 +105,7 @@ describe("getMovie route", () => {
       status: statusSpy as Response["status"],
     }
 
-    // Setup default mocks
+    // Setup default mocks (TMDB fallback path)
     vi.mocked(getMovieDetails).mockResolvedValue(mockMovie)
     vi.mocked(getMovieCredits).mockResolvedValue(mockCredits)
     vi.mocked(batchGetPersonDetails).mockResolvedValue(
@@ -135,8 +142,14 @@ describe("getMovie route", () => {
         ],
       ])
     )
-    vi.mocked(getActors).mockResolvedValue(new Map())
-    vi.mocked(batchUpsertActors).mockResolvedValue(new Map())
+    vi.mocked(getMovieFromDb).mockResolvedValue(null)
+    vi.mocked(getMovieWithCast).mockResolvedValue([])
+    vi.mocked(batchUpsertActors).mockResolvedValue(
+      new Map([
+        [101, 5001],
+        [102, 5002],
+      ])
+    )
     vi.mocked(calculateMovieMortality).mockResolvedValue({
       expectedDeaths: 1.8,
       actualDeaths: 2,
@@ -163,31 +176,132 @@ describe("getMovie route", () => {
     })
   })
 
-  it("returns movie data with deceased cast", async () => {
-    mockReq = { params: { id: "14629" } }
+  describe("TMDB fallback path (no DB cast)", () => {
+    it("returns internal actor IDs from batchUpsertActors mapping", async () => {
+      mockReq = { params: { id: "14629" } }
 
-    await getMovie(mockReq as Request, mockRes as Response)
+      await getMovie(mockReq as Request, mockRes as Response)
 
-    expect(getMovieDetails).toHaveBeenCalledWith(14629)
-    expect(getMovieCredits).toHaveBeenCalledWith(14629)
-    expect(jsonSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        movie: expect.objectContaining({
-          id: 14629,
-          title: "Breakfast at Tiffany's",
-        }),
-        deceased: expect.arrayContaining([
-          expect.objectContaining({
-            id: 101,
-            name: "Audrey Hepburn",
-          }),
-        ]),
-        stats: expect.objectContaining({
-          deceasedCount: 2,
-          livingCount: 0,
-        }),
-      })
-    )
+      expect(getMovieDetails).toHaveBeenCalledWith(14629)
+      expect(getMovieCredits).toHaveBeenCalledWith(14629)
+      expect(batchUpsertActors).toHaveBeenCalled()
+
+      const response = jsonSpy.mock.calls[0][0]
+      // Actor IDs should be internal IDs from batchUpsertActors, not TMDB IDs (101, 102)
+      // Sorted by death date descending: Peppard (1994) before Hepburn (1993)
+      expect(response.deceased[0].id).toBe(5002) // Peppard (died 1994)
+      expect(response.deceased[1].id).toBe(5001) // Hepburn (died 1993)
+      expect(response.movie.id).toBe(14629) // Movie ID stays as TMDB ID
+    })
+
+    it("falls back to TMDB ID if actor upsert fails", async () => {
+      vi.mocked(batchUpsertActors).mockRejectedValue(new Error("DB unavailable"))
+      mockReq = { params: { id: "14629" } }
+
+      await getMovie(mockReq as Request, mockRes as Response)
+
+      const response = jsonSpy.mock.calls[0][0]
+      // Falls back to TMDB IDs when upsert fails
+      // Sorted by death date descending: Peppard (1994) before Hepburn (1993)
+      expect(response.deceased[0].id).toBe(102) // Peppard
+      expect(response.deceased[1].id).toBe(101) // Hepburn
+    })
+  })
+
+  describe("DB-first path (cast in database)", () => {
+    const mockDbCast = [
+      {
+        actor_id: 5001,
+        actor_tmdb_id: 101,
+        name: "Audrey Hepburn",
+        birthday: "1929-05-04",
+        deathday: "1993-01-20",
+        profile_path: "/audrey.jpg",
+        cause_of_death: "Cancer",
+        cause_of_death_source: "claude" as const,
+        cause_of_death_details: "Died of appendiceal cancer",
+        cause_of_death_details_source: "claude" as const,
+        wikipedia_url: "https://en.wikipedia.org/wiki/Audrey_Hepburn",
+        age_at_death: 63,
+        years_lost: 17.5,
+        expected_lifespan: 80.5,
+        character_name: "Holly Golightly",
+        billing_order: 0,
+        appearance_type: "regular" as const,
+      },
+      {
+        actor_id: 5002,
+        actor_tmdb_id: 102,
+        name: "George Peppard",
+        birthday: "1928-10-01",
+        deathday: null,
+        profile_path: "/george.jpg",
+        cause_of_death: null,
+        cause_of_death_source: null,
+        cause_of_death_details: null,
+        cause_of_death_details_source: null,
+        wikipedia_url: null,
+        age_at_death: null,
+        years_lost: null,
+        expected_lifespan: null,
+        character_name: "Paul Varjak",
+        billing_order: 1,
+        appearance_type: "regular" as const,
+      },
+    ]
+
+    it("returns internal actor IDs from DB cast query", async () => {
+      vi.mocked(getMovieWithCast).mockResolvedValue(mockDbCast)
+      mockReq = { params: { id: "14629" } }
+
+      await getMovie(mockReq as Request, mockRes as Response)
+
+      // Should NOT call TMDB credits or person details
+      expect(getMovieCredits).not.toHaveBeenCalled()
+      expect(batchGetPersonDetails).not.toHaveBeenCalled()
+
+      const response = jsonSpy.mock.calls[0][0]
+      // Actor IDs are internal IDs from the database
+      expect(response.deceased[0].id).toBe(5001)
+      expect(response.deceased[0].name).toBe("Audrey Hepburn")
+      expect(response.deceased[0].causeOfDeath).toBe("Cancer")
+      expect(response.deceased[0].tmdbUrl).toBe("https://www.themoviedb.org/person/101")
+      // Living actor
+      expect(response.living[0].id).toBe(5002)
+      expect(response.living[0].name).toBe("George Peppard")
+    })
+
+    it("includes death info from DB without additional queries", async () => {
+      vi.mocked(getMovieWithCast).mockResolvedValue(mockDbCast)
+      mockReq = { params: { id: "14629" } }
+
+      await getMovie(mockReq as Request, mockRes as Response)
+
+      const response = jsonSpy.mock.calls[0][0]
+      expect(response.deceased[0]).toEqual(
+        expect.objectContaining({
+          causeOfDeath: "Cancer",
+          causeOfDeathDetails: "Died of appendiceal cancer",
+          wikipediaUrl: "https://en.wikipedia.org/wiki/Audrey_Hepburn",
+          ageAtDeath: 63,
+          yearsLost: 17.5,
+        })
+      )
+    })
+
+    it("tracks dbFirst in New Relic event", async () => {
+      vi.mocked(getMovieWithCast).mockResolvedValue(mockDbCast)
+      mockReq = { params: { id: "14629" } }
+
+      await getMovie(mockReq as Request, mockRes as Response)
+
+      expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
+        "MovieView",
+        expect.objectContaining({
+          dbFirst: true,
+        })
+      )
+    })
   })
 
   describe("recordCustomEvent tracking", () => {
@@ -206,6 +320,7 @@ describe("getMovie route", () => {
           livingCount: 0,
           expectedDeaths: 1.8,
           curseScore: 0.11,
+          dbFirst: false,
           responseTimeMs: expect.any(Number),
         })
       )
@@ -259,6 +374,11 @@ describe("getMovie route", () => {
         ])
       )
       vi.mocked(batchGetPersonDetails).mockResolvedValue(personDetailsMap)
+
+      // Return internal IDs for all 5 actors
+      vi.mocked(batchUpsertActors).mockResolvedValue(
+        new Map(fiveActors.map((a, i) => [a.id, 6000 + i]))
+      )
 
       vi.mocked(getCauseOfDeath).mockImplementation(async () => {
         return {
@@ -329,5 +449,62 @@ describe("getMovie route", () => {
         })
       )
     })
+  })
+})
+
+describe("getMovieDeathInfo route", () => {
+  let mockReq: Partial<Request>
+  let mockRes: Partial<Response>
+  let jsonSpy: ReturnType<typeof vi.fn>
+  let statusSpy: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    jsonSpy = vi.fn()
+    statusSpy = vi.fn().mockReturnThis()
+
+    mockRes = {
+      json: jsonSpy as Response["json"],
+      status: statusSpy as Response["status"],
+    }
+  })
+
+  it("returns 400 for missing personIds", async () => {
+    mockReq = { params: { id: "14629" }, query: {} }
+
+    await getMovieDeathInfo(mockReq as Request, mockRes as Response)
+
+    expect(statusSpy).toHaveBeenCalledWith(400)
+  })
+
+  it("queries by internal actor IDs, not TMDB IDs", async () => {
+    const mockActorRecord = {
+      id: 5001,
+      tmdb_id: 101,
+      name: "Audrey Hepburn",
+      cause_of_death: "Cancer",
+      cause_of_death_details: "Appendiceal cancer",
+      wikipedia_url: "https://en.wikipedia.org/wiki/Audrey_Hepburn",
+    }
+    vi.mocked(getActorsByInternalIds).mockResolvedValue(new Map([[5001, mockActorRecord as never]]))
+
+    mockReq = { params: { id: "14629" }, query: { personIds: "5001" } }
+
+    await getMovieDeathInfo(mockReq as Request, mockRes as Response)
+
+    // Should call getActorsByInternalIds, not getActorsIfAvailable
+    expect(getActorsByInternalIds).toHaveBeenCalledWith([5001])
+    expect(jsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deathInfo: {
+          5001: {
+            causeOfDeath: "Cancer",
+            causeOfDeathDetails: "Appendiceal cancer",
+            wikipediaUrl: "https://en.wikipedia.org/wiki/Audrey_Hepburn",
+          },
+        },
+      })
+    )
   })
 })

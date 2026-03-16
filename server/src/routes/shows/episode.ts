@@ -2,6 +2,7 @@
  * Episode route handlers.
  *
  * Handles fetching episode details and season episodes list.
+ * Uses actor upsert to return internal actor IDs instead of TMDB IDs.
  */
 
 import type { Request, Response } from "express"
@@ -13,6 +14,7 @@ import {
   getEpisodeCredits,
   batchGetPersonDetails,
 } from "../../lib/tmdb.js"
+import { batchUpsertActors, type ActorInput } from "../../lib/db.js"
 import { getActorsIfAvailable } from "../../lib/db-helpers.js"
 import { calculateAge } from "../../lib/date-utils.js"
 import { calculateMovieMortality, type ActorForMortality } from "../../lib/mortality-stats.js"
@@ -75,6 +77,26 @@ export async function getEpisode(req: Request, res: Response) {
     const personIds = allCast.map((c) => c.id)
     const personDetails = await batchGetPersonDetails(personIds)
 
+    // Upsert actors to get TMDB ID → internal ID mapping
+    const actorInputs: ActorInput[] = allCast.map((castMember) => {
+      const person = personDetails.get(castMember.id)
+      return {
+        tmdb_id: castMember.id,
+        name: castMember.name,
+        birthday: person?.birthday ?? null,
+        deathday: person?.deathday ?? null,
+        profile_path: person?.profile_path ?? null,
+        known_for_department: person?.known_for_department ?? null,
+      }
+    })
+
+    let tmdbToActorId = new Map<number, number>()
+    try {
+      tmdbToActorId = await batchUpsertActors(actorInputs)
+    } catch (error) {
+      console.error("Actor upsert error in episode route:", error)
+    }
+
     // Check database for existing death info
     const dbRecords = await getActorsIfAvailable(personIds)
 
@@ -85,10 +107,11 @@ export async function getEpisode(req: Request, res: Response) {
     for (const castMember of allCast) {
       const person = personDetails.get(castMember.id)
       const dbRecord = dbRecords.get(castMember.id)
+      const actorId = tmdbToActorId.get(castMember.id) ?? castMember.id
 
       if (!person) {
         living.push({
-          id: castMember.id,
+          id: actorId,
           name: castMember.name,
           character: castMember.character || "Unknown",
           profile_path: castMember.profile_path,
@@ -104,7 +127,7 @@ export async function getEpisode(req: Request, res: Response) {
         const tmdbUrl = `https://www.themoviedb.org/person/${person.id}`
 
         deceased.push({
-          id: person.id,
+          id: actorId,
           name: person.name,
           character: castMember.character || "Unknown",
           profile_path: person.profile_path,
@@ -123,7 +146,7 @@ export async function getEpisode(req: Request, res: Response) {
         })
       } else {
         living.push({
-          id: person.id,
+          id: actorId,
           name: person.name,
           character: castMember.character || "Unknown",
           profile_path: person.profile_path,

@@ -5,7 +5,7 @@
  */
 
 import { getPool } from "./pool.js"
-import type { MovieRecord } from "./types.js"
+import type { MovieRecord, MovieCastRow } from "./types.js"
 
 // ============================================================================
 // Movie CRUD functions
@@ -108,4 +108,34 @@ export async function upsertMovie(movie: MovieRecord): Promise<void> {
       movie.trakt_updated_at || null,
     ]
   )
+}
+
+// ============================================================================
+// Movie cast query (DB-first pattern)
+// ============================================================================
+
+const MOVIE_CAST_LIMIT = 30
+
+/**
+ * Get movie cast from DB with internal actor IDs and death info.
+ * Returns cast from actor_movie_appearances JOIN actors in a single query.
+ */
+export async function getMovieWithCast(movieTmdbId: number): Promise<MovieCastRow[]> {
+  const db = getPool()
+  const result = await db.query<MovieCastRow>(
+    `SELECT
+       a.id as actor_id, a.tmdb_id as actor_tmdb_id,
+       a.name, a.birthday, a.deathday, a.profile_path,
+       a.cause_of_death, a.cause_of_death_source,
+       a.cause_of_death_details, a.cause_of_death_details_source,
+       a.wikipedia_url, a.age_at_death, a.years_lost, a.expected_lifespan,
+       ama.character_name, ama.billing_order, ama.appearance_type
+     FROM actor_movie_appearances ama
+     JOIN actors a ON ama.actor_id = a.id
+     WHERE ama.movie_tmdb_id = $1
+     ORDER BY ama.billing_order ASC NULLS LAST
+     LIMIT $2`,
+    [movieTmdbId, MOVIE_CAST_LIMIT]
+  )
+  return result.rows
 }

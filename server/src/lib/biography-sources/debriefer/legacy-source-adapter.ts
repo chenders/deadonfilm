@@ -9,8 +9,8 @@
  * which retains its own PostgreSQL-backed caching, rate limiting, and timeout handling.
  */
 
-import { BaseResearchSource, type ReliabilityTier as DebrieferTier } from "debriefer"
-import type { ResearchSubject, RawFinding } from "debriefer"
+import { BaseResearchSource, type ReliabilityTier as DebrieferTier } from "@debriefer/core"
+import type { ResearchSubject, RawFinding } from "@debriefer/core"
 import type { BaseBiographySource } from "../base-source.js"
 import type { ActorForBiography } from "../types.js"
 

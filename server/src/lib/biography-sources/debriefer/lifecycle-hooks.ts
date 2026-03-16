@@ -14,7 +14,7 @@
  * (e.g., in test environments or when NEW_RELIC_LICENSE_KEY is not set).
  */
 
-import type { LifecycleHooks, ResearchSubject, ScoredFinding } from "debriefer"
+import type { LifecycleHooks, ResearchSubject, ScoredFinding } from "@debriefer/core"
 import { createRequire } from "module"
 import { logger } from "../../logger.js"
 import { cacheSourceFinding, cacheSourceFailure, resolveSourceType } from "./source-cache-bridge.js"

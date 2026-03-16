@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import type { ResearchSubject } from "debriefer"
+import type { ResearchSubject } from "@debriefer/core"
 
 // Mock the wikipedia-date-extractor module
 vi.mock("../../wikipedia-date-extractor.js", () => ({

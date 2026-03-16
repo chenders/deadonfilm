@@ -4,20 +4,18 @@ import { getCauseOfDeath, type DeathInfoSource } from "../lib/wikidata.js"
 import newrelic from "newrelic"
 import {
   batchUpsertActors,
-  updateDeathInfo,
+  updateDeathInfoByActorId,
   upsertMovie,
   batchUpsertActorMovieAppearances,
   getMovie as getMovieFromDb,
+  getMovieWithCast,
   type ActorInput,
   type ActorMovieAppearanceRecord,
+  type MovieCastRow,
 } from "../lib/db.js"
-import { getActorsIfAvailable, saveDeceasedToDb } from "../lib/db-helpers.js"
+import { getActorsByInternalIds, getActorsIfAvailable } from "../lib/db-helpers.js"
 import { calculateAge } from "../lib/date-utils.js"
-import {
-  calculateMovieMortality,
-  calculateYearsLost,
-  type ActorForMortality,
-} from "../lib/mortality-stats.js"
+import { calculateMovieMortality, type ActorForMortality } from "../lib/mortality-stats.js"
 import { buildMovieRecord, buildActorMovieAppearanceRecord } from "../lib/movie-cache.js"
 
 interface DeceasedActor {
@@ -87,104 +85,111 @@ export async function getMovie(req: Request, res: Response) {
   try {
     const startTime = Date.now()
 
-    // Fetch movie details, credits, and database record in parallel
-    const [movie, credits, dbMovie] = await Promise.all([
+    // Fetch movie details from TMDB (for overview/runtime not stored in DB),
+    // and try DB for cast + movie record, all in parallel
+    const [movie, dbMovie, dbCast] = await Promise.all([
       getMovieDetails(movieId),
-      getMovieCredits(movieId),
-      getMovieFromDb(movieId).catch(() => null), // Gracefully handle if DB unavailable
+      getMovieFromDb(movieId).catch(() => null),
+      getMovieWithCast(movieId).catch(() => []),
     ])
 
-    // Limit to top billed cast members
-    const mainCast = credits.cast.slice(0, CAST_LIMIT)
-
-    // Batch fetch person details
-    const personIds = mainCast.map((c) => c.id)
-    const personDetails = await batchGetPersonDetails(personIds)
-
-    // Check database for existing death info
-    const dbRecords = await getActorsIfAvailable(personIds)
-
-    // Separate deceased and living
     const deceased: DeceasedActor[] = []
     const living: LivingActor[] = []
-    const newDeceasedForDb: ActorInput[] = []
+    // TMDB-specific data for background caching (only used in TMDB fallback path)
+    let tmdbCacheData: CacheMovieParams | null = null
 
-    for (const castMember of mainCast) {
-      const person = personDetails.get(castMember.id)
-      const dbRecord = dbRecords.get(castMember.id)
+    if (dbCast.length > 0) {
+      // ── DB-first path: build cast from database (internal actor IDs) ──
+      // All actor data including death info comes from a single SQL JOIN.
+      // No TMDB credits or person detail calls needed.
+      buildCastFromDbRows(dbCast, deceased, living)
+    } else {
+      // ── TMDB fallback path: fetch credits + person details, seed to DB ──
+      const credits = await getMovieCredits(movieId)
+      const mainCast = credits.cast.slice(0, CAST_LIMIT)
+      const personIds = mainCast.map((c) => c.id)
+      const personDetails = await batchGetPersonDetails(personIds)
 
-      if (!person) {
-        living.push({
-          id: castMember.id,
+      // Upsert actors to get TMDB ID → internal ID mapping (await before response)
+      const actorInputs: ActorInput[] = mainCast.map((castMember) => {
+        const person = personDetails.get(castMember.id)
+        return {
+          tmdb_id: castMember.id,
           name: castMember.name,
-          character: castMember.character,
-          profile_path: castMember.profile_path,
-          birthday: null,
-          age: null,
-        })
-        continue
+          birthday: person?.birthday ?? null,
+          deathday: person?.deathday ?? null,
+          profile_path: person?.profile_path ?? null,
+          known_for_department: castMember.known_for_department ?? null,
+        }
+      })
+
+      let tmdbToActorId = new Map<number, number>()
+      try {
+        tmdbToActorId = await batchUpsertActors(actorInputs)
+      } catch (error) {
+        console.error("Actor upsert error in TMDB fallback:", error)
       }
 
-      if (person.deathday) {
-        // Generate TMDB profile URL (always available since we have the person ID)
-        const tmdbUrl = `https://www.themoviedb.org/person/${person.id}`
+      // Check database for existing death info
+      const dbRecords = await getActorsIfAvailable(personIds)
 
-        // Use database record if available, otherwise use TMDB data
-        // Note: ageAtDeath and yearsLost will be updated by mortality calculation if not in DB
-        deceased.push({
-          id: person.id,
-          name: person.name,
-          character: castMember.character,
-          profile_path: person.profile_path,
-          birthday: person.birthday,
-          deathday: person.deathday,
-          causeOfDeath: dbRecord?.cause_of_death || null,
-          causeOfDeathSource: dbRecord?.cause_of_death_source || null,
-          causeOfDeathDetails: dbRecord?.cause_of_death_details || null,
-          causeOfDeathDetailsSource: dbRecord?.cause_of_death_details_source || null,
-          wikipediaUrl: dbRecord?.wikipedia_url || null,
-          tmdbUrl,
-          // Use database values if available, otherwise will be calculated later
-          ageAtDeath: dbRecord?.age_at_death ?? null,
-          yearsLost: dbRecord?.years_lost ?? null,
-        })
+      for (const castMember of mainCast) {
+        const person = personDetails.get(castMember.id)
+        const dbRecord = dbRecords.get(castMember.id)
+        const actorId = tmdbToActorId.get(castMember.id) ?? castMember.id
 
-        // Track new deceased persons to save to database
-        if (!dbRecord) {
-          // Calculate mortality stats for new deceased person
-          const yearsLostResult = await calculateYearsLost(person.birthday, person.deathday)
+        if (!person) {
+          living.push({
+            id: actorId,
+            name: castMember.name,
+            character: castMember.character,
+            profile_path: castMember.profile_path,
+            birthday: null,
+            age: null,
+          })
+          continue
+        }
 
-          newDeceasedForDb.push({
-            tmdb_id: person.id,
+        if (person.deathday) {
+          const tmdbUrl = `https://www.themoviedb.org/person/${person.id}`
+          deceased.push({
+            id: actorId,
             name: person.name,
+            character: castMember.character,
+            profile_path: person.profile_path,
             birthday: person.birthday,
             deathday: person.deathday,
-            cause_of_death: null,
-            cause_of_death_source: null,
-            cause_of_death_details: null,
-            cause_of_death_details_source: null,
-            wikipedia_url: null,
+            causeOfDeath: dbRecord?.cause_of_death || null,
+            causeOfDeathSource: dbRecord?.cause_of_death_source || null,
+            causeOfDeathDetails: dbRecord?.cause_of_death_details || null,
+            causeOfDeathDetailsSource: dbRecord?.cause_of_death_details_source || null,
+            wikipediaUrl: dbRecord?.wikipedia_url || null,
+            tmdbUrl,
+            ageAtDeath: dbRecord?.age_at_death ?? null,
+            yearsLost: dbRecord?.years_lost ?? null,
+          })
+        } else {
+          living.push({
+            id: actorId,
+            name: person.name,
+            character: castMember.character,
             profile_path: person.profile_path,
-            age_at_death: yearsLostResult?.ageAtDeath ?? null,
-            expected_lifespan: yearsLostResult?.expectedLifespan ?? null,
-            years_lost: yearsLostResult?.yearsLost ?? null,
+            birthday: person.birthday,
+            age: calculateAge(person.birthday),
           })
         }
-      } else {
-        living.push({
-          id: person.id,
-          name: person.name,
-          character: castMember.character,
-          profile_path: person.profile_path,
-          birthday: person.birthday,
-          age: calculateAge(person.birthday),
-        })
       }
-    }
 
-    // Save new deceased persons to database in background
-    if (newDeceasedForDb.length > 0) {
-      saveDeceasedToDb(newDeceasedForDb)
+      // Prepare caching data (will be fired after mortality stats are calculated)
+      tmdbCacheData = {
+        movie,
+        deceased,
+        living,
+        expectedDeaths: 0,
+        mortalitySurpriseScore: 0,
+        personDetails,
+        mainCast,
+      }
     }
 
     // Sort deceased by death date (most recent first)
@@ -204,7 +209,6 @@ export async function getMovie(req: Request, res: Response) {
     const releaseYear = movie.release_date ? parseInt(movie.release_date.split("-")[0]) : null
 
     if (releaseYear && totalCast > 0) {
-      // Prepare actor data for mortality calculation
       const allActors: ActorForMortality[] = [
         ...deceased.map((d) => ({
           tmdbId: d.id,
@@ -230,7 +234,6 @@ export async function getMovie(req: Request, res: Response) {
           if (actorResult.isDeceased) {
             const deceasedActor = deceased.find((d) => d.id === actorResult.tmdbId)
             if (deceasedActor) {
-              // Only update if not already populated from database
               if (deceasedActor.ageAtDeath === null) {
                 deceasedActor.ageAtDeath = actorResult.ageAtDeath
               }
@@ -242,7 +245,6 @@ export async function getMovie(req: Request, res: Response) {
         }
       } catch (error) {
         console.error("Error calculating mortality stats:", error)
-        // Continue without mortality stats if calculation fails
       }
     }
 
@@ -289,17 +291,12 @@ export async function getMovie(req: Request, res: Response) {
       response.enrichmentPending = true
     }
 
-    // Cache movie and actor appearances in background (on-demand seeding)
-    // This populates the movies and actor_movie_appearances tables for mortality stats
-    cacheMovieInBackground({
-      movie,
-      deceased,
-      living,
-      expectedDeaths,
-      mortalitySurpriseScore,
-      personDetails,
-      mainCast,
-    })
+    // Cache movie and actor appearances in background (TMDB fallback path only)
+    if (tmdbCacheData) {
+      tmdbCacheData.expectedDeaths = expectedDeaths
+      tmdbCacheData.mortalitySurpriseScore = mortalitySurpriseScore
+      cacheMovieInBackground(tmdbCacheData)
+    }
 
     newrelic.recordCustomEvent("MovieView", {
       tmdbId: movie.id,
@@ -309,6 +306,7 @@ export async function getMovie(req: Request, res: Response) {
       livingCount,
       expectedDeaths,
       curseScore: mortalitySurpriseScore,
+      dbFirst: dbCast.length > 0,
       responseTimeMs: Date.now() - startTime,
     })
 
@@ -319,10 +317,53 @@ export async function getMovie(req: Request, res: Response) {
   }
 }
 
+// ── DB-first path: build cast from database rows ──
+
+function buildCastFromDbRows(
+  dbCast: MovieCastRow[],
+  deceased: DeceasedActor[],
+  living: LivingActor[]
+): void {
+  for (const row of dbCast) {
+    const tmdbUrl = row.actor_tmdb_id
+      ? `https://www.themoviedb.org/person/${row.actor_tmdb_id}`
+      : ""
+
+    if (row.deathday) {
+      deceased.push({
+        id: row.actor_id,
+        name: row.name,
+        character: row.character_name || "Unknown",
+        profile_path: row.profile_path,
+        birthday: row.birthday,
+        deathday: row.deathday,
+        causeOfDeath: row.cause_of_death,
+        causeOfDeathSource: row.cause_of_death_source,
+        causeOfDeathDetails: row.cause_of_death_details,
+        causeOfDeathDetailsSource: row.cause_of_death_details_source,
+        wikipediaUrl: row.wikipedia_url,
+        tmdbUrl,
+        ageAtDeath: row.age_at_death,
+        yearsLost: row.years_lost,
+      })
+    } else {
+      living.push({
+        id: row.actor_id,
+        name: row.name,
+        character: row.character_name || "Unknown",
+        profile_path: row.profile_path,
+        birthday: row.birthday,
+        age: calculateAge(row.birthday),
+      })
+    }
+  }
+}
+
 // Track movies with pending enrichment
 const pendingEnrichment = new Map<number, Promise<void>>()
 
-// Helper to cache movie and actor appearances in background (on-demand seeding)
+// ── Background caching (TMDB fallback only) ──
+
 interface CacheMovieParams {
   movie: {
     id: number
@@ -408,9 +449,11 @@ async function cacheMovieInBackground(params: CacheMovieParams): Promise<void> {
   }
 }
 
-// Helper to update death info in database
+// ── Wikidata enrichment helpers ──
+
+/** Store death info in database using internal actor ID */
 function updateDeathInfoInDb(
-  tmdbId: number,
+  actorId: number,
   causeOfDeath: string | null,
   causeOfDeathSource: DeathInfoSource,
   causeOfDeathDetails: string | null,
@@ -419,8 +462,8 @@ function updateDeathInfoInDb(
 ): void {
   if (!process.env.DATABASE_URL) return
   if (!causeOfDeath && !wikipediaUrl) return
-  updateDeathInfo(
-    tmdbId,
+  updateDeathInfoByActorId(
+    actorId,
     causeOfDeath,
     causeOfDeathSource,
     causeOfDeathDetails,
@@ -471,7 +514,7 @@ async function enrichWithWikidata(_movieId: number, deceased: DeceasedActor[]): 
         actor.wikipediaUrl = wikipediaUrl
       }
 
-      // Save to database for permanent storage
+      // Save to database using internal actor ID
       updateDeathInfoInDb(
         actor.id,
         causeOfDeath,
@@ -484,7 +527,12 @@ async function enrichWithWikidata(_movieId: number, deceased: DeceasedActor[]): 
   }
 }
 
-// Endpoint to poll for enrichment updates
+// ── Death info polling endpoint ──
+
+/**
+ * Endpoint to poll for enrichment updates.
+ * Accepts internal actor IDs in the personIds query parameter.
+ */
 export async function getMovieDeathInfo(req: Request, res: Response) {
   const movieId = parseInt(req.params.id, 10)
   const personIdsParam = req.query.personIds as string
@@ -497,7 +545,7 @@ export async function getMovieDeathInfo(req: Request, res: Response) {
     return res.status(400).json({ error: { message: "personIds query parameter required" } })
   }
 
-  const personIds = personIdsParam
+  const actorIds = personIdsParam
     .split(",")
     .map((id) => parseInt(id, 10))
     .filter((id) => !isNaN(id))
@@ -505,18 +553,18 @@ export async function getMovieDeathInfo(req: Request, res: Response) {
   // Check if enrichment is still pending
   const isPending = pendingEnrichment.has(movieId)
 
-  // Query database directly for the latest death info
-  const dbRecords = await getActorsIfAvailable(personIds)
+  // Query database by internal actor IDs (frontend now sends internal IDs)
+  const dbRecords = await getActorsByInternalIds(actorIds)
 
-  // Return death info for requested actors
+  // Return death info keyed by internal actor ID
   const deathInfo: Record<
     number,
     { causeOfDeath: string | null; causeOfDeathDetails: string | null; wikipediaUrl: string | null }
   > = {}
-  for (const personId of personIds) {
-    const record = dbRecords.get(personId)
+  for (const actorId of actorIds) {
+    const record = dbRecords.get(actorId)
     if (record) {
-      deathInfo[personId] = {
+      deathInfo[actorId] = {
         causeOfDeath: record.cause_of_death,
         causeOfDeathDetails: record.cause_of_death_details,
         wikipediaUrl: record.wikipedia_url,

@@ -39,6 +39,7 @@ export { GoogleNewsRSSSource } from "./sources/google-news-rss.js"
 export { BraveSearchSource } from "./sources/brave.js"
 
 // AI providers
+export { ClaudeHaikuDeathSource } from "./ai-providers/claude-haiku.js"
 export { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
 export { PerplexitySource } from "./ai-providers/perplexity.js"
 export { DeepSeekSource } from "./ai-providers/deepseek.js"
@@ -150,15 +151,6 @@ export {
   SOURCE_NAMES,
   type ResolvedUrl,
 } from "./url-resolver.js"
-
-// Wikipedia section selector (AI-assisted section selection)
-export {
-  selectRelevantSections,
-  isAISectionSelectionAvailable,
-  createSectionSelectionSourceEntry,
-  type WikipediaSection,
-  type SectionSelectionResult,
-} from "./wikipedia-section-selector.js"
 
 // Wikipedia date extractor (AI-assisted date validation)
 export {
