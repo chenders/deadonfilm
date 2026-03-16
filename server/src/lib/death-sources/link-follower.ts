@@ -24,7 +24,7 @@ import { extractArticleContent } from "../shared/readability-extract.js"
 import { DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "./base-source.js"
 import { shouldUseBrowserFetch, isBlockedResponse, browserFetchPage } from "./browser-fetch.js"
 import { shouldUseArchiveFallback, searchArchiveIsWithBrowser } from "./archive-fallback.js"
-import type { CaptchaSolverConfig } from "./browser-auth/index.js"
+import { getCaptchaSolverConfig } from "../shared/captcha-config.js"
 import {
   getBrowserAuthConfig,
   WashingtonPostLoginHandler,
@@ -537,28 +537,26 @@ async function fetchPage(url: string, browserConfig?: BrowserFetchConfig): Promi
 
   // For other paywalled domains (like NYTimes), try archive.is
   if (shouldUseArchiveFallback(url)) {
-    consoleLog(`  Trying archive.is for paywalled URL: ${url}`)
-    const authConfig = getBrowserAuthConfig()
-    const captchaSolver: CaptchaSolverConfig = authConfig.captchaSolver ?? {
-      provider: (process.env.CAPTCHA_SOLVER_PROVIDER as "2captcha" | "capsolver") || "2captcha",
-      apiKey: process.env.TWOCAPTCHA_API_KEY || process.env.CAPSOLVER_API_KEY || "",
-    }
-    const archiveResult = await searchArchiveIsWithBrowser(url, captchaSolver)
+    const captchaSolver = getBrowserAuthConfig().captchaSolver ?? getCaptchaSolverConfig()
+    if (captchaSolver) {
+      consoleLog(`  Trying archive.is for paywalled URL: ${url}`)
+      const archiveResult = await searchArchiveIsWithBrowser(url, captchaSolver)
 
-    if (archiveResult.success && archiveResult.content.length > 500) {
-      consoleLog(`  Archive.is success: ${archiveResult.contentLength} chars`)
-      return {
-        url,
-        title: archiveResult.title,
-        content: archiveResult.content,
-        contentLength: archiveResult.contentLength,
-        fetchTimeMs: Date.now() - startTime,
-        fetchMethod: "archive.is",
-        archiveUrl: archiveResult.archiveUrl || undefined,
+      if (archiveResult.success && archiveResult.content.length > 500) {
+        consoleLog(`  Archive.is success: ${archiveResult.contentLength} chars`)
+        return {
+          url,
+          title: archiveResult.title,
+          content: archiveResult.content,
+          contentLength: archiveResult.contentLength,
+          fetchTimeMs: Date.now() - startTime,
+          fetchMethod: "archive.is",
+          archiveUrl: archiveResult.archiveUrl || undefined,
+        }
+      } else {
+        consoleLog(`  Archive.is failed: ${archiveResult.error || "No content"}`)
+        // Fall through to other methods
       }
-    } else {
-      consoleLog(`  Archive.is failed: ${archiveResult.error || "No content"}`)
-      // Fall through to other methods
     }
   }
 

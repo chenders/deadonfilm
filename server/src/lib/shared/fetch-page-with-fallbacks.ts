@@ -10,21 +10,14 @@ import {
   fetchPageWithFallbacks as browserFetch,
   type BrowserFetchPageOptions,
   type BrowserFetchPageResult,
-  type CaptchaSolverConfig,
 } from "@debriefer/browser"
+import { getCaptchaSolverConfig } from "./captcha-config.js"
 
 /** @deprecated Use BrowserFetchPageOptions from @debriefer/browser directly. */
 export type PageFetchOptions = BrowserFetchPageOptions
 
 /** @deprecated Use BrowserFetchPageResult from @debriefer/browser directly. */
 export type PageFetchResult = BrowserFetchPageResult
-
-function getCaptchaSolverConfig(): CaptchaSolverConfig | undefined {
-  const provider = process.env.CAPTCHA_SOLVER_PROVIDER as "2captcha" | "capsolver" | undefined
-  const apiKey = process.env.TWOCAPTCHA_API_KEY || process.env.CAPSOLVER_API_KEY
-  if (!provider || !apiKey) return undefined
-  return { provider, apiKey }
-}
 
 /**
  * Fetch a page with automatic archive fallbacks.

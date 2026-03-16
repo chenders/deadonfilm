@@ -75,6 +75,7 @@ const log = logger.child({ name: "bio-debriefer-adapter" })
 
 // Page fetching infrastructure for link following
 import { createBrowserFetchPage } from "@debriefer/browser"
+import { getCaptchaSolverConfig } from "../../shared/captcha-config.js"
 
 // AI defaults for section filtering and person validation
 import { createAIDefaults } from "@debriefer/ai"
@@ -263,12 +264,7 @@ function buildBioPhases(config: BioDebrieferAdapterConfig): SourcePhaseGroup<Res
   // fetchPage uses @debriefer/browser's full fallback chain:
   // direct fetch → archive.org → archive.is → browser + CAPTCHA solver
   const fetchPage = createBrowserFetchPage({
-    captchaSolver: process.env.CAPTCHA_SOLVER_PROVIDER
-      ? {
-          provider: process.env.CAPTCHA_SOLVER_PROVIDER as "2captcha" | "capsolver",
-          apiKey: process.env.TWOCAPTCHA_API_KEY || process.env.CAPSOLVER_API_KEY || "",
-        }
-      : undefined,
+    captchaSolver: getCaptchaSolverConfig(),
   })
   const webSearchConfig = { maxLinksToFollow: 3, fetchPage }
 

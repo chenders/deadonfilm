@@ -63,6 +63,7 @@ import type { RawSourceData, ActorForEnrichment } from "../types.js"
 
 // Page fetching infrastructure for link following
 import { createBrowserFetchPage } from "@debriefer/browser"
+import { getCaptchaSolverConfig } from "../../shared/captcha-config.js"
 
 // Deadonfilm-only source classes (no debriefer-sources equivalents)
 import { DuckDuckGoSource } from "../sources/duckduckgo.js"
@@ -228,12 +229,7 @@ function buildPhases(config: DebrieferAdapterConfig): SourcePhaseGroup<ResearchS
     // fetchPage uses @debriefer/browser's full fallback chain:
     // direct fetch → archive.org → archive.is → browser + CAPTCHA solver
     const fetchPage = createBrowserFetchPage({
-      captchaSolver: process.env.CAPTCHA_SOLVER_PROVIDER
-        ? {
-            provider: process.env.CAPTCHA_SOLVER_PROVIDER as "2captcha" | "capsolver",
-            apiKey: process.env.TWOCAPTCHA_API_KEY || process.env.CAPSOLVER_API_KEY || "",
-          }
-        : undefined,
+      captchaSolver: getCaptchaSolverConfig(),
     })
     const webSearchConfig = { maxLinksToFollow: 3, fetchPage }
 

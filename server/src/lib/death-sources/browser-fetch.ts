@@ -13,22 +13,38 @@ import {
   fetchPageWithFallbacks,
 } from "@debriefer/browser"
 import type { BrowserFetchConfig, FetchedPage } from "./types.js"
+import { getCaptchaSolverConfig } from "../shared/captcha-config.js"
 
 // ============================================================================
-// Browser singleton
+// Browser singleton with initialization lock
 // ============================================================================
 
 let browserInstance: Browser | null = null
+let browserInitPromise: Promise<Browser> | null = null
 
 async function getBrowser(): Promise<Browser> {
-  if (!browserInstance || !browserInstance.isConnected()) {
-    browserInstance = await chromium.launch({
+  if (browserInstance?.isConnected()) return browserInstance
+
+  // Prevent concurrent launches — share the same initialization promise
+  if (browserInitPromise) return browserInitPromise
+
+  browserInitPromise = chromium
+    .launch({
       headless: process.env.BROWSER_FETCH_HEADLESS !== "false",
       executablePath: process.env.BROWSER_EXECUTABLE_PATH || undefined,
       args: getStealthLaunchArgs(),
     })
-  }
-  return browserInstance
+    .then((browser) => {
+      browserInstance = browser
+      browserInitPromise = null
+      return browser
+    })
+    .catch((error) => {
+      browserInitPromise = null
+      throw error
+    })
+
+  return browserInitPromise
 }
 
 /**
@@ -80,9 +96,20 @@ export function isBrowserFetchEnabled(): boolean {
   return process.env.BROWSER_FETCH_ENABLED !== "false"
 }
 
-/** Check if a URL should use browser-based fetching (domain is commonly blocked). */
-export function shouldUseBrowserFetch(_url: string, _config?: BrowserFetchConfig): boolean {
-  return isBrowserFetchEnabled()
+/**
+ * Check if a URL should use browser-based fetching.
+ * Returns true if browser fetch is enabled AND the URL's domain is in the
+ * config's browserProtectedDomains list.
+ */
+export function shouldUseBrowserFetch(url: string, config?: BrowserFetchConfig): boolean {
+  if (!isBrowserFetchEnabled()) return false
+  if (!config?.browserProtectedDomains?.length) return false
+  try {
+    const hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, "")
+    return config.browserProtectedDomains.some((d) => hostname === d || hostname.endsWith(`.${d}`))
+  } catch {
+    return false
+  }
 }
 
 /** HTTP status codes that indicate blocking. */
@@ -116,7 +143,7 @@ function mapFetchMethod(
 ): FetchedPage["fetchMethod"] {
   if (method === "direct") return "fetch"
   if (method === "archive.is" || method === "archive.is-browser") return "archive.is"
-  if (method === "archive.org") return "fetch" // archive.org content is fetched via HTTP
+  if (method === "archive.org") return "fetch"
   return "browser"
 }
 
@@ -126,7 +153,7 @@ export async function browserFetchPage(
   _config?: BrowserFetchConfig
 ): Promise<FetchedPage> {
   const startTime = Date.now()
-  const result = await fetchPageWithFallbacks(url, { timeoutMs: 15_000 })
+  const result = await fetchPageWithFallbacks(url, { timeoutMs: 15_000 }, getCaptchaSolverConfig())
   return {
     url: result.url,
     title: result.title,
