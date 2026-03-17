@@ -507,13 +507,8 @@ export async function searchTVShows(query: string): Promise<TMDBTVSearchResponse
   for (const page of [page1, page2, page3]) {
     if (page) {
       for (const show of page.results) {
-        // Filter to English-language shows from US
-        // Require explicit US origin - exclude shows with empty/unknown origin
-        if (
-          !seenIds.has(show.id) &&
-          show.original_language === "en" &&
-          show.origin_country.includes("US")
-        ) {
+        // Filter to English-language shows
+        if (!seenIds.has(show.id) && show.original_language === "en") {
           seenIds.add(show.id)
           allResults.push(show)
         }
