@@ -10,6 +10,7 @@ import {
   getMovieChanges,
   getAllChangedPersonIds,
   getAllChangedMovieIds,
+  searchTVShows,
 } from "./tmdb.js"
 
 describe("TMDB Changes API", () => {
@@ -261,6 +262,89 @@ describe("TMDB Changes API", () => {
       expect(result[0]).toBe(1001)
       expect(result[499]).toBe(1500)
     })
+  })
+})
+
+describe("searchTVShows", () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.TMDB_API_TOKEN = "test-token"
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    delete process.env.TMDB_API_TOKEN
+    consoleErrorSpy.mockRestore()
+  })
+
+  const makePage = (
+    shows: Array<{ id: number; original_language: string; origin_country: string[] }>
+  ) => ({
+    page: 1,
+    results: shows.map((s) => ({
+      id: s.id,
+      name: `Show ${s.id}`,
+      overview: "",
+      first_air_date: "2000-01-01",
+      poster_path: null,
+      backdrop_path: null,
+      genre_ids: [],
+      popularity: 50,
+      origin_country: s.origin_country,
+      original_language: s.original_language,
+    })),
+    total_pages: 1,
+    total_results: shows.length,
+  })
+
+  it("includes non-US English-language shows", async () => {
+    const page = makePage([
+      { id: 815, original_language: "en", origin_country: ["GB"] },
+      { id: 1400, original_language: "en", origin_country: ["US"] },
+    ])
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(page) })
+
+    const result = await searchTVShows("test")
+
+    const ids = result.results.map((s) => s.id)
+    expect(ids).toContain(815)
+    expect(ids).toContain(1400)
+  })
+
+  it("excludes non-English shows", async () => {
+    const page = makePage([
+      { id: 1, original_language: "en", origin_country: ["GB"] },
+      { id: 2, original_language: "de", origin_country: ["DE"] },
+      { id: 3, original_language: "ja", origin_country: ["JP"] },
+    ])
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(page) })
+
+    const result = await searchTVShows("test")
+
+    expect(result.results).toHaveLength(1)
+    expect(result.results[0].id).toBe(1)
+  })
+
+  it("deduplicates shows across pages", async () => {
+    const page1 = makePage([
+      { id: 100, original_language: "en", origin_country: ["US"] },
+      { id: 200, original_language: "en", origin_country: ["GB"] },
+    ])
+    const page2 = makePage([
+      { id: 200, original_language: "en", origin_country: ["GB"] },
+      { id: 300, original_language: "en", origin_country: ["AU"] },
+    ])
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(page1) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(page2) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(makePage([])) })
+
+    const result = await searchTVShows("test")
+
+    const ids = result.results.map((s) => s.id)
+    expect(ids).toEqual([100, 200, 300])
   })
 })
 
