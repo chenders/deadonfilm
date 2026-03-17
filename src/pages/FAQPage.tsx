@@ -19,7 +19,7 @@ const FAQ_ITEMS = [
   {
     question: "How do you determine if an actor has died?",
     answer:
-      "We use a multi-source pipeline to verify death information. The primary source is AI-assisted analysis of reliable references, followed by structured data from Wikidata and Wikipedia. Information is cross-referenced across sources for accuracy.",
+      "We use a multi-source research pipeline powered by an open-source engine called Debriefer. It queries 60+ sources across 8 phases — including Wikidata, Wikipedia, major news outlets, entertainment trade press, book archives, and historical newspaper archives — then synthesizes the findings with Claude AI. Sources are scored by reliability and confidence before synthesis.",
   },
   {
     question: "How is 'Years Lost' calculated?",
@@ -39,7 +39,7 @@ const FAQ_ITEMS = [
   {
     question: "How do you determine cause of death?",
     answer:
-      "Cause of death information follows a priority system: (1) AI-assisted analysis of authoritative sources, (2) Wikidata's structured cause-of-death property, and (3) Wikipedia article text as a last resort. Each source is evaluated for confidence level.",
+      "Cause of death is determined by the Debriefer research pipeline, which gathers evidence from 60+ sources including Wikidata, Wikipedia, news archives, obituary sites, books, and historical newspapers. Each source is scored by reliability (based on Wikipedia's Reliable Sources list) and content confidence. Claude AI then synthesizes all findings into a structured record with cause, manner, circumstances, and per-field source attributions.",
   },
   {
     question: "How often is the data updated?",
