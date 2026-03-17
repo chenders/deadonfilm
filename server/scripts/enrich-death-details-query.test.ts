@@ -122,7 +122,6 @@ describe("enrich-death-details --us-actors-only query", () => {
     // Actor 1001 (US Show Actor) -> US show only
     await insertShowActorAppearance(db, {
       actor_id: actorIdMap.get(1001)!,
-      actor_tmdb_id: 1001,
       show_tmdb_id: 2001, // Breaking Bad (US)
     })
 
@@ -145,14 +144,12 @@ describe("enrich-death-details --us-actors-only query", () => {
     })
     await insertShowActorAppearance(db, {
       actor_id: actorIdMap.get(1004)!,
-      actor_tmdb_id: 1004,
       show_tmdb_id: 2003, // Dark (DE)
     })
 
     // Actor 1005 (Mixed Content Actor) -> US show + foreign movie
     await insertShowActorAppearance(db, {
       actor_id: actorIdMap.get(1005)!,
-      actor_tmdb_id: 1005,
       show_tmdb_id: 2001, // Breaking Bad (US)
     })
     await insertMovieActorAppearance(db, {
