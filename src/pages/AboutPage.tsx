@@ -83,8 +83,8 @@ export default function AboutPage() {
                   and web search, then synthesizing the results with Claude AI.
                 </li>
                 <li>
-                  <strong>Actor biographies</strong> are enriched from 37 sources, focusing on
-                  personal life rather than career achievements.
+                  <strong>Actor biographies</strong> are enriched from up to 37 configured sources,
+                  focusing on personal life rather than career achievements.
                 </li>
                 <li>
                   <strong>Mortality statistics</strong> are calculated using U.S. Social Security

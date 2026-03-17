@@ -12,7 +12,7 @@ export default function DataSourcesPage() {
         <title>Data Sources - Dead on Film</title>
         <meta
           name="description"
-          content="Learn where Dead on Film gets its data, including TMDB for movie metadata, AI-assisted death verification, Wikidata, Wikipedia, and SSA actuarial tables."
+          content="Learn where Dead on Film gets its data, including TMDB for movie metadata, the Debriefer multi-source research engine for death and biography enrichment, and SSA actuarial tables for mortality statistics."
         />
         <meta property="og:title" content="Data Sources - Dead on Film" />
         <meta
@@ -154,10 +154,11 @@ export default function DataSourcesPage() {
             <div className="space-y-3 text-text-primary">
               <p className="leading-relaxed">
                 Actor biographies focus on personal life rather than career achievements. The same
-                Debriefer pipeline queries 37 sources across structured data, reference sites,
-                books, web search, news, and historical archives. Claude synthesizes the results
-                into a narrative covering childhood, family, education, and personal struggles
-                &mdash; with career mentioned only in passing, like describing anyone&apos;s job.
+                Debriefer pipeline queries up to 37 configured sources across structured data,
+                reference sites, books, web search, news, and historical archives. Claude
+                synthesizes the results into a narrative covering childhood, family, education, and
+                personal struggles &mdash; with career mentioned only in passing, like describing
+                anyone&apos;s job.
               </p>
             </div>
           </section>
