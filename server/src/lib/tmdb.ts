@@ -486,7 +486,7 @@ async function searchTVShowsPage(query: string, page: number): Promise<TMDBTVSea
 
 /**
  * Search for TV shows. Fetches first 3 pages for better coverage.
- * Filters to English-language US shows.
+ * Filters to English-language shows.
  */
 export async function searchTVShows(query: string): Promise<TMDBTVSearchResponse> {
   const [page1, page2, page3] = await Promise.all([
