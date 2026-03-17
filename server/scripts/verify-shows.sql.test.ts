@@ -62,9 +62,9 @@ describe("verify-shows SQL queries", () => {
         COUNT(DISTINCT saa.actor_id)::int as actual_count
       FROM shows s
       LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
-      GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
+      GROUP BY s.tmdb_id, s.name, s.cast_count, s.tmdb_popularity
       HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_id)
-      ORDER BY s.popularity DESC NULLS LAST
+      ORDER BY s.tmdb_popularity DESC NULLS LAST
     `
 
     it("executes without SQL errors", async () => {
@@ -141,9 +141,9 @@ describe("verify-shows SQL queries", () => {
       FROM shows s
       LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
       LEFT JOIN actors a ON saa.actor_id = a.id
-      GROUP BY s.tmdb_id, s.name, s.deceased_count, s.popularity
+      GROUP BY s.tmdb_id, s.name, s.deceased_count, s.tmdb_popularity
       HAVING COALESCE(s.deceased_count, 0) != COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_id END)
-      ORDER BY s.popularity DESC NULLS LAST
+      ORDER BY s.tmdb_popularity DESC NULLS LAST
     `
 
     it("executes without SQL errors", async () => {
@@ -208,7 +208,7 @@ describe("verify-shows SQL queries", () => {
       SELECT s.tmdb_id, s.name
       FROM shows s
       WHERE (s.mortality_surprise_score IS NULL OR s.expected_deaths IS NULL)
-      ORDER BY s.popularity DESC NULLS LAST
+      ORDER BY s.tmdb_popularity DESC NULLS LAST
     `
 
     it("executes without SQL errors", async () => {
@@ -261,10 +261,10 @@ describe("verify-shows SQL queries", () => {
         COUNT(DISTINCT saa.actor_id)::int as actual_count
       FROM shows s
       LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
-      WHERE s.popularity >= $1 AND s.popularity < $2
-      GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
+      WHERE s.tmdb_popularity >= $1 AND s.tmdb_popularity < $2
+      GROUP BY s.tmdb_id, s.name, s.cast_count, s.tmdb_popularity
       HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_id)
-      ORDER BY s.popularity DESC NULLS LAST
+      ORDER BY s.tmdb_popularity DESC NULLS LAST
     `
 
     it("filters by popularity range", async () => {
@@ -288,9 +288,9 @@ describe("verify-shows SQL queries", () => {
         COUNT(DISTINCT saa.actor_id)::int as actual_count
       FROM shows s
       LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
-      GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
+      GROUP BY s.tmdb_id, s.name, s.cast_count, s.tmdb_popularity
       HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_id)
-      ORDER BY s.popularity DESC NULLS LAST
+      ORDER BY s.tmdb_popularity DESC NULLS LAST
       LIMIT $1
     `
 
@@ -317,7 +317,7 @@ describe("verify-shows SQL queries", () => {
 describe("SQL syntax regression tests", () => {
   describe("GROUP BY must include all ORDER BY columns", () => {
     it("rejects query with ORDER BY column not in GROUP BY", async () => {
-      // This is the BROKEN query that was missing s.popularity in GROUP BY
+      // This is the BROKEN query that was missing s.tmdb_popularity in GROUP BY
       const brokenQuery = `
         SELECT
           s.tmdb_id,
@@ -328,7 +328,7 @@ describe("SQL syntax regression tests", () => {
         LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
         GROUP BY s.tmdb_id, s.name, s.cast_count
         HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_id)
-        ORDER BY s.popularity DESC NULLS LAST
+        ORDER BY s.tmdb_popularity DESC NULLS LAST
       `
 
       await expect(db.query<CastCountRow>(brokenQuery)).rejects.toThrow(
@@ -337,7 +337,7 @@ describe("SQL syntax regression tests", () => {
     })
 
     it("accepts query with ORDER BY column in GROUP BY", async () => {
-      // This is the FIXED query with s.popularity in GROUP BY
+      // This is the FIXED query with s.tmdb_popularity in GROUP BY
       const fixedQuery = `
         SELECT
           s.tmdb_id,
@@ -346,9 +346,9 @@ describe("SQL syntax regression tests", () => {
           COUNT(DISTINCT saa.actor_id)::int as actual_count
         FROM shows s
         LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
-        GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
+        GROUP BY s.tmdb_id, s.name, s.cast_count, s.tmdb_popularity
         HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_id)
-        ORDER BY s.popularity DESC NULLS LAST
+        ORDER BY s.tmdb_popularity DESC NULLS LAST
       `
 
       // Should not throw

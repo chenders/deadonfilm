@@ -95,10 +95,10 @@ export async function findCastCountMismatches(
   if (phase) {
     const threshold = PHASE_THRESHOLDS[phase]
     if (threshold.max === Infinity) {
-      whereClause = "WHERE s.popularity >= $1"
+      whereClause = "WHERE s.tmdb_popularity >= $1"
       params.push(threshold.min)
     } else {
-      whereClause = "WHERE s.popularity >= $1 AND s.popularity < $2"
+      whereClause = "WHERE s.tmdb_popularity >= $1 AND s.tmdb_popularity < $2"
       params.push(threshold.min, threshold.max)
     }
   }
@@ -120,9 +120,9 @@ export async function findCastCountMismatches(
     FROM shows s
     LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
     ${whereClause}
-    GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
+    GROUP BY s.tmdb_id, s.name, s.cast_count, s.tmdb_popularity
     HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_id)
-    ORDER BY s.popularity DESC NULLS LAST
+    ORDER BY s.tmdb_popularity DESC NULLS LAST
     ${limitClause}
   `,
     params
@@ -146,10 +146,10 @@ export async function findDeceasedCountMismatches(
   if (phase) {
     const threshold = PHASE_THRESHOLDS[phase]
     if (threshold.max === Infinity) {
-      whereClause = "WHERE s.popularity >= $1"
+      whereClause = "WHERE s.tmdb_popularity >= $1"
       params.push(threshold.min)
     } else {
-      whereClause = "WHERE s.popularity >= $1 AND s.popularity < $2"
+      whereClause = "WHERE s.tmdb_popularity >= $1 AND s.tmdb_popularity < $2"
       params.push(threshold.min, threshold.max)
     }
   }
@@ -172,9 +172,9 @@ export async function findDeceasedCountMismatches(
     LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
     LEFT JOIN actors a ON saa.actor_id = a.id
     ${whereClause}
-    GROUP BY s.tmdb_id, s.name, s.deceased_count, s.popularity
+    GROUP BY s.tmdb_id, s.name, s.deceased_count, s.tmdb_popularity
     HAVING COALESCE(s.deceased_count, 0) != COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_id END)
-    ORDER BY s.popularity DESC NULLS LAST
+    ORDER BY s.tmdb_popularity DESC NULLS LAST
     ${limitClause}
   `,
     params
@@ -198,10 +198,10 @@ export async function findMissingMortality(
   if (phase) {
     const threshold = PHASE_THRESHOLDS[phase]
     if (threshold.max === Infinity) {
-      whereClause += " AND s.popularity >= $1"
+      whereClause += " AND s.tmdb_popularity >= $1"
       params.push(threshold.min)
     } else {
-      whereClause += " AND s.popularity >= $1 AND s.popularity < $2"
+      whereClause += " AND s.tmdb_popularity >= $1 AND s.tmdb_popularity < $2"
       params.push(threshold.min, threshold.max)
     }
   }
@@ -218,7 +218,7 @@ export async function findMissingMortality(
     SELECT s.tmdb_id, s.name
     FROM shows s
     ${whereClause}
-    ORDER BY s.popularity DESC NULLS LAST
+    ORDER BY s.tmdb_popularity DESC NULLS LAST
     ${limitClause}
   `,
     params

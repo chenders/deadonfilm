@@ -124,8 +124,8 @@ export async function getStatsByPhase(): Promise<PhaseStats[]> {
     FROM (
       SELECT
         CASE
-          WHEN popularity >= 50 THEN 'popular'
-          WHEN popularity >= 10 THEN 'standard'
+          WHEN tmdb_popularity >= 50 THEN 'popular'
+          WHEN tmdb_popularity >= 10 THEN 'standard'
           ELSE 'obscure'
         END as phase,
         COUNT(*)::int as count,
