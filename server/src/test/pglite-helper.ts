@@ -63,8 +63,8 @@ async function initializeSchema(testDb: PGlite): Promise<void> {
       status TEXT,
       number_of_seasons INTEGER,
       number_of_episodes INTEGER,
-      popularity DECIMAL(10,3),
-      vote_average DECIMAL(3,1),
+      tmdb_popularity DECIMAL(10,3),
+      tmdb_vote_average DECIMAL(3,1),
       original_language TEXT,
       origin_country TEXT[],
       cast_count INTEGER,
@@ -84,7 +84,7 @@ async function initializeSchema(testDb: PGlite): Promise<void> {
       birthday DATE,
       deathday DATE,
       profile_path TEXT,
-      popularity DECIMAL(10,3),
+      tmdb_popularity DECIMAL(10,3),
       cause_of_death TEXT,
       cause_of_death_source TEXT,
       cause_of_death_details TEXT,
@@ -141,8 +141,8 @@ async function initializeSchema(testDb: PGlite): Promise<void> {
       poster_path TEXT,
       backdrop_path TEXT,
       genres TEXT[],
-      popularity DECIMAL(10,3),
-      vote_average DECIMAL(3,1),
+      tmdb_popularity DECIMAL(10,3),
+      tmdb_vote_average DECIMAL(3,1),
       original_language TEXT,
       production_countries TEXT[],
       cast_count INTEGER,
@@ -192,11 +192,11 @@ export async function insertShow(
 ): Promise<void> {
   await testDb.query(
     `
-    INSERT INTO shows (tmdb_id, name, popularity, origin_country, cast_count, deceased_count, living_count, expected_deaths, mortality_surprise_score)
+    INSERT INTO shows (tmdb_id, name, tmdb_popularity, origin_country, cast_count, deceased_count, living_count, expected_deaths, mortality_surprise_score)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     ON CONFLICT (tmdb_id) DO UPDATE SET
       name = EXCLUDED.name,
-      popularity = EXCLUDED.popularity,
+      tmdb_popularity = EXCLUDED.tmdb_popularity,
       origin_country = EXCLUDED.origin_country,
       cast_count = EXCLUDED.cast_count,
       deceased_count = EXCLUDED.deceased_count,
@@ -311,11 +311,11 @@ export async function insertMovie(
 ): Promise<void> {
   await testDb.query(
     `
-    INSERT INTO movies (tmdb_id, title, popularity, original_language, production_countries)
+    INSERT INTO movies (tmdb_id, title, tmdb_popularity, original_language, production_countries)
     VALUES ($1, $2, $3, $4, $5)
     ON CONFLICT (tmdb_id) DO UPDATE SET
       title = EXCLUDED.title,
-      popularity = EXCLUDED.popularity,
+      tmdb_popularity = EXCLUDED.tmdb_popularity,
       original_language = EXCLUDED.original_language,
       production_countries = EXCLUDED.production_countries
   `,

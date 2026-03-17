@@ -325,14 +325,14 @@ describe("enrich-death-details --actor-id query", () => {
       id: number
       name: string
       tmdb_id: number
-      popularity: number | null
+      tmdb_popularity: number | null
     }>(
       `
       SELECT
         a.id,
         a.tmdb_id,
         a.name,
-        a.popularity
+        a.tmdb_popularity
       FROM actors a
       LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
       WHERE a.id = ANY($1::int[])
