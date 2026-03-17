@@ -39,7 +39,7 @@ const FAQ_ITEMS = [
   {
     question: "How do you determine cause of death?",
     answer:
-      "Cause of death is determined by the Debriefer research pipeline, which gathers evidence from dozens of sources including Wikidata, Wikipedia, news archives, obituary sites, books, and historical newspapers. Each source is scored by reliability (based on Wikipedia's Reliable Sources list) and content confidence. Claude AI then synthesizes all findings into a structured record with cause, manner, circumstances, and per-field source attributions.",
+      "Cause of death is determined by the Debriefer research pipeline, which gathers evidence from dozens of sources including Wikidata, Wikipedia, news archives, obituary sites, books, and historical newspapers. Each source is scored by reliability (based on Wikipedia's Reliable Sources list) and content confidence. Claude AI then synthesizes all findings into a structured record with cause, manner, and circumstances. The underlying source findings are stored for provenance tracking.",
   },
   {
     question: "How often is the data updated?",

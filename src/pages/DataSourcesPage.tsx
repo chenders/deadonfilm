@@ -111,7 +111,7 @@ export default function DataSourcesPage() {
                   <p className="text-sm leading-relaxed">
                     Wikidata (SPARQL queries for cause, manner, and place of death) and Wikipedia
                     (parsed article sections) provide the foundation. These free, high-reliability
-                    sources are always queried first.
+                    sources are queried first by default.
                   </p>
                 </div>
                 <div className="rounded-lg bg-beige p-4">
@@ -141,8 +141,8 @@ export default function DataSourcesPage() {
                   <p className="text-sm leading-relaxed">
                     All accumulated findings are sent to Claude, which synthesizes them into a
                     structured record: cause of death, manner, circumstances narrative, location,
-                    notable factors, and source attributions. Each field is tracked back to its
-                    originating source.
+                    notable factors, and source attributions. The underlying source findings are
+                    stored for provenance tracking.
                   </p>
                 </div>
               </div>

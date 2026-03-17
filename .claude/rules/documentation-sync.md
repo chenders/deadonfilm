@@ -35,7 +35,7 @@ These pages describe how the site works to end users. **Keep them accurate when 
 | `src/pages/MethodologyPage.tsx` | Actuarial formulas, obscure filtering rules | Mortality calculation changes, threshold changes |
 
 **Specific things to check:**
-- Source counts (e.g., "60+ sources", "37 sources") — update when adding/removing sources
+- Source counts (e.g., "dozens of sources", "up to 37 configured sources") — update when adding/removing sources
 - Pipeline descriptions — update when orchestration or synthesis changes (e.g., debriefer updates)
 - FAQ answers reference enrichment pipeline — keep consistent with DataSourcesPage
 - AboutPage "How It Works" section — keep consistent with DataSourcesPage
