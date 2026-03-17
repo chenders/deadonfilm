@@ -37,11 +37,11 @@ export async function closeTestDb(): Promise<void> {
 export async function resetTestDb(): Promise<void> {
   const testDb = await getTestDb()
   await testDb.exec(`
-    TRUNCATE shows CASCADE;
-    TRUNCATE movies CASCADE;
-    TRUNCATE actor_show_appearances CASCADE;
-    TRUNCATE actor_movie_appearances CASCADE;
-    TRUNCATE actors CASCADE;
+    TRUNCATE shows RESTART IDENTITY CASCADE;
+    TRUNCATE movies RESTART IDENTITY CASCADE;
+    TRUNCATE actor_show_appearances RESTART IDENTITY CASCADE;
+    TRUNCATE actor_movie_appearances RESTART IDENTITY CASCADE;
+    TRUNCATE actors RESTART IDENTITY CASCADE;
   `)
 }
 
@@ -116,8 +116,7 @@ async function initializeSchema(testDb: PGlite): Promise<void> {
     -- Actor show appearances table (junction table only)
     CREATE TABLE IF NOT EXISTS actor_show_appearances (
       id SERIAL PRIMARY KEY,
-      actor_id INTEGER,
-      actor_tmdb_id INTEGER NOT NULL,
+      actor_id INTEGER NOT NULL,
       show_tmdb_id INTEGER NOT NULL,
       season_number INTEGER NOT NULL DEFAULT 1,
       episode_number INTEGER NOT NULL DEFAULT 1,
@@ -125,12 +124,12 @@ async function initializeSchema(testDb: PGlite): Promise<void> {
       appearance_type TEXT NOT NULL DEFAULT 'regular',
       billing_order INTEGER,
       age_at_filming INTEGER,
-      UNIQUE(actor_tmdb_id, show_tmdb_id, season_number, episode_number)
+      UNIQUE(actor_id, show_tmdb_id, season_number, episode_number)
     );
 
     -- Create indexes for foreign key lookups
     CREATE INDEX IF NOT EXISTS idx_asa_show_tmdb_id ON actor_show_appearances(show_tmdb_id);
-    CREATE INDEX IF NOT EXISTS idx_asa_actor_tmdb_id ON actor_show_appearances(actor_tmdb_id);
+    CREATE INDEX IF NOT EXISTS idx_asa_actor_id ON actor_show_appearances(actor_id);
 
     -- Movies table (simplified for testing)
     CREATE TABLE IF NOT EXISTS movies (
@@ -225,8 +224,7 @@ export async function insertShow(
 export async function insertShowActorAppearance(
   testDb: PGlite,
   appearance: {
-    actor_id?: number
-    actor_tmdb_id: number
+    actor_id: number
     show_tmdb_id: number
     season_number?: number
     episode_number?: number
@@ -237,17 +235,15 @@ export async function insertShowActorAppearance(
 ): Promise<void> {
   await testDb.query(
     `
-    INSERT INTO actor_show_appearances (actor_id, actor_tmdb_id, show_tmdb_id, season_number, episode_number, character_name, appearance_type, billing_order)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    ON CONFLICT (actor_tmdb_id, show_tmdb_id, season_number, episode_number) DO UPDATE SET
-      actor_id = EXCLUDED.actor_id,
+    INSERT INTO actor_show_appearances (actor_id, show_tmdb_id, season_number, episode_number, character_name, appearance_type, billing_order)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ON CONFLICT (actor_id, show_tmdb_id, season_number, episode_number) DO UPDATE SET
       character_name = EXCLUDED.character_name,
       appearance_type = EXCLUDED.appearance_type,
       billing_order = EXCLUDED.billing_order
   `,
     [
-      appearance.actor_id ?? null,
-      appearance.actor_tmdb_id,
+      appearance.actor_id,
       appearance.show_tmdb_id,
       appearance.season_number ?? 1,
       appearance.episode_number ?? 1,

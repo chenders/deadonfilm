@@ -116,12 +116,12 @@ export async function findCastCountMismatches(
       s.tmdb_id,
       s.name,
       COALESCE(s.cast_count, 0)::int as stored_count,
-      COUNT(DISTINCT saa.actor_tmdb_id)::int as actual_count
+      COUNT(DISTINCT saa.actor_id)::int as actual_count
     FROM shows s
     LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
     ${whereClause}
     GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
-    HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_tmdb_id)
+    HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_id)
     ORDER BY s.popularity DESC NULLS LAST
     ${limitClause}
   `,
@@ -167,13 +167,13 @@ export async function findDeceasedCountMismatches(
       s.tmdb_id,
       s.name,
       COALESCE(s.deceased_count, 0)::int as stored_count,
-      COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_tmdb_id END)::int as actual_count
+      COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_id END)::int as actual_count
     FROM shows s
     LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
-    LEFT JOIN actors a ON saa.actor_tmdb_id = a.tmdb_id
+    LEFT JOIN actors a ON saa.actor_id = a.id
     ${whereClause}
     GROUP BY s.tmdb_id, s.name, s.deceased_count, s.popularity
-    HAVING COALESCE(s.deceased_count, 0) != COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_tmdb_id END)
+    HAVING COALESCE(s.deceased_count, 0) != COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_id END)
     ORDER BY s.popularity DESC NULLS LAST
     ${limitClause}
   `,

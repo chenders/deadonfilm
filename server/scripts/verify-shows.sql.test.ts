@@ -59,11 +59,11 @@ describe("verify-shows SQL queries", () => {
         s.tmdb_id,
         s.name,
         COALESCE(s.cast_count, 0)::int as stored_count,
-        COUNT(DISTINCT saa.actor_tmdb_id)::int as actual_count
+        COUNT(DISTINCT saa.actor_id)::int as actual_count
       FROM shows s
       LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
       GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
-      HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_tmdb_id)
+      HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_id)
       ORDER BY s.popularity DESC NULLS LAST
     `
 
@@ -85,7 +85,7 @@ describe("verify-shows SQL queries", () => {
       // Insert only 5 actor appearances
       for (let i = 1; i <= 5; i++) {
         await insertShowActorAppearance(db, {
-          actor_tmdb_id: i,
+          actor_id: i,
           show_tmdb_id: 1,
         })
       }
@@ -107,7 +107,7 @@ describe("verify-shows SQL queries", () => {
 
       for (let i = 1; i <= 3; i++) {
         await insertShowActorAppearance(db, {
-          actor_tmdb_id: i,
+          actor_id: i,
           show_tmdb_id: 1,
         })
       }
@@ -137,12 +137,12 @@ describe("verify-shows SQL queries", () => {
         s.tmdb_id,
         s.name,
         COALESCE(s.deceased_count, 0)::int as stored_count,
-        COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_tmdb_id END)::int as actual_count
+        COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_id END)::int as actual_count
       FROM shows s
       LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
-      LEFT JOIN actors a ON saa.actor_tmdb_id = a.tmdb_id
+      LEFT JOIN actors a ON saa.actor_id = a.id
       GROUP BY s.tmdb_id, s.name, s.deceased_count, s.popularity
-      HAVING COALESCE(s.deceased_count, 0) != COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_tmdb_id END)
+      HAVING COALESCE(s.deceased_count, 0) != COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_id END)
       ORDER BY s.popularity DESC NULLS LAST
     `
 
@@ -168,7 +168,7 @@ describe("verify-shows SQL queries", () => {
           deathday: i <= 2 ? "2020-01-01" : null,
         })
         await insertShowActorAppearance(db, {
-          actor_tmdb_id: i,
+          actor_id: i,
           show_tmdb_id: 1,
         })
       }
@@ -193,9 +193,9 @@ describe("verify-shows SQL queries", () => {
       await insertActor(db, { tmdb_id: 2, name: "Actor 2", deathday: "2020-01-01" })
       await insertActor(db, { tmdb_id: 3, name: "Actor 3" }) // living
 
-      await insertShowActorAppearance(db, { actor_tmdb_id: 1, show_tmdb_id: 1 })
-      await insertShowActorAppearance(db, { actor_tmdb_id: 2, show_tmdb_id: 1 })
-      await insertShowActorAppearance(db, { actor_tmdb_id: 3, show_tmdb_id: 1 })
+      await insertShowActorAppearance(db, { actor_id: 1, show_tmdb_id: 1 })
+      await insertShowActorAppearance(db, { actor_id: 2, show_tmdb_id: 1 })
+      await insertShowActorAppearance(db, { actor_id: 3, show_tmdb_id: 1 })
 
       const result = await db.query<DeceasedCountRow>(query)
       expect(result.rows).toHaveLength(0)
@@ -258,12 +258,12 @@ describe("verify-shows SQL queries", () => {
         s.tmdb_id,
         s.name,
         COALESCE(s.cast_count, 0)::int as stored_count,
-        COUNT(DISTINCT saa.actor_tmdb_id)::int as actual_count
+        COUNT(DISTINCT saa.actor_id)::int as actual_count
       FROM shows s
       LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
       WHERE s.popularity >= $1 AND s.popularity < $2
       GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
-      HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_tmdb_id)
+      HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_id)
       ORDER BY s.popularity DESC NULLS LAST
     `
 
@@ -285,11 +285,11 @@ describe("verify-shows SQL queries", () => {
         s.tmdb_id,
         s.name,
         COALESCE(s.cast_count, 0)::int as stored_count,
-        COUNT(DISTINCT saa.actor_tmdb_id)::int as actual_count
+        COUNT(DISTINCT saa.actor_id)::int as actual_count
       FROM shows s
       LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
       GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
-      HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_tmdb_id)
+      HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_id)
       ORDER BY s.popularity DESC NULLS LAST
       LIMIT $1
     `
@@ -323,11 +323,11 @@ describe("SQL syntax regression tests", () => {
           s.tmdb_id,
           s.name,
           COALESCE(s.cast_count, 0)::int as stored_count,
-          COUNT(DISTINCT saa.actor_tmdb_id)::int as actual_count
+          COUNT(DISTINCT saa.actor_id)::int as actual_count
         FROM shows s
         LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
         GROUP BY s.tmdb_id, s.name, s.cast_count
-        HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_tmdb_id)
+        HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_id)
         ORDER BY s.popularity DESC NULLS LAST
       `
 
@@ -343,11 +343,11 @@ describe("SQL syntax regression tests", () => {
           s.tmdb_id,
           s.name,
           COALESCE(s.cast_count, 0)::int as stored_count,
-          COUNT(DISTINCT saa.actor_tmdb_id)::int as actual_count
+          COUNT(DISTINCT saa.actor_id)::int as actual_count
         FROM shows s
         LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
         GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
-        HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_tmdb_id)
+        HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_id)
         ORDER BY s.popularity DESC NULLS LAST
       `
 
