@@ -31,16 +31,19 @@ describe("DataSourcesPage", () => {
   it("renders key section headings", () => {
     renderPage()
     expect(screen.getByRole("heading", { name: /the movie database/i })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: /research engine/i })).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: /death information/i })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: /biography information/i })).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: /actuarial data/i })).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: /data freshness/i })).toBeInTheDocument()
   })
 
-  it("renders data source priority order", () => {
+  it("renders enrichment pipeline phases", () => {
     renderPage()
-    expect(screen.getByText(/1\. ai-assisted analysis \(primary\)/i)).toBeInTheDocument()
-    expect(screen.getByText(/2\. wikidata \(secondary\)/i)).toBeInTheDocument()
-    expect(screen.getByText(/3\. wikipedia \(tertiary\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/phase 1: structured data/i)).toBeInTheDocument()
+    expect(screen.getByText(/phases 2.4: web search, news & obituaries/i)).toBeInTheDocument()
+    expect(screen.getByText(/phases 5.7: books, archives & genealogy/i)).toBeInTheDocument()
+    expect(screen.getByText(/synthesis/i)).toBeInTheDocument()
   })
 
   it("renders external links to TMDB and SSA", () => {

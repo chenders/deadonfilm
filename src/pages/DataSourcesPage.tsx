@@ -65,43 +65,99 @@ export default function DataSourcesPage() {
           </section>
 
           <section>
+            <h2 className="mb-3 font-display text-xl text-brown-dark">
+              Research Engine (Debriefer)
+            </h2>
+            <div className="space-y-3 text-text-primary">
+              <p className="leading-relaxed">
+                Both death and biography enrichment are powered by{" "}
+                <a
+                  href="https://github.com/chenders/debriefer"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent underline hover:text-brown-dark"
+                >
+                  Debriefer
+                </a>
+                , an open-source multi-source research orchestration engine. For each actor,
+                Debriefer queries 60+ data sources across 8 sequential phases, accumulating evidence
+                from structured databases, news archives, books, and web sources. All findings are
+                scored by source reliability (based on{" "}
+                <a
+                  href="https://en.wikipedia.org/wiki/Wikipedia:Reliable_sources/Perennial_sources"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent underline hover:text-brown-dark"
+                >
+                  Wikipedia&apos;s Reliable Sources list
+                </a>
+                ) and content confidence, then synthesized by Claude into structured narratives.
+              </p>
+            </div>
+          </section>
+
+          <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">Death Information</h2>
             <div className="space-y-3 text-text-primary">
               <p className="leading-relaxed">
                 Death information &mdash; including date, cause, manner, and circumstances &mdash;
-                is gathered through a multi-source pipeline. Sources are queried in priority order,
-                with each successive source used as a fallback:
+                is gathered through the Debriefer pipeline. Sources are queried in 8 phases, with
+                early stopping once sufficient high-quality evidence is collected:
               </p>
               <div className="space-y-4">
                 <div className="rounded-lg bg-beige p-4">
+                  <h3 className="mb-1 font-semibold text-brown-dark">Phase 1: Structured Data</h3>
+                  <p className="text-sm leading-relaxed">
+                    Wikidata (SPARQL queries for cause, manner, and place of death) and Wikipedia
+                    (parsed article sections) provide the foundation. These free, high-reliability
+                    sources are always queried first.
+                  </p>
+                </div>
+                <div className="rounded-lg bg-beige p-4">
                   <h3 className="mb-1 font-semibold text-brown-dark">
-                    1. AI-Assisted Analysis (Primary)
+                    Phases 2&ndash;4: Web Search, News &amp; Obituaries
                   </h3>
                   <p className="text-sm leading-relaxed">
-                    Our primary source uses AI to analyze authoritative references and extract
-                    structured death information. This provides the highest quality results with
-                    detailed cause of death, manner, and circumstances. Results are evaluated for
-                    confidence and flagged when information is uncertain.
+                    Web search engines (Google, Bing, DuckDuckGo, Brave) find relevant pages, which
+                    are then followed and extracted using Mozilla Readability. Major news outlets
+                    (AP, Reuters, NYT, BBC, Guardian, and 15+ others) and entertainment trade press
+                    (Variety, Deadline, THR) are queried directly. Obituary sites (Legacy.com, Find
+                    a Grave) provide additional coverage.
                   </p>
                 </div>
                 <div className="rounded-lg bg-beige p-4">
-                  <h3 className="mb-1 font-semibold text-brown-dark">2. Wikidata (Secondary)</h3>
+                  <h3 className="mb-1 font-semibold text-brown-dark">
+                    Phases 5&ndash;7: Books, Archives &amp; Genealogy
+                  </h3>
                   <p className="text-sm leading-relaxed">
-                    Wikidata&apos;s structured data provides cause-of-death properties linked to
-                    standardized medical terminology. As a collaboratively edited knowledge base,
-                    Wikidata offers reliable structured data that supplements our primary source.
+                    Google Books, Open Library, and Internet Archive provide book-based evidence.
+                    Historical newspaper archives (Chronicling America, Trove, Europeana) cover
+                    deaths predating the internet. FamilySearch offers genealogical records.
                   </p>
                 </div>
                 <div className="rounded-lg bg-beige p-4">
-                  <h3 className="mb-1 font-semibold text-brown-dark">3. Wikipedia (Tertiary)</h3>
+                  <h3 className="mb-1 font-semibold text-brown-dark">Synthesis</h3>
                   <p className="text-sm leading-relaxed">
-                    As a last resort, death information is extracted from Wikipedia article text,
-                    focusing on the &ldquo;Death&rdquo; and &ldquo;Personal life&rdquo; sections.
-                    While comprehensive, this source requires more careful parsing and may be less
-                    precise than structured data.
+                    All accumulated findings are sent to Claude, which synthesizes them into a
+                    structured record: cause of death, manner, circumstances narrative, location,
+                    notable factors, and source attributions. Each field is tracked back to its
+                    originating source.
                   </p>
                 </div>
               </div>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="mb-3 font-display text-xl text-brown-dark">Biography Information</h2>
+            <div className="space-y-3 text-text-primary">
+              <p className="leading-relaxed">
+                Actor biographies focus on personal life rather than career achievements. The same
+                Debriefer pipeline queries 37 sources across structured data, reference sites,
+                books, web search, news, and historical archives. Claude synthesizes the results
+                into a narrative covering childhood, family, education, and personal struggles
+                &mdash; with career mentioned only in passing, like describing anyone&apos;s job.
+              </p>
             </div>
           </section>
 
