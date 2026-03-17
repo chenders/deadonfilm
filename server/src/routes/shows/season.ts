@@ -64,8 +64,8 @@ export async function getSeason(req: Request, res: Response) {
       getSeasonDetails(showId, seasonNumber),
     ])
 
-    // Filter to English-language US shows
-    if (show.original_language !== "en" || !show.origin_country.includes("US")) {
+    // Filter to English-language shows
+    if (show.original_language !== "en") {
       return res.status(404).json({ error: { message: "Show not available" } })
     }
 
