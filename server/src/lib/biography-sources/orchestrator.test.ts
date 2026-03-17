@@ -593,11 +593,11 @@ describe("BiographyEnrichmentOrchestrator", () => {
   describe("earlyStopSourceCount validation", () => {
     it("falls back to default for NaN", () => {
       const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: NaN })
-      // Default is 5 — verify by checking the config was clamped
+      // Default is 20 — verify by checking the config was clamped
       expect(
         (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
           .earlyStopSourceCount
-      ).toBe(5)
+      ).toBe(20)
     })
 
     it("preserves Infinity to disable early stopping", () => {
@@ -613,7 +613,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
       expect(
         (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
           .earlyStopSourceCount
-      ).toBe(5)
+      ).toBe(20)
     })
 
     it("maps zero to Infinity (disable early stopping)", () => {

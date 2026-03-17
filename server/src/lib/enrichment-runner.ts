@@ -70,6 +70,8 @@ export interface EnrichmentRunnerConfig {
   staging?: boolean
   // Source reliability threshold
   useReliabilityThreshold?: boolean
+  /** Number of high-quality source families before early stopping (default: 20) */
+  earlyStopThreshold?: number
   /** Number of actors to process concurrently (default: 5) */
   concurrency?: number
 }
@@ -202,6 +204,7 @@ export class EnrichmentRunner {
       staging = false,
       // Source reliability threshold
       useReliabilityThreshold = true,
+      earlyStopThreshold = 20,
     } = this.config
 
     // Configure cache behavior for this run
@@ -292,7 +295,7 @@ export class EnrichmentRunner {
         books: true,
         maxCostPerActor,
         maxTotalCost,
-        earlyStopThreshold: 3,
+        earlyStopThreshold,
         confidenceThreshold,
         reliabilityThreshold: useReliabilityThreshold ? 0.6 : undefined,
       }

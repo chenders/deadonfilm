@@ -172,7 +172,7 @@ describe("debriefActor", () => {
       ResearchConfig,
     ]
     expect(synthesizer).toBeDefined()
-    expect(config?.earlyStopThreshold).toBe(3)
+    expect(config?.earlyStopThreshold).toBe(20)
   })
 
   it("passes actor context to the research subject", async () => {
