@@ -132,7 +132,7 @@ export function createBioDebriefOrchestrator(
 
   const orchestratorConfig: ResearchConfig = {
     // Dual threshold: both confidence AND reliability must be met
-    earlyStopThreshold: config.earlyStopThreshold ?? Infinity,
+    earlyStopThreshold: config.earlyStopThreshold ?? 20,
     confidenceThreshold: config.confidenceThreshold ?? 0.6,
     reliabilityThreshold: config.reliabilityThreshold ?? 0.6,
     costLimits: {

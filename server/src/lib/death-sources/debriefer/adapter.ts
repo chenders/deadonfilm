@@ -124,7 +124,7 @@ export function createDebriefOrchestrator(
   const phases = buildPhases(config)
 
   const orchestratorConfig: ResearchConfig = {
-    earlyStopThreshold: config.earlyStopThreshold ?? Infinity,
+    earlyStopThreshold: config.earlyStopThreshold ?? 20,
     confidenceThreshold: config.confidenceThreshold ?? 0.5,
     reliabilityThreshold: config.reliabilityThreshold,
     costLimits: {
