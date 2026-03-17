@@ -133,127 +133,75 @@ describe("App", () => {
   })
 
   describe("admin routes", () => {
-    it("redirects /admin to /admin/dashboard", async () => {
-      // Mock the fetch call for auth status
+    // Admin route tests need longer timeout in CI where lazy imports can be slow
+    const adminTimeout = { timeout: 5000 }
+
+    beforeEach(() => {
+      // Mock fetch to return unauthenticated for admin auth check
       globalThis.fetch = vi.fn(() =>
         Promise.resolve({
           ok: false,
           json: () => Promise.resolve({ authenticated: false }),
         } as Response)
       )
+    })
 
+    it("redirects /admin to /admin/dashboard", async () => {
       renderApp("/admin")
 
       // Should redirect to /admin/dashboard, which then redirects to /admin/login
       // since the user is not authenticated
       await waitFor(() => {
         expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
-      })
+      }, adminTimeout)
     })
 
     it("routes to /admin/jobs for job queue management", async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: false,
-          json: () => Promise.resolve({ authenticated: false }),
-        } as Response)
-      )
-
       renderApp("/admin/jobs")
 
-      // Should redirect to login since not authenticated
-      await waitFor(
-        () => {
-          expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
-        },
-        { timeout: 3000 }
-      )
+      await waitFor(() => {
+        expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+      }, adminTimeout)
     })
 
     it("routes to /admin/jobs/runs for job history", async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: false,
-          json: () => Promise.resolve({ authenticated: false }),
-        } as Response)
-      )
-
       renderApp("/admin/jobs/runs")
 
-      // Should redirect to login since not authenticated
       await waitFor(() => {
         expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
-      })
+      }, adminTimeout)
     })
 
     it("routes to /admin/jobs/dead-letter for dead letter queue", async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: false,
-          json: () => Promise.resolve({ authenticated: false }),
-        } as Response)
-      )
-
       renderApp("/admin/jobs/dead-letter")
 
-      // Should redirect to login since not authenticated
       await waitFor(() => {
         expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
-      })
+      }, adminTimeout)
     })
 
     it("routes to /admin/data-quality for data quality management", async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: false,
-          json: () => Promise.resolve({ authenticated: false }),
-        } as Response)
-      )
-
       renderApp("/admin/data-quality")
 
-      // Redirects through /admin/actors?tab=data-quality, then to login
-      await waitFor(
-        () => {
-          expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
-        },
-        { timeout: 3000 }
-      )
+      await waitFor(() => {
+        expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+      }, adminTimeout)
     })
 
     it("redirects /admin/logs to /admin/jobs?tab=logs", async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: false,
-          json: () => Promise.resolve({ authenticated: false }),
-        } as Response)
-      )
-
       renderApp("/admin/logs")
 
-      // Redirects through /admin/jobs?tab=logs, then to login
-      await waitFor(
-        () => {
-          expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
-        },
-        { timeout: 3000 }
-      )
+      await waitFor(() => {
+        expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+      }, adminTimeout)
     })
 
     it("redirects /admin/sync to /admin/operations?tab=sync", async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: false,
-          json: () => Promise.resolve({ authenticated: false }),
-        } as Response)
-      )
-
       renderApp("/admin/sync")
 
-      // Redirects through /admin/operations?tab=sync, then to login
       await waitFor(() => {
         expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
-      })
+      }, adminTimeout)
     })
   })
 })
