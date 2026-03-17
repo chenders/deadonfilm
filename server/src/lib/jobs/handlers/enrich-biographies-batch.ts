@@ -128,7 +128,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       // 2. Create enrichment pipeline (debriefer adapter + Claude synthesis)
       const enrichActor = createBioEnrichmentPipeline({
         confidenceThreshold: confidenceThreshold ?? 0.6,
-        earlyStopThreshold: earlyStopSourceCount === 0 ? Infinity : (earlyStopSourceCount ?? 5),
+        earlyStopThreshold: earlyStopSourceCount === 0 ? Infinity : (earlyStopSourceCount ?? 20),
         maxCostPerActor: maxCostPerActor ?? 0.5,
         maxTotalCost: maxTotalCost ?? 10.0,
         free: sourceCategories?.free ?? true,
