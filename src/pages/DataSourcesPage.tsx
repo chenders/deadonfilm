@@ -80,9 +80,9 @@ export default function DataSourcesPage() {
                   Debriefer
                 </a>
                 , an open-source multi-source research orchestration engine. For each actor,
-                Debriefer queries 60+ data sources across 8 sequential phases, accumulating evidence
-                from structured databases, news archives, books, and web sources. All findings are
-                scored by source reliability (based on{" "}
+                Debriefer queries dozens of data sources across sequential phases, accumulating
+                evidence from structured databases, news archives, books, and web sources. All
+                findings are scored by source reliability (based on{" "}
                 <a
                   href="https://en.wikipedia.org/wiki/Wikipedia:Reliable_sources/Perennial_sources"
                   target="_blank"
@@ -101,8 +101,9 @@ export default function DataSourcesPage() {
             <div className="space-y-3 text-text-primary">
               <p className="leading-relaxed">
                 Death information &mdash; including date, cause, manner, and circumstances &mdash;
-                is gathered through the Debriefer pipeline. Sources are queried in 8 phases, with
-                early stopping once sufficient high-quality evidence is collected:
+                is gathered through the Debriefer pipeline. Sources are queried in sequential
+                phases, with early stopping once sufficient high-quality evidence is collected.
+                Results are then synthesized into a structured record:
               </p>
               <div className="space-y-4">
                 <div className="rounded-lg bg-beige p-4">

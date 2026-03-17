@@ -79,8 +79,8 @@ export default function AboutPage() {
                   >
                     Debriefer
                   </a>
-                  , querying 60+ sources across structured databases, news archives, books, and web
-                  search, then synthesizing the results with Claude AI.
+                  , querying dozens of sources across structured databases, news archives, books,
+                  and web search, then synthesizing the results with Claude AI.
                 </li>
                 <li>
                   <strong>Actor biographies</strong> are enriched from 37 sources, focusing on

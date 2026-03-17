@@ -41,8 +41,8 @@ describe("DataSourcesPage", () => {
   it("renders enrichment pipeline phases", () => {
     renderPage()
     expect(screen.getByText(/phase 1: structured data/i)).toBeInTheDocument()
-    expect(screen.getByText(/phases 2.4: web search, news & obituaries/i)).toBeInTheDocument()
-    expect(screen.getByText(/phases 5.7: books, archives & genealogy/i)).toBeInTheDocument()
+    expect(screen.getByText(/phases 2[-–]4: web search, news & obituaries/i)).toBeInTheDocument()
+    expect(screen.getByText(/phases 5[-–]7: books, archives & genealogy/i)).toBeInTheDocument()
     expect(screen.getByText(/synthesis/i)).toBeInTheDocument()
   })
 
