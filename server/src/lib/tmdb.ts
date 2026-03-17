@@ -587,7 +587,6 @@ export async function getEpisodeCredits(
 export async function discoverTVShows(page: number = 1): Promise<TMDBTVSearchResponse> {
   return tmdbFetch<TMDBTVSearchResponse>(
     `/discover/tv?` +
-      `with_origin_country=US&` +
       `with_original_language=en&` +
       `sort_by=popularity.desc&` +
       `include_adult=false&` +

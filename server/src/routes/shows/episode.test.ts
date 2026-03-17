@@ -270,11 +270,10 @@ describe("getEpisode route", () => {
       expect(jsonSpy).toHaveBeenCalledWith({ error: { message: "Invalid episode number" } })
     })
 
-    it("returns 404 for non-US/non-English shows", async () => {
+    it("returns 404 for non-English shows", async () => {
       vi.mocked(getTVShowDetails).mockResolvedValue({
         ...mockShow,
         original_language: "de",
-        origin_country: ["DE"],
       } as never)
       mockReq = { params: { showId: "1400", season: "5", episode: "1" } }
 

@@ -753,10 +753,10 @@ describe("getSeason route", () => {
     expect(jsonSpy).toHaveBeenCalledWith({ error: { message: "Invalid season number" } })
   })
 
-  it("returns 404 for non-US/non-English shows", async () => {
-    const nonUSShow = { ...mockShow, original_language: "de", origin_country: ["DE"] }
+  it("returns 404 for non-English shows", async () => {
+    const nonEnglishShow = { ...mockShow, original_language: "de", origin_country: ["DE"] }
     vi.mocked(getTVShowDetails).mockResolvedValue(
-      nonUSShow as ReturnType<typeof getTVShowDetails> extends Promise<infer T> ? T : never
+      nonEnglishShow as ReturnType<typeof getTVShowDetails> extends Promise<infer T> ? T : never
     )
     vi.mocked(getSeasonDetails).mockResolvedValue(
       mockSeason as ReturnType<typeof getSeasonDetails> extends Promise<infer T> ? T : never
