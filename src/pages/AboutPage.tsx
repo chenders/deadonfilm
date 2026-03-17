@@ -69,8 +69,22 @@ export default function AboutPage() {
                   providing cast lists, release dates, and production details.
                 </li>
                 <li>
-                  <strong>Death information</strong> is gathered through a multi-source pipeline
-                  that cross-references AI analysis, Wikidata, and Wikipedia for accuracy.
+                  <strong>Death information</strong> is gathered through a multi-source research
+                  pipeline powered by{" "}
+                  <a
+                    href="https://github.com/chenders/debriefer"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent underline hover:text-brown-dark"
+                  >
+                    Debriefer
+                  </a>
+                  , querying dozens of sources across structured databases, news archives, books,
+                  and web search, then synthesizing the results with Claude AI.
+                </li>
+                <li>
+                  <strong>Actor biographies</strong> are enriched from up to 37 configured sources,
+                  focusing on personal life rather than career achievements.
                 </li>
                 <li>
                   <strong>Mortality statistics</strong> are calculated using U.S. Social Security

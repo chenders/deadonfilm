@@ -1,5 +1,5 @@
 ---
-globs: ["CLAUDE.md", ".claude/rules/*.md", ".github/copilot-instructions.md", ".github/docs/copilot-reference.md", "README.md", "docs/*.md"]
+globs: ["CLAUDE.md", ".claude/rules/*.md", ".github/copilot-instructions.md", ".github/docs/copilot-reference.md", "README.md", "docs/*.md", "src/pages/AboutPage.tsx", "src/pages/FAQPage.tsx", "src/pages/DataSourcesPage.tsx", "src/pages/MethodologyPage.tsx"]
 ---
 # Documentation Sync
 
@@ -22,6 +22,23 @@ The `README.md` links to these docs — **keep them accurate when making changes
 - Feature descriptions — update when adding new discovery pages or capabilities
 - Architecture diagram — update when adding new services or external APIs
 - "The Numbers" table — update periodically (actor count, coverage percentages)
+
+## User-Facing Static Pages
+
+These pages describe how the site works to end users. **Keep them accurate when changing features, source counts, or pipeline architecture:**
+
+| File | Content | Update When |
+|------|---------|-------------|
+| `src/pages/DataSourcesPage.tsx` | Debriefer engine, source phases, death & bio pipeline | Adding/removing sources, pipeline architecture changes |
+| `src/pages/AboutPage.tsx` | Site overview, how it works | New features, data source changes |
+| `src/pages/FAQPage.tsx` | FAQ answers (structured data for SEO) | Enrichment pipeline changes, methodology changes |
+| `src/pages/MethodologyPage.tsx` | Actuarial formulas, obscure filtering rules | Mortality calculation changes, threshold changes |
+
+**Specific things to check:**
+- Source counts (e.g., "dozens of sources", "up to 37 configured sources") — update when adding/removing sources
+- Pipeline descriptions — update when orchestration or synthesis changes (e.g., debriefer updates)
+- FAQ answers reference enrichment pipeline — keep consistent with DataSourcesPage
+- AboutPage "How It Works" section — keep consistent with DataSourcesPage
 
 ## Instruction Files (Claude + Copilot)
 
