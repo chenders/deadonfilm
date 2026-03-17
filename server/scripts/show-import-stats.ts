@@ -109,10 +109,10 @@ export async function getActorStats(): Promise<ActorStats> {
   const db = getPool()
   const result = await db.query<ActorStats>(`
     SELECT
-      COUNT(DISTINCT saa.actor_tmdb_id)::int as unique_actors,
-      COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_tmdb_id END)::int as deceased_actors
+      COUNT(DISTINCT saa.actor_id)::int as unique_actors,
+      COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_id END)::int as deceased_actors
     FROM actor_show_appearances saa
-    LEFT JOIN actors a ON saa.actor_tmdb_id = a.tmdb_id
+    LEFT JOIN actors a ON saa.actor_id = a.id
   `)
   return result.rows[0]
 }
