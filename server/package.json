@@ -111,6 +111,8 @@
     "report:rating-coverage": "tsx scripts/report-rating-coverage.ts",
     "//coverage:snapshot": "Capture death detail coverage snapshot (daily cron job)",
     "coverage:snapshot": "tsx scripts/capture-coverage-snapshot.ts",
+    "//gsc:snapshot": "Capture Google Search Console snapshot (daily cron job)",
+    "gsc:snapshot": "tsx scripts/capture-gsc-snapshot.ts",
     "// === Death Info Management ===": "",
     "//fix:death-info": "Scan and fix suspicious death records",
     "fix:death-info": "tsx scripts/fix-bad-death-info.ts",
