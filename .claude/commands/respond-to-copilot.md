@@ -72,7 +72,7 @@ Review and respond to GitHub Copilot review comments on a pull request. Loops un
 
     ```bash
     # Baseline: count Copilot reviews before re-request
-    gh api repos/chenders/deadonfilm/pulls/{PR}/reviews --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer")] | length'
+    gh api repos/chenders/deadonfilm/pulls/{PR}/reviews --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer[bot]")] | length'
     ```
 
     Poll every 15 seconds using the same filter. Timeout after 10 minutes.

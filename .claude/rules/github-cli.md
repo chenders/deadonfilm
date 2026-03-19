@@ -332,11 +332,10 @@ Capture baseline Copilot review count, then poll until it increases:
 
 ```bash
 # Baseline before re-request
-gh api repos/chenders/deadonfilm/pulls/123/reviews --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer")] | length'
+gh api repos/chenders/deadonfilm/pulls/123/reviews --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer[bot]")] | length'
 ```
 
 Poll every 15 seconds using the same filter. Timeout after 10 minutes.
-- When you mark the PR as ready for review (from draft)
 
 ## Commit Message Formatting
 
@@ -948,7 +947,7 @@ gh api repos/chenders/deadonfilm/pulls/123/requested_reviewers \
 # Poll for new Copilot review (filter by reviewer login, compare against baseline count)
 # Then read new comments (Copilot comments use login "Copilot")
 gh api "repos/chenders/deadonfilm/pulls/123/comments" | \
-  jq '.[] | select(.user.login == "Copilot" or .user.login == "copilot-pull-request-reviewer") | select(.created_at > "2026-01-25T12:00:00Z")'
+  jq '.[] | select(.user.login == "Copilot" or .user.login == "copilot-pull-request-reviewer[bot]") | select(.created_at > "2026-01-25T12:00:00Z")'
 
 # Implement any remaining fixes, commit, reply, resolve
 
