@@ -137,6 +137,8 @@ services:
         0 4 * * 0 cd /app/server && node dist/scripts/seed-movies.js $(($(date +%Y)-1)) $(date +%Y) --count 500
         # Find uncertain deaths - weekly Sunday 5 AM PT
         0 5 * * 0 cd /app/server && node dist/scripts/find-uncertain-deaths.js 2>&1 | head -100
+        # GSC snapshot - daily at 7 AM UTC
+        0 7 * * * cd /app/server && node dist/scripts/capture-gsc-snapshot.js
         EOF
         # Strip leading spaces from heredoc (YAML adds 8 spaces)
         sed -i 's/^[[:space:]]*//' /tmp/crontab
