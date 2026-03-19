@@ -328,13 +328,14 @@ gh api repos/chenders/deadonfilm/pulls/123/requested_reviewers \
 
 **Important:** Use `copilot-pull-request-reviewer[bot]` (not `Copilot`) — the short name only works for initial reviews, not re-reviews.
 
-Poll for the new review to arrive:
+Capture baseline Copilot review count, then poll until it increases:
 
 ```bash
-gh api repos/chenders/deadonfilm/pulls/123/reviews --jq 'length'
+# Baseline before re-request
+gh api repos/chenders/deadonfilm/pulls/123/reviews --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer")] | length'
 ```
 
-Poll every 15 seconds. Timeout after 10 minutes.
+Poll every 15 seconds using the same filter. Timeout after 10 minutes.
 - When you mark the PR as ready for review (from draft)
 
 ## Commit Message Formatting
@@ -944,9 +945,10 @@ gh api "repos/chenders/deadonfilm/pulls/123/comments" | \
 gh api repos/chenders/deadonfilm/pulls/123/requested_reviewers \
   -X POST -f 'reviewers[]=copilot-pull-request-reviewer[bot]'
 
-# Poll for new review, then read new comments
+# Poll for new Copilot review (filter by reviewer login, compare against baseline count)
+# Then read new comments (Copilot comments use login "Copilot")
 gh api "repos/chenders/deadonfilm/pulls/123/comments" | \
-  jq '.[] | select(.user.login == "Copilot") | select(.created_at > "2026-01-25T12:00:00Z")'
+  jq '.[] | select(.user.login == "Copilot" or .user.login == "copilot-pull-request-reviewer") | select(.created_at > "2026-01-25T12:00:00Z")'
 
 # Implement any remaining fixes, commit, reply, resolve
 

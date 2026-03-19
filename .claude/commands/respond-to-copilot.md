@@ -17,7 +17,7 @@ Review and respond to GitHub Copilot review comments on a pull request. Loops un
 2. **Fetch all review comments**
 
    ```bash
-   gh api repos/chenders/deadonfilm/pulls/{pr_number}/comments | jq '.[] | {id, body, path, line}'
+   gh api repos/chenders/deadonfilm/pulls/{PR}/comments | jq '.[] | {id, body, path, line}'
    ```
 
 3. **Check for new comments** — If there are no new unaddressed comments since the last round, the loop is done. Report the final status and stop.
@@ -41,7 +41,7 @@ Review and respond to GitHub Copilot review comments on a pull request. Loops un
 7. **Reply to each comment**
 
    ```bash
-   gh api -X POST repos/chenders/deadonfilm/pulls/{pr}/comments/{id}/replies -f body="Fixed in $(git rev-parse --short HEAD). Explanation."
+   gh api -X POST repos/chenders/deadonfilm/pulls/{PR}/comments/{COMMENT_ID}/replies -f body="Fixed in $(git rev-parse --short HEAD). Explanation."
    ```
 
    - **If implemented**: Reference commit SHA and explain
@@ -52,7 +52,7 @@ Review and respond to GitHub Copilot review comments on a pull request. Loops un
 
    ```bash
    # Get thread IDs
-   gh api graphql -f query='query { repository(owner: "chenders", name: "deadonfilm") { pullRequest(number: PR) { reviewThreads(first: 50) { nodes { id isResolved comments(first: 1) { nodes { body } } } } } } }'
+   gh api graphql -f query='query { repository(owner: "chenders", name: "deadonfilm") { pullRequest(number: {PR}) { reviewThreads(first: 50) { nodes { id isResolved comments(first: 1) { nodes { body } } } } } } }'
 
    # Resolve
    gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "PRRT_..."}) { thread { isResolved } } }'
@@ -65,16 +65,17 @@ Review and respond to GitHub Copilot review comments on a pull request. Loops un
 9. **Re-request Copilot review**:
 
    ```bash
-   gh api repos/chenders/deadonfilm/pulls/{PR_NUMBER}/requested_reviewers -X POST -f 'reviewers[]=copilot-pull-request-reviewer[bot]'
+   gh api repos/chenders/deadonfilm/pulls/{PR}/requested_reviewers -X POST -f 'reviewers[]=copilot-pull-request-reviewer[bot]'
    ```
 
-10. **Wait for the new review** — Poll until a new review appears (review count increases):
+10. **Wait for the new review** — Capture baseline review count, then poll until it increases from a Copilot review:
 
     ```bash
-    gh api repos/chenders/deadonfilm/pulls/{PR_NUMBER}/reviews --jq 'length'
+    # Baseline: count Copilot reviews before re-request
+    gh api repos/chenders/deadonfilm/pulls/{PR}/reviews --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer")] | length'
     ```
 
-    Poll every 15 seconds. Timeout after 10 minutes (assume review is delayed).
+    Poll every 15 seconds using the same filter. Timeout after 10 minutes.
 
 11. **Loop back to step 2** — Fetch comments again and check for new ones.
 
@@ -93,3 +94,4 @@ When complete, report a summary: total rounds, comments addressed, comments decl
 - Never defer work without explicit user approval
 - Thread IDs (PRRT*) are NOT the same as comment IDs (PRRC*)
 - Track comment IDs across rounds to distinguish new comments from previously addressed ones
+- Copilot comments come from user login `Copilot`, but the reviewer bot is `copilot-pull-request-reviewer[bot]` — filter by both when needed
