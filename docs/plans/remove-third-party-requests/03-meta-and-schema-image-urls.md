@@ -34,7 +34,7 @@ The prerender system generates meta tags server-side for crawler requests:
 | `server/src/lib/prerender/renderer.ts` (lines 64-70) | Renders `og:image`/`twitter:image` | Uses `data.imageUrl` from data-fetchers |
 | `server/src/lib/prerender/data-fetchers.ts` (lines 49-55) | `tmdbPoster()`, `tmdbProfile()` | `https://image.tmdb.org/t/p/{size}{path}` |
 
-The data-fetchers construct TMDB CDN URLs that get embedded into prerendered HTML for crawlers. This means even pages that use custom OG images on the client side may serve TMDB CDN URLs to crawlers via prerender.
+The `tmdbPoster()`/`tmdbProfile()` helpers are defined in data-fetchers but only used for **season and episode** pages. Movie, show, and actor pages already use self-hosted `/og/...png` URLs for their `imageUrl` field. So the prerender TMDB dependency is limited to the same two page types (episode, season) that have raw TMDB URLs in their client-side meta tags.
 
 ### JSON-LD Schema.org `image` Property
 
@@ -46,8 +46,8 @@ Both client-side and server-side schema builders hardcode TMDB CDN URLs:
 |----------|------|-----------|
 | `buildMovieSchema()` | 42 | `https://image.tmdb.org/t/p/w500${movie.poster_path}` |
 | `buildPersonSchema()` | 112 | `https://image.tmdb.org/t/p/h632${actor.profilePath}` |
-| `buildTVSeriesSchema()` | ~285 | `https://image.tmdb.org/t/p/w500${show.posterPath}` |
-| `buildTVEpisodeSchema()` | ~338 | `https://image.tmdb.org/t/p/w500${episode.stillPath}` |
+| `buildTVSeriesSchema()` | 285 | `https://image.tmdb.org/t/p/w500${show.posterPath}` |
+| `buildTVEpisodeSchema()` | 338 | `https://image.tmdb.org/t/p/w500${episode.stillPath}` |
 
 **Server-side** (`server/src/lib/prerender/schema.ts`):
 
@@ -56,6 +56,7 @@ Both client-side and server-side schema builders hardcode TMDB CDN URLs:
 | `buildMovieSchema()` | 30 | `https://image.tmdb.org/t/p/w500${movie.poster_path}` |
 | `buildPersonSchema()` | 83 | `https://image.tmdb.org/t/p/h632${actor.profile_path}` |
 | `buildTVSeriesSchema()` | 126 | `https://image.tmdb.org/t/p/w500${show.poster_path}` |
+| `buildTVEpisodeSchema()` | 131 | No `image` field currently (unlike client version) |
 
 ### OG Image Generator (Server-Side)
 
@@ -92,11 +93,11 @@ Update all four schema builder functions in **both** files:
 | File | Functions to Update |
 |------|--------------------|
 | `src/utils/schema.ts` | `buildMovieSchema()`, `buildPersonSchema()`, `buildTVSeriesSchema()`, `buildTVEpisodeSchema()` |
-| `server/src/lib/prerender/schema.ts` | `buildMovieSchema()`, `buildPersonSchema()`, `buildTVSeriesSchema()` |
+| `server/src/lib/prerender/schema.ts` | `buildMovieSchema()`, `buildPersonSchema()`, `buildTVSeriesSchema()`, `buildTVEpisodeSchema()` (add `image` field to match client) |
 
 Each function constructs image URLs with the pattern `https://image.tmdb.org/t/p/{size}{path}`. Replace with self-hosted URL construction.
 
-**Keep these files in sync** — the server-side schema builders are documented as "server-side copies of the client-side schema builders" and should produce identical output.
+**Keep these files in sync** — the server-side schema builders are documented as "server-side copies of the client-side schema builders" and should produce identical output. Note: the server-side `buildTVEpisodeSchema()` currently omits the `image` field (and `duration`) that the client version includes — this should be resolved as part of this migration by adding the `image` field once episode stills are available via plan 01.
 
 ### OG Image Generator
 
@@ -137,7 +138,7 @@ Note: Frontend and backend need separate implementations of this utility (differ
 | `src/pages/SeasonPage.tsx` | Replace TMDB CDN URL in og:image/twitter:image meta tags |
 | `src/utils/schema.ts` | Replace TMDB CDN URLs in all 4 schema builder functions |
 | `server/src/lib/prerender/data-fetchers.ts` | Replace `TMDB_IMAGE_BASE`, `tmdbPoster()`, `tmdbProfile()` |
-| `server/src/lib/prerender/schema.ts` | Replace TMDB CDN URLs in all 3 schema builder functions |
+| `server/src/lib/prerender/schema.ts` | Replace TMDB CDN URLs in all 4 schema builder functions (add `image` to `buildTVEpisodeSchema`) |
 | `server/src/routes/og-image.ts` | Replace `TMDB_IMAGE_BASE`, remove TMDB redirect fallback |
 | `server/src/lib/og-image/generator.ts` | Update `fetchImageAsBase64()` to read from self-hosted storage |
 
