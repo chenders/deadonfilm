@@ -945,7 +945,7 @@ gh api repos/chenders/deadonfilm/pulls/123/requested_reviewers \
   -X POST -f 'reviewers[]=copilot-pull-request-reviewer[bot]'
 
 # Poll for new Copilot review (filter by reviewer login, compare against baseline count)
-# Then read new comments (Copilot comments use login "Copilot")
+# Then read new comments (filter by both Copilot login variants)
 gh api "repos/chenders/deadonfilm/pulls/123/comments" | \
   jq '.[] | select(.user.login == "Copilot" or .user.login == "copilot-pull-request-reviewer[bot]") | select(.created_at > "2026-01-25T12:00:00Z")'
 
