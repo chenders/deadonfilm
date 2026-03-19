@@ -200,7 +200,7 @@ The CI workflow splits build from tests to minimize E2E critical path:
 - Vite proxies `/api` and `/admin/api` requests to the backend
 - Pre-commit hooks run ESLint and Prettier via husky + lint-staged
 - Production runs in Docker containers: app, worker, nginx, cron, PostgreSQL, two Redis instances (cache + jobs)
-- Cron jobs: TMDB sync (every 2h), sitemap generation (daily), GSC snapshot (daily 7 AM UTC), movie seeding (weekly)
+- Cron jobs: TMDB sync (every 2h), sitemap generation (daily), GSC snapshot (daily 7 AM PT), movie seeding (weekly)
 
 ## JavaScript/CommonJS Files
 

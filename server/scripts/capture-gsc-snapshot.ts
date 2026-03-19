@@ -88,7 +88,8 @@ async function runSnapshot(): Promise<void> {
         )
       }
 
-      // Top queries (yesterday)
+      // Top queries (yesterday) — delete stale rows first so re-runs don't accumulate beyond N
+      await client.query(`DELETE FROM gsc_top_queries WHERE date = $1`, [yesterday])
       for (const row of queries.rows) {
         await client.query(
           `INSERT INTO gsc_top_queries (date, query, clicks, impressions, ctr, position)
@@ -99,7 +100,8 @@ async function runSnapshot(): Promise<void> {
         )
       }
 
-      // Top pages (yesterday)
+      // Top pages (yesterday) — delete stale rows first so re-runs don't accumulate beyond N
+      await client.query(`DELETE FROM gsc_top_pages WHERE date = $1`, [yesterday])
       for (const row of pages.rows) {
         const pageUrl = row.keys[0]
         let path: string
