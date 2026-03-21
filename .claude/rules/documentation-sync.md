@@ -18,7 +18,7 @@ The `README.md` links to these docs — **keep them accurate when making changes
 | `docs/api.md` | API endpoint documentation | New routes, changed request/response shapes |
 
 **Specific things to check in README.md:**
-- Source counts (e.g., "19+ sources", "80+ sources") — update when adding/removing sources
+- Source counts — update when adding/removing sources
 - Feature descriptions — update when adding new discovery pages or capabilities
 - Architecture diagram — update when adding new services or external APIs
 - "The Numbers" table — update periodically (actor count, coverage percentages)
@@ -35,7 +35,7 @@ These pages describe how the site works to end users. **Keep them accurate when 
 | `src/pages/MethodologyPage.tsx` | Actuarial formulas, obscure filtering rules | Mortality calculation changes, threshold changes |
 
 **Specific things to check:**
-- Source counts (e.g., "dozens of sources", "up to 37 configured sources") — update when adding/removing sources
+- Source counts — update when adding/removing sources
 - Pipeline descriptions — update when orchestration or synthesis changes (e.g., debriefer updates)
 - FAQ answers reference enrichment pipeline — keep consistent with DataSourcesPage
 - AboutPage "How It Works" section — keep consistent with DataSourcesPage
@@ -61,3 +61,19 @@ When updating any instruction file, ensure consistency across all files for:
 - Code quality standards
 - Git workflow and commit conventions
 - JavaScript/CommonJS file list
+
+## CLAUDE.md Maintenance Triggers
+
+CLAUDE.md and rule files are written by Claude and read by Claude. They drift silently when changes are made without updating docs. **Follow these triggers:**
+
+| When you... | Update |
+|-------------|--------|
+| Add a new enrichment source file under `server/src/lib/death-sources/sources/` or `server/src/lib/biography-sources/sources/` | Register it in the orchestrator; update source phase tables in `death-enrichment.md` and/or `biography-enrichment.md` |
+| Add a new directory under `server/src/lib/` | Add it to the Key Directories tree in `CLAUDE.md` |
+| Add a new route file under `server/src/routes/` | Add the route pattern to Key API Routes in `CLAUDE.md` if it's user-facing |
+| Add or remove a cron job in `docker-compose.yml` | Update the cron jobs line in Development Notes in `CLAUDE.md` |
+| Add a new env var that scripts or routes require | Add it to the Environment Variables section in `CLAUDE.md` |
+| Add a new npm dependency that's architecturally significant | Update Key Dependencies in `CLAUDE.md` |
+| Change how `npm run dev` or other root scripts work | Update Common Commands in `CLAUDE.md` |
+
+**Do NOT maintain counts** of pages, hooks, sources, or other things that grow organically — these go stale immediately. Use qualitative descriptions instead of exact numbers in CLAUDE.md and rule files.

@@ -66,8 +66,8 @@ Dead on Film is a web application that tracks deceased actors across movies and 
 ```
 src/                          # Frontend
 ├── components/               # React components (admin, causes, common, death, home, movie, search, show, etc.)
-├── pages/                    # Page components (56 pages)
-├── hooks/                    # Custom hooks (61 hooks)
+├── pages/                    # Page components
+├── hooks/                    # Custom hooks
 ├── contexts/                 # React contexts
 ├── services/                 # API service layer
 ├── types/                    # TypeScript types
@@ -76,14 +76,16 @@ src/                          # Frontend
 server/src/                   # Backend
 ├── routes/                   # Express routes (public + admin/)
 ├── lib/                      # Core library modules
-│   ├── death-sources/        # Death enrichment system (orchestrator, 60+ sources, AI providers)
-│   ├── biography-sources/    # Biography enrichment system (orchestrator, 37 sources, Claude synthesis)
+│   ├── death-sources/        # Death enrichment system (orchestrator, sources, AI providers)
+│   ├── biography-sources/    # Biography enrichment system (orchestrator, sources, Claude synthesis)
 │   ├── shared/               # Shared utilities (concurrency, rate limiting, DDG search, sanitization)
 │   ├── biography/            # Biography utilities (golden test cases, Wikipedia fetcher)
 │   ├── jobs/                 # BullMQ queue manager, workers, handlers
 │   ├── db/                   # Database query modules
 │   ├── claude-batch/         # Claude Batch API integration
-│   └── entity-linker/        # Auto-link actor names in text
+│   ├── entity-linker/        # Auto-link actor names in text
+│   ├── og-image/             # Dynamic Open Graph image generation
+│   └── prerender/            # Page prerendering for SEO/performance
 ├── middleware/               # Express middleware
 └── test/                     # Test utilities
 
@@ -104,7 +106,7 @@ e2e/                          # Playwright tests and screenshots
 
 ### Key Dependencies
 
-**Backend**: express, pg, ioredis, bullmq, @anthropic-ai/sdk, debriefer + debriefer-sources (research orchestration), commander, dotenv, pino, zod, node-pg-migrate, playwright-core (web scraping), newrelic
+**Backend**: express, pg, ioredis, bullmq, @anthropic-ai/sdk, @debriefer/core + @debriefer/sources + @debriefer/browser + @debriefer/ai (research orchestration), commander, dotenv, pino, zod, node-pg-migrate, playwright-core (web scraping), newrelic
 
 **Frontend**: react 18, react-router-dom 6, @tanstack/react-query, react-helmet-async, recharts, react-datepicker, slugify
 
@@ -173,9 +175,7 @@ corresponding `.test.ts` file exists. If not, create one with at least:
 - Error-handling test (database error → 500 response)
 - Edge case test (empty results, missing optional params)
 
-Currently untested route files (create tests when touching these):
-- `server/src/routes/shows/` (index, show-details, search, season)
-- `server/src/routes/admin/` (sitemap, cache, dashboard)
+To find route files without a same-name adjacent `.test.ts` (note: this may flag files covered indirectly via barrel re-exports or consolidated tests): `find server/src/routes -name '*.ts' ! -name '*.test.ts' ! -name '*.d.ts' | while read f; do [ ! -f "${f%.ts}.test.ts" ] && echo "$f"; done`
 
 ## CI Workflow (`ci.yml`)
 
@@ -200,7 +200,7 @@ The CI workflow splits build from tests to minimize E2E critical path:
 - Vite proxies `/api` and `/admin/api` requests to the backend
 - Pre-commit hooks run ESLint and Prettier via husky + lint-staged
 - Production runs in Docker containers: app, worker, nginx, cron, PostgreSQL, two Redis instances (cache + jobs)
-- Cron jobs: TMDB sync (every 2h), sitemap generation (daily), movie seeding (weekly)
+- Cron jobs: TMDB sync (every 2h), sitemap generation (daily 6 AM PT), movie seeding (weekly Sun 4 AM PT), find uncertain deaths (weekly Sun 5 AM PT)
 
 ## JavaScript/CommonJS Files
 

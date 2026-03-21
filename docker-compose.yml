@@ -182,11 +182,11 @@ services:
         PATH=/usr/local/bin:/usr/bin:/bin
         # TMDB sync - every 2 hours, syncs recent changes
         0 */2 * * * cd /app/server && node --require newrelic --import newrelic/esm-loader.mjs dist/scripts/sync-tmdb-changes.js
-        # Sitemap generation - daily at 6 AM UTC
+        # Sitemap generation - daily at 6 AM PT
         0 6 * * * cd /app/server && node --require newrelic --import newrelic/esm-loader.mjs dist/scripts/sitemap-generate.js
-        # Movie seeding - weekly Sunday 4 AM UTC
+        # Movie seeding - weekly Sunday 4 AM PT
         0 4 * * 0 cd /app/server && node --require newrelic --import newrelic/esm-loader.mjs dist/scripts/seed-movies.js $(($(date +%Y)-1)) $(date +%Y) --count 500
-        # Find uncertain deaths - weekly Sunday 5 AM UTC
+        # Find uncertain deaths - weekly Sunday 5 AM PT
         0 5 * * 0 cd /app/server && node --require newrelic --import newrelic/esm-loader.mjs dist/scripts/find-uncertain-deaths.js 2>&1 | head -100
         EOF
         # Strip leading spaces from heredoc (YAML adds 8 spaces)

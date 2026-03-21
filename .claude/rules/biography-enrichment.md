@@ -3,7 +3,7 @@ globs: ["server/src/lib/biography-sources/**", "server/src/lib/biography/**", "s
 ---
 # Biography Enrichment System
 
-Enriches actor records with narrative personal life biographies from 37 active data sources (33 content sources + 4 web search providers), synthesized by Claude into structured fields.
+Enriches actor records with narrative personal life biographies from multiple data source phases (structured data, reference sites, books, web search, news, obituary, archives), synthesized by Claude into structured fields.
 
 ## Adding New Sources
 
@@ -95,14 +95,14 @@ Both systems now share the same architecture: parallel source execution within p
 | **TCM** | DuckDuckGo `site:tcm.com` search | Classic film actor biographies |
 | **AllMusic** | DuckDuckGo `site:allmusic.com` search | Professional music artist biographies |
 
-### Phase 2.5: Books/Publications
+### Phase 3: Books/Publications
 | Source | Method | Notes |
 |--------|--------|-------|
 | **Google Books** | Google Books API v1 snippets + descriptions | Requires `GOOGLE_BOOKS_API_KEY`, 1,000 req/day |
 | **Open Library** | Person-subject search + Search Inside API | Free, no API key |
 | **IA Books** | Internet Archive advanced search + OCR | Free, public domain full text |
 
-### Phase 3: Web Search (with link following)
+### Phase 4: Web Search (with link following)
 | Source | Method | Notes |
 |--------|--------|-------|
 | Google Search | Custom Search API | Requires `GOOGLE_SEARCH_API_KEY` + `GOOGLE_SEARCH_CX` |
@@ -110,15 +110,15 @@ Both systems now share the same architecture: parallel source execution within p
 | DuckDuckGo | HTML search endpoint | Free fallback |
 | Brave Search | Brave Search API | Requires `BRAVE_SEARCH_API_KEY` |
 
-### Phase 4: News Sources
+### Phase 5: News Sources
 Guardian, NYTimes, AP News, Reuters, Washington Post, LA Times, BBC News, NPR, PBS, People, The Independent, The Telegraph, Time, The New Yorker, Rolling Stone, National Geographic, Smithsonian Magazine, History.com
 
-### Phase 5: Obituary Sites
+### Phase 6: Obituary Sites
 Legacy.com, Find a Grave
 
 ### DuckDuckGo Browser Fallback
 
-All DDG-dependent sources (Phases 2-5) use a shared search utility (`server/src/lib/shared/duckduckgo-search.ts`) with a multi-tier fallback chain:
+All DDG-dependent sources (Phases 2-6) use a shared search utility (`server/src/lib/shared/duckduckgo-search.ts`) with a multi-tier fallback chain:
 
 1. **fetch-based DDG** — free, fast (~1s)
 2. **Browser-based DDG** — Playwright with `fingerprint-injector` stealth mode, bypasses DDG anomaly-modal CAPTCHA
@@ -126,7 +126,7 @@ All DDG-dependent sources (Phases 2-5) use a shared search utility (`server/src/
 
 Browser stealth uses `fingerprint-injector` (from Apify's fingerprint-suite) for statistically realistic, randomized fingerprints per session — replacing the previous hardcoded Chrome 120 UA / 1920x1080 viewport.
 
-### Phase 6: Historical Archives
+### Phase 7: Historical Archives
 Internet Archive, Chronicling America, Trove, Europeana
 
 ## Parallel Execution Model
