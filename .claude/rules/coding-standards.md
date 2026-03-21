@@ -77,7 +77,7 @@ beyond that, decompose it:
 - **Complex conditionals** → extract to well-named helper functions
 
 Current violations to address when touching these files:
-- `server/src/routes/actor.ts` → `getActor()` is 215 lines — extract query and transform logic
+- `server/src/routes/actor.ts` → `getActor()` far exceeds the 60-line limit — extract query and transform logic
 
 ## Enrichment Variable Naming
 

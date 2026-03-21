@@ -3,7 +3,7 @@ globs: ["server/src/lib/biography-sources/**", "server/src/lib/biography/**", "s
 ---
 # Biography Enrichment System
 
-Enriches actor records with narrative personal life biographies from 37 active data sources (33 content sources + 4 web search providers), synthesized by Claude into structured fields.
+Enriches actor records with narrative personal life biographies from multiple data sources across 7 phases (structured data, reference sites, books, web search, news, obituary, archives), synthesized by Claude into structured fields.
 
 ## Adding New Sources
 
