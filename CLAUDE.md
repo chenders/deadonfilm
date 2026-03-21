@@ -175,7 +175,7 @@ corresponding `.test.ts` file exists. If not, create one with at least:
 - Error-handling test (database error → 500 response)
 - Edge case test (empty results, missing optional params)
 
-To find currently untested route files: `find server/src/routes -name '*.ts' ! -name '*.test.ts' ! -name '*.d.ts' | while read f; do [ ! -f "${f%.ts}.test.ts" ] && echo "$f"; done`
+To find route files without a same-name adjacent `.test.ts` (note: this may flag files covered indirectly via barrel re-exports or consolidated tests): `find server/src/routes -name '*.ts' ! -name '*.test.ts' ! -name '*.d.ts' | while read f; do [ ! -f "${f%.ts}.test.ts" ] && echo "$f"; done`
 
 ## CI Workflow (`ci.yml`)
 

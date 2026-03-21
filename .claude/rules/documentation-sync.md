@@ -68,7 +68,7 @@ CLAUDE.md and rule files are written by Claude and read by Claude. They drift si
 
 | When you... | Update |
 |-------------|--------|
-| Add a new enrichment source file in `sources/` | Register it in the orchestrator; update source phase tables in `death-enrichment.md` and/or `biography-enrichment.md` |
+| Add a new enrichment source file under `server/src/lib/death-sources/sources/` or `server/src/lib/biography-sources/sources/` | Register it in the orchestrator; update source phase tables in `death-enrichment.md` and/or `biography-enrichment.md` |
 | Add a new directory under `server/src/lib/` | Add it to the Key Directories tree in `CLAUDE.md` |
 | Add a new route file under `server/src/routes/` | Add the route pattern to Key API Routes in `CLAUDE.md` if it's user-facing |
 | Add or remove a cron job in `docker-compose.yml` | Update the cron jobs line in Development Notes in `CLAUDE.md` |
