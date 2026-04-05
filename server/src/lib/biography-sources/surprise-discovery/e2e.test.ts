@@ -7,7 +7,7 @@
  * → Reddit research → claim verification → integration.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from "vitest"
 
 // ── Module mocks (must be before any imports) ─────────────────────────────────
 

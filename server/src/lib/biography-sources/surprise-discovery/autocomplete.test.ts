@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterAll } from "vitest"
 import type { AutocompleteSuggestion } from "./types.js"
 
 // Mock fetch globally before any imports
