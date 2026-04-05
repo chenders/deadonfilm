@@ -81,6 +81,8 @@ For each finding, decide how to handle it:
 - NARRATIVE_INSERT: A biographical fact that should be woven into the narrative prose. Write the sentence to insert, and note where it fits (e.g., "after the paragraph about early life").
 - DISCARD: The finding is not valuable enough to add (already covered, too minor, or doesn't add meaningful context).
 
+DISCARD any finding that is simply about a movie, TV show, or role they appeared in — that information belongs in the filmography, not here. A fact is only worth including if it reveals something SURPRISING about the person beyond their work. "She was in Fast & Furious" is filmography. "She BEGGED Vin Diesel to cast her because she wanted to drive fast cars" is a surprising personal detail.
+
 Do NOT rewrite the entire narrative. Only add genuinely new information that isn't already implied or stated.
 
 Respond with ONLY valid JSON in this exact format:
@@ -136,6 +138,8 @@ NEWLY VERIFIED FINDINGS TO INCORPORATE:
 ${findingsList}
 
 Rewrite the biography narrative to naturally incorporate these findings. Keep the personal life focus — weave in the new facts where they fit best in the story. Do not add career summaries, awards, or filmography.
+
+DISCARD any finding that is simply about a movie, TV show, or role they appeared in — that belongs in the filmography, not here. Only include facts that reveal something SURPRISING about the person beyond their work.
 
 Also classify each finding for tracking:
 - "lesserKnownFacts": if you added it as a standalone fact rather than in the narrative

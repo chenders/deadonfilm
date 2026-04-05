@@ -39,10 +39,53 @@ async function main() {
     console.log(`New facts: ${result.newLesserKnownFacts.length}`)
     if (result.newLesserKnownFacts.length > 0) {
       console.log("New lesser-known facts:")
-      result.newLesserKnownFacts.forEach((f, i) => console.log(`  ${i + 1}. ${f}`))
+      result.newLesserKnownFacts.forEach((f, i) => {
+        const fact = typeof f === "string" ? { text: f } : f
+        console.log(`  ${i + 1}. ${fact.text}`)
+        if (fact.sourceUrl) console.log(`     Source: ${fact.sourceName} → ${fact.sourceUrl}`)
+      })
     }
     if (result.updatedNarrative) {
       console.log(`Narrative updated: yes (${result.updatedNarrative.length} chars)`)
+    }
+
+    // Write results to DB
+    if (result.hasFindings || result.discoveryResults.autocomplete.queriesRun > 0) {
+      const updateFields: string[] = ["discovery_results = $2"]
+      const updateParams: unknown[] = [row.id, JSON.stringify(result.discoveryResults)]
+      let paramIdx = 3
+
+      if (result.newLesserKnownFacts.length > 0) {
+        updateFields.push(
+          `lesser_known_facts = $${paramIdx}::jsonb || COALESCE(lesser_known_facts, '[]'::jsonb)`
+        )
+        updateParams.push(JSON.stringify(result.newLesserKnownFacts))
+        paramIdx++
+      }
+
+      if (result.updatedNarrative) {
+        updateFields.push(`narrative = $${paramIdx}`)
+        updateParams.push(result.updatedNarrative)
+        paramIdx++
+      }
+
+      await pool.query(
+        `UPDATE actor_biography_details SET ${updateFields.join(", ")} WHERE actor_id = $1`,
+        updateParams
+      )
+      console.log(
+        `\nWrote ${result.newLesserKnownFacts.length} new facts + discovery results to DB`
+      )
+
+      // Clear Redis cache
+      const Redis = (await import("ioredis")).default
+      const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379")
+      const keys = await redis.keys(`*${row.id}*`)
+      if (keys.length > 0) {
+        await redis.del(...keys)
+        console.log(`Cleared ${keys.length} Redis cache keys: ${keys.join(", ")}`)
+      }
+      await redis.quit()
     }
 
     const dr = result.discoveryResults

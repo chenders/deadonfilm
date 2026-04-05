@@ -217,8 +217,9 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
           let paramIdx = 3
 
           if (discoveryResult.newLesserKnownFacts.length > 0) {
+            // Prepend discovery facts (most surprising) before enrichment facts
             updateFields.push(
-              `lesser_known_facts = COALESCE(lesser_known_facts, '[]'::jsonb) || $${paramIdx}::jsonb`
+              `lesser_known_facts = $${paramIdx}::jsonb || COALESCE(lesser_known_facts, '[]'::jsonb)`
             )
             updateParams.push(JSON.stringify(discoveryResult.newLesserKnownFacts))
             paramIdx++
