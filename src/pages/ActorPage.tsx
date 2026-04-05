@@ -22,6 +22,7 @@ import ProjectLink from "@/components/death/ProjectLink"
 import RelatedCelebrityCard from "@/components/death/RelatedCelebrityCard"
 import BiographySection from "@/components/actor/BiographySection"
 import type { ActorFilmographyMovie, ActorFilmographyShow } from "@/types"
+import type { BiographyDetails } from "@/types/actor"
 
 type FilmographyItem =
   | { type: "movie"; data: ActorFilmographyMovie; year: number | null }
@@ -156,11 +157,7 @@ function isSafeUrl(url: string): boolean {
   }
 }
 
-function LesserKnownFacts({
-  facts,
-}: {
-  facts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>
-}) {
+function LesserKnownFacts({ facts }: { facts: BiographyDetails["lesserKnownFacts"] }) {
   const [showAll, setShowAll] = useState(false)
   const visibleFacts = showAll ? facts : facts.slice(0, INITIAL_FACTS_SHOWN)
   const hiddenCount = facts.length - INITIAL_FACTS_SHOWN

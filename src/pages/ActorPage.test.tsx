@@ -909,8 +909,12 @@ describe("ActorPage", () => {
       expect(sourceLink).toHaveAttribute("target", "_blank")
       expect(sourceLink).toHaveAttribute("rel", "nofollow noopener noreferrer")
 
-      // Fact without sourceUrl does not render a link
-      expect(screen.queryByLabelText("Source: null (opens in new tab)")).not.toBeInTheDocument()
+      // Fact without sourceUrl does not render a link — verify by counting
+      // total source links (only facts with valid sourceUrl + sourceName get one)
+      const factsContainer = screen.getByTestId("biography-facts")
+      const sourceLinks = factsContainer.querySelectorAll("a[target='_blank']")
+      // 5 visible facts: #1 has source, #2 has null, #3-5 have sources = 4 links
+      expect(sourceLinks).toHaveLength(4)
     })
 
     it("does not render links for unsafe URLs", async () => {
