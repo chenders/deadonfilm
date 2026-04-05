@@ -84,6 +84,8 @@ export interface ActorCoverageFilters {
   deathManner?: string
   deathEnrichmentVersion?: string
   bioEnrichmentVersion?: string
+  unattributedFacts?: boolean
+  deathStatus?: "deceased" | "alive" | "all"
   orderBy?: "death_date" | "popularity" | "name" | "enriched_at" | "interestingness"
   orderDirection?: "asc" | "desc"
 }
@@ -174,7 +176,13 @@ export async function getActorsForCoverage(
   const offset = (page - 1) * pageSize
 
   // Build WHERE clauses
-  const whereClauses: string[] = ["deathday IS NOT NULL"]
+  const deathFilter =
+    filters.deathStatus === "alive"
+      ? "deathday IS NULL"
+      : filters.deathStatus === "all"
+        ? "TRUE"
+        : "deathday IS NOT NULL" // default: deceased
+  const whereClauses: string[] = [deathFilter]
   const params: unknown[] = []
   let paramIndex = 1
 
@@ -283,6 +291,13 @@ export async function getActorsForCoverage(
       whereClauses.push(`biography_version = $${paramIndex++}`)
       params.push(filters.bioEnrichmentVersion)
     }
+  }
+
+  if (filters.unattributedFacts) {
+    whereClauses.push(`abd.lesser_known_facts IS NOT NULL AND abd.lesser_known_facts != '[]'::jsonb AND EXISTS (
+      SELECT 1 FROM jsonb_array_elements(abd.lesser_known_facts) AS fact
+      WHERE fact->>'sourceUrl' IS NULL
+    )`)
   }
 
   const whereClause = whereClauses.join(" AND ")

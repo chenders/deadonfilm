@@ -5,7 +5,7 @@
  * beyond GSC's native 16-month retention window.
  */
 
-import { Pool } from "pg"
+import { Pool, PoolClient } from "pg"
 
 // ============================================================================
 // Types
@@ -283,6 +283,153 @@ export async function getIndexingStatusHistory(
     [startDate, endDate]
   )
   return result.rows
+}
+
+// ============================================================================
+// Snapshot Writer (shared between cron script and admin route)
+// ============================================================================
+
+/** Raw GSC API row with keys array (as returned by gsc-client). */
+interface GscApiRow {
+  keys: string[]
+  clicks: number
+  impressions: number
+  ctr: number
+  position: number
+}
+
+/** Pre-categorized page row for snapshot writing. */
+export interface GscPageRow {
+  page_url: string
+  page_type: string
+  clicks: number
+  impressions: number
+  ctr: number
+  position: number
+}
+
+/** All fetched GSC data needed to write a snapshot. */
+export interface GscSnapshotInput {
+  yesterday: string
+  performance: { rows: GscApiRow[] }
+  queries: { rows: GscApiRow[] }
+  pages: GscPageRow[]
+  pageTypes: Record<string, { clicks: number; impressions: number; ctr: number; position: number }>
+  sitemaps: Array<{ contents: Array<{ type: string; submitted: number; indexed: number }> }>
+}
+
+/** Summary returned after writing a snapshot. */
+export interface GscSnapshotResult {
+  performanceDays: number
+  queries: number
+  pages: number
+  pageTypes: number
+  indexing?: { totalSubmitted: number; totalIndexed: number }
+}
+
+/**
+ * Write a full GSC snapshot atomically within an existing transaction.
+ *
+ * The caller is responsible for BEGIN/COMMIT/ROLLBACK — this function
+ * only issues INSERT/DELETE statements via the provided client.
+ */
+export async function writeGscSnapshot(
+  client: Pool | PoolClient,
+  data: GscSnapshotInput
+): Promise<GscSnapshotResult> {
+  const { yesterday, performance, queries, pages, pageTypes, sitemaps } = data
+
+  // Search performance (last 30 days)
+  for (const row of performance.rows) {
+    await client.query(
+      `INSERT INTO gsc_search_performance (date, search_type, clicks, impressions, ctr, position)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (date, search_type)
+       DO UPDATE SET clicks = $3, impressions = $4, ctr = $5, position = $6, fetched_at = now()`,
+      [row.keys[0], "web", row.clicks, row.impressions, row.ctr, row.position]
+    )
+  }
+
+  // Top queries (yesterday) — delete stale rows first so re-runs don't accumulate beyond N
+  await client.query(`DELETE FROM gsc_top_queries WHERE date = $1`, [yesterday])
+  for (const row of queries.rows) {
+    await client.query(
+      `INSERT INTO gsc_top_queries (date, query, clicks, impressions, ctr, position)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (date, query)
+       DO UPDATE SET clicks = $3, impressions = $4, ctr = $5, position = $6, fetched_at = now()`,
+      [yesterday, row.keys[0], row.clicks, row.impressions, row.ctr, row.position]
+    )
+  }
+
+  // Top pages (yesterday) — delete stale rows first so re-runs don't accumulate beyond N
+  await client.query(`DELETE FROM gsc_top_pages WHERE date = $1`, [yesterday])
+  for (const page of pages) {
+    await client.query(
+      `INSERT INTO gsc_top_pages (date, page_url, page_type, clicks, impressions, ctr, position)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (date, page_url)
+       DO UPDATE SET page_type = $3, clicks = $4, impressions = $5, ctr = $6, position = $7, fetched_at = now()`,
+      [
+        yesterday,
+        page.page_url,
+        page.page_type,
+        page.clicks,
+        page.impressions,
+        page.ctr,
+        page.position,
+      ]
+    )
+  }
+
+  // Page type performance (yesterday)
+  for (const [pageType, pt] of Object.entries(pageTypes)) {
+    await client.query(
+      `INSERT INTO gsc_page_type_performance (date, page_type, clicks, impressions, ctr, position)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (date, page_type)
+       DO UPDATE SET clicks = $3, impressions = $4, ctr = $5, position = $6, fetched_at = now()`,
+      [yesterday, pageType, pt.clicks, pt.impressions, pt.ctr, pt.position]
+    )
+  }
+
+  // Indexing status from sitemaps
+  let indexing: { totalSubmitted: number; totalIndexed: number } | undefined
+  if (sitemaps.length > 0) {
+    let totalSubmitted = 0
+    let totalIndexed = 0
+    const indexDetails: Record<string, { submitted: number; indexed: number }> = {}
+
+    for (const sitemap of sitemaps) {
+      for (const content of sitemap.contents) {
+        totalSubmitted += content.submitted
+        totalIndexed += content.indexed
+        if (!indexDetails[content.type]) {
+          indexDetails[content.type] = { submitted: 0, indexed: 0 }
+        }
+        indexDetails[content.type].submitted += content.submitted
+        indexDetails[content.type].indexed += content.indexed
+      }
+    }
+
+    await client.query(
+      `INSERT INTO gsc_indexing_status (date, total_submitted, total_indexed, index_details)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (date)
+       DO UPDATE SET total_submitted = $2, total_indexed = $3, index_details = $4, fetched_at = now()`,
+      [yesterday, totalSubmitted, totalIndexed, JSON.stringify(indexDetails)]
+    )
+
+    indexing = { totalSubmitted, totalIndexed }
+  }
+
+  return {
+    performanceDays: performance.rows.length,
+    queries: queries.rows.length,
+    pages: pages.length,
+    pageTypes: Object.keys(pageTypes).length,
+    ...(indexing && { indexing }),
+  }
 }
 
 // ============================================================================

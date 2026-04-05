@@ -29,7 +29,7 @@ interface EnrichmentActor {
 }
 
 interface EnrichmentStats {
-  totalDeceased: number
+  totalActors: number
   enriched: number
   needsEnrichment: number
 }
@@ -67,7 +67,8 @@ async function fetchEnrichmentActors(
   pageSize: number,
   minPopularity: number,
   needsEnrichment: boolean,
-  searchName: string
+  searchName: string,
+  unattributedFacts: boolean
 ): Promise<EnrichmentResponse> {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -78,6 +79,9 @@ async function fetchEnrichmentActors(
 
   if (searchName.trim()) {
     params.set("searchName", searchName.trim())
+  }
+  if (unattributedFacts) {
+    params.set("unattributedFacts", "true")
   }
 
   const response = await fetch(adminApi(`/biography-enrichment?${params}`), {
@@ -316,6 +320,7 @@ export default function BiographyEnrichmentTab() {
   const [page, setPage] = useState(1)
   const [minPopularity, setMinPopularity] = useState("0")
   const [needsEnrichment, setNeedsEnrichment] = useState(true)
+  const [unattributedFacts, setUnattributedFacts] = useState(false)
   const [batchLimit, setBatchLimit] = useState(10)
   const [enrichingActorId, setEnrichingActorId] = useState<number | null>(null)
   const [resynthesizingActorId, setResynthesizingActorId] = useState<number | null>(null)
@@ -343,6 +348,7 @@ export default function BiographyEnrichmentTab() {
       pageSize,
       minPopularity,
       needsEnrichment,
+      unattributedFacts,
       searchName,
     ],
     queryFn: () =>
@@ -351,7 +357,8 @@ export default function BiographyEnrichmentTab() {
         pageSize,
         parseFloat(minPopularity) || 0,
         needsEnrichment,
-        searchName
+        searchName,
+        unattributedFacts
       ),
   })
 
@@ -437,9 +444,9 @@ export default function BiographyEnrichmentTab() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4">
             <div className="text-2xl font-bold text-admin-text-primary">
-              {stats.totalDeceased.toLocaleString()}
+              {stats.totalActors.toLocaleString()}
             </div>
-            <div className="text-sm text-admin-text-muted">Total Deceased</div>
+            <div className="text-sm text-admin-text-muted">Total Actors</div>
           </div>
           <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4">
             <div className="text-2xl font-bold text-admin-success">
@@ -540,6 +547,22 @@ export default function BiographyEnrichmentTab() {
               <option value="false">All Actors</option>
               <option value="true">Needs Enrichment Only</option>
             </select>
+          </div>
+
+          {/* Unattributed Facts Filter */}
+          <div className="flex items-end pb-1">
+            <label className="flex items-center gap-2 text-sm text-admin-text-muted">
+              <input
+                type="checkbox"
+                checked={unattributedFacts}
+                onChange={(e) => {
+                  setUnattributedFacts(e.target.checked)
+                  setPage(1)
+                }}
+                className="rounded border-admin-border"
+              />
+              Unattributed facts only
+            </label>
           </div>
 
           {/* Batch Limit */}

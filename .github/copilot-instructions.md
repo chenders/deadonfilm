@@ -72,7 +72,9 @@ Route handlers and library functions should stay under 60 lines. Decompose:
 - **DRY**: extract repeated logic before duplicating across desktop/mobile views
 - **Null safety**: guard `rows[0]`, guard config spreads (`...(config?.field ?? {})`)
 - **Naming consistency**: when renaming functions, update all variables, comments, error messages
-- **Accessibility**: icon-only buttons need `aria-label`, minimum 44x44px touch targets
+- **Accessibility**: all text must meet WCAG AA contrast ratios (4.5:1 normal, 3:1 large); icon-only buttons need `aria-label`; minimum 44x44px touch targets
+- **External links**: all links to external domains must use `target="_blank" rel="nofollow noopener noreferrer"`
+- **Source attribution must be provable**: every fact attributed to a source must be traceable to that specific, verified source. Attribution is captured at extraction time, not inferred after the fact.
 - **AbortSignal**: combine signals with `AbortSignal.any()`, never `??` which defeats timeout
 - **No magic numbers**: extract to named constants
 - **No N+1 queries**: batch lookups, never query inside loops

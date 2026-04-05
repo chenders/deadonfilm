@@ -104,7 +104,7 @@ describe("Admin Biography Enrichment Endpoints", () => {
           ],
         })
         .mockResolvedValueOnce({
-          rows: [{ total_deceased: "100", enriched: "40", needs_enrichment: "60" }],
+          rows: [{ total_actors: "100", enriched: "40", needs_enrichment: "60" }],
         })
 
       const res = await request(app).get("/admin/api/biography-enrichment")
@@ -122,7 +122,7 @@ describe("Admin Biography Enrichment Endpoints", () => {
         bioUpdatedAt: "2026-01-15",
         biographyVersion: "v2",
       })
-      expect(res.body.stats.totalDeceased).toBe(100)
+      expect(res.body.stats.totalActors).toBe(100)
       expect(res.body.stats.enriched).toBe(40)
     })
 
@@ -145,7 +145,7 @@ describe("Admin Biography Enrichment Endpoints", () => {
           ],
         })
         .mockResolvedValueOnce({
-          rows: [{ total_deceased: "100", enriched: "40", needs_enrichment: "60" }],
+          rows: [{ total_actors: "100", enriched: "40", needs_enrichment: "60" }],
         })
 
       const res = await request(app).get("/admin/api/biography-enrichment?searchName=paul+smith")

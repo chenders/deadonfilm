@@ -45,6 +45,9 @@ Before writing the same logic in two places (e.g., desktop and mobile views, mul
 
 Every interactive element must be accessible:
 
+- **Color contrast**: All text must meet WCAG AA minimum contrast ratios against its background. Normal text: 4.5:1. Large text (18px+ or 14px+ bold): 3:1. This applies to all text including muted/secondary text, links, labels, and placeholder text. When choosing colors for dark themes, verify the ratio — do not eyeball it.
+- **External links**: All links to external domains must use `target="_blank" rel="nofollow noopener noreferrer"`. `noopener` prevents the opened page from accessing `window.opener`. `noreferrer` prevents leaking the referrer URL. `nofollow` tells search engines not to pass SEO authority to external sites.
+- **Source attribution must be provable**: Every fact, claim, or data point attributed to a source must be traceable to that specific, verified source. Source attribution is captured at extraction time, not inferred after the fact. If a fact's provenance is unknown, it has no source link — it does not get an invented one.
 - **Icon-only links/buttons**: Always include `aria-label` describing the action
 - **Tap targets**: Minimum 44x44px for touch targets (add padding if icon is small)
 - **Empty cells**: Don't use `aria-hidden="true"` as the only content — provide a screen-reader-friendly alternative

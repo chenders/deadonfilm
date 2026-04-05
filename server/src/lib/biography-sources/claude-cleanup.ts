@@ -129,7 +129,7 @@ Return JSON only:
   "fame_catalyst": "What single thing catapulted them...",
   "personal_struggles": "Addiction, legal issues, health...",
   "relationships": "Marriages, significant partnerships, children...",
-  "lesser_known_facts": ["Array of surprising or little-known facts that are NOT already mentioned in the narrative above. Each fact should add NEW information the reader hasn't already seen."],
+  "lesser_known_facts": [{"text": "A surprising fact NOT mentioned in the narrative", "source_url": "URL of the specific source this fact came from", "source_name": "Human-readable source name, e.g. 'Wikipedia', 'The Guardian'"}],
   "narrative_confidence": "high|medium|low",
   "has_substantive_content": true/false,
   "alternate_names": ["Stage names, maiden names, nicknames, birth names if different from professional name. Empty array if none."],
@@ -221,6 +221,9 @@ LESSER-KNOWN FACTS RULES:
   GOOD: Narrative covers career → fact reveals "He was a licensed pilot who owned three planes"
 - Order facts from MOST surprising/interesting to LEAST. Lead with the fact that would make
   someone say "wait, really?" — not the one that's merely unusual.
+- Each fact MUST include source_url and source_name identifying the specific source it came from.
+  Use the URL of the source that contains this fact. If a fact cannot be attributed to a specific
+  source, do not include it.
 
 CRITICAL:
 - Do NOT list filmography or box office numbers in the narrative
@@ -403,8 +406,27 @@ export async function synthesizeBiography(
     relationships: typeof parsed.relationships === "string" ? parsed.relationships : null,
     lesserKnownFacts: Array.isArray(parsed.lesser_known_facts)
       ? parsed.lesser_known_facts
-          .filter((f: unknown): f is string => typeof f === "string")
-          .map((text) => ({ text, sourceUrl: null, sourceName: null }))
+          .map((f: unknown) => {
+            // New format: {text, source_url, source_name}
+            if (
+              typeof f === "object" &&
+              f !== null &&
+              typeof (f as Record<string, unknown>).text === "string"
+            ) {
+              const obj = f as Record<string, unknown>
+              return {
+                text: obj.text as string,
+                sourceUrl: typeof obj.source_url === "string" ? obj.source_url : null,
+                sourceName: typeof obj.source_name === "string" ? obj.source_name : null,
+              }
+            }
+            // Legacy fallback: plain string
+            if (typeof f === "string") {
+              return { text: f, sourceUrl: null, sourceName: null }
+            }
+            return null
+          })
+          .filter((f): f is NonNullable<typeof f> => f !== null)
       : [],
     hasSubstantiveContent:
       typeof parsed.has_substantive_content === "boolean" ? parsed.has_substantive_content : false,

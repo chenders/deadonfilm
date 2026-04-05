@@ -43,6 +43,8 @@ import {
   getIndexingStatusHistory,
   getGscAlerts,
   acknowledgeGscAlert,
+  writeGscSnapshot,
+  type GscPageRow,
 } from "../../lib/db/admin-gsc-queries.js"
 
 const router = Router()
@@ -458,106 +460,50 @@ router.post("/snapshot", async (_req: Request, res: Response): Promise<void> => 
     // Fetch all data from GSC API before acquiring a DB connection
     const performance = await getSearchPerformanceOverTime(thirtyDaysAgo, yesterday)
     const queries = await getTopQueries(yesterday, yesterday, 100)
-    const pages = await getTopPages(yesterday, yesterday, 100)
+    const rawPages = await getTopPages(yesterday, yesterday, 100)
     const pageTypes = await getPerformanceByPageType(yesterday, yesterday)
     const sitemaps = await getSitemaps()
 
-    // Now acquire DB connection and write atomically
+    // Categorize pages before writing
+    const pages: GscPageRow[] = rawPages.rows.map((row) => {
+      const pageUrl = row.keys[0]
+      let path: string
+      try {
+        path = new URL(pageUrl).pathname
+      } catch {
+        path = pageUrl
+      }
+      return {
+        page_url: pageUrl,
+        page_type: categorizeUrl(path),
+        clicks: row.clicks,
+        impressions: row.impressions,
+        ctr: row.ctr,
+        position: row.position,
+      }
+    })
+
+    // Write atomically using shared snapshot writer
     const pool = getPool()
     const client = await pool.connect()
 
     try {
       await client.query("BEGIN")
 
-      // Snapshot search performance (last 30 days)
-      for (const row of performance.rows) {
-        await client.query(
-          `INSERT INTO gsc_search_performance (date, search_type, clicks, impressions, ctr, position)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (date, search_type)
-           DO UPDATE SET clicks = $3, impressions = $4, ctr = $5, position = $6, fetched_at = now()`,
-          [row.keys[0], "web", row.clicks, row.impressions, row.ctr, row.position]
-        )
-      }
-
-      // Snapshot top queries (for yesterday)
-      for (const row of queries.rows) {
-        await client.query(
-          `INSERT INTO gsc_top_queries (date, query, clicks, impressions, ctr, position)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (date, query)
-           DO UPDATE SET clicks = $3, impressions = $4, ctr = $5, position = $6, fetched_at = now()`,
-          [yesterday, row.keys[0], row.clicks, row.impressions, row.ctr, row.position]
-        )
-      }
-
-      // Snapshot top pages (for yesterday) - derive page_type from URL
-      for (const row of pages.rows) {
-        const pageUrl = row.keys[0]
-        let path: string
-        try {
-          path = new URL(pageUrl).pathname
-        } catch {
-          path = pageUrl
-        }
-        const pageType = categorizeUrl(path)
-
-        await client.query(
-          `INSERT INTO gsc_top_pages (date, page_url, page_type, clicks, impressions, ctr, position)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           ON CONFLICT (date, page_url)
-           DO UPDATE SET page_type = $3, clicks = $4, impressions = $5, ctr = $6, position = $7, fetched_at = now()`,
-          [yesterday, pageUrl, pageType, row.clicks, row.impressions, row.ctr, row.position]
-        )
-      }
-
-      // Snapshot page type performance (for yesterday)
-      for (const [pageType, data] of Object.entries(pageTypes)) {
-        await client.query(
-          `INSERT INTO gsc_page_type_performance (date, page_type, clicks, impressions, ctr, position)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (date, page_type)
-           DO UPDATE SET clicks = $3, impressions = $4, ctr = $5, position = $6, fetched_at = now()`,
-          [yesterday, pageType, data.clicks, data.impressions, data.ctr, data.position]
-        )
-      }
-
-      // Snapshot indexing status from sitemaps
-      let totalSubmitted = 0
-      let totalIndexed = 0
-      const indexDetails: Record<string, { submitted: number; indexed: number }> = {}
-
-      for (const sitemap of sitemaps) {
-        for (const content of sitemap.contents) {
-          totalSubmitted += content.submitted
-          totalIndexed += content.indexed
-          if (!indexDetails[content.type]) {
-            indexDetails[content.type] = { submitted: 0, indexed: 0 }
-          }
-          indexDetails[content.type].submitted += content.submitted
-          indexDetails[content.type].indexed += content.indexed
-        }
-      }
-
-      await client.query(
-        `INSERT INTO gsc_indexing_status (date, total_submitted, total_indexed, index_details)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (date)
-         DO UPDATE SET total_submitted = $2, total_indexed = $3, index_details = $4, fetched_at = now()`,
-        [yesterday, totalSubmitted, totalIndexed, JSON.stringify(indexDetails)]
-      )
+      const result = await writeGscSnapshot(client, {
+        yesterday,
+        performance,
+        queries,
+        pages,
+        pageTypes,
+        sitemaps,
+      })
 
       await client.query("COMMIT")
 
       res.json({
         success: true,
-        snapshot: {
-          performanceDays: performance.rows.length,
-          queries: queries.rows.length,
-          pages: pages.rows.length,
-          pageTypes: Object.keys(pageTypes).length,
-          indexing: { totalSubmitted, totalIndexed },
-        },
+        snapshot: result,
       })
     } catch (txError) {
       await client.query("ROLLBACK")

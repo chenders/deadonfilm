@@ -39,6 +39,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     const searchName = (req.query.searchName as string) || ""
     const needsEnrichment = req.query.needsEnrichment === "true"
     const minPopularity = parseFloat(req.query.minPopularity as string) || 0
+    const unattributedFacts = req.query.unattributedFacts === "true"
 
     // Build WHERE clause
     const params: unknown[] = []
@@ -58,6 +59,13 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     }
     if (needsEnrichment) {
       conditions.push(`abd.id IS NULL`)
+    }
+    if (unattributedFacts) {
+      // Facts where any element has sourceUrl = null
+      conditions.push(`abd.lesser_known_facts IS NOT NULL AND abd.lesser_known_facts != '[]'::jsonb AND EXISTS (
+        SELECT 1 FROM jsonb_array_elements(abd.lesser_known_facts) AS fact
+        WHERE fact->>'sourceUrl' IS NULL
+      )`)
     }
 
     const whereClause = conditions.length > 0 ? conditions.join(" AND ") : "TRUE"

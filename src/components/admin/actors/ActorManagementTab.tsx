@@ -99,6 +99,9 @@ export default function ActorManagementTab() {
     deathManner: searchParams.get("deathManner") || undefined,
     deathEnrichmentVersion: searchParams.get("deathEnrichmentVersion") || undefined,
     bioEnrichmentVersion: searchParams.get("bioEnrichmentVersion") || undefined,
+    unattributedFacts: searchParams.get("unattributedFacts") === "true" || undefined,
+    deathStatus:
+      (searchParams.get("deathStatus") as ActorCoverageFilters["deathStatus"]) || "deceased",
     orderBy: (searchParams.get("orderBy") as ActorCoverageFilters["orderBy"]) || "popularity",
     orderDirection: (searchParams.get("orderDirection") as "asc" | "desc") || "desc",
   }
@@ -167,6 +170,12 @@ export default function ActorManagementTab() {
     }
     if (updatedFilters.bioEnrichmentVersion) {
       params.set("bioEnrichmentVersion", updatedFilters.bioEnrichmentVersion)
+    }
+    if (updatedFilters.unattributedFacts) {
+      params.set("unattributedFacts", "true")
+    }
+    if (updatedFilters.deathStatus && updatedFilters.deathStatus !== "deceased") {
+      params.set("deathStatus", updatedFilters.deathStatus)
     }
     if (updatedFilters.orderBy) {
       params.set("orderBy", updatedFilters.orderBy)
@@ -416,7 +425,45 @@ export default function ActorManagementTab() {
             </select>
           </div>
 
-          {/* 7. Death Date From */}
+          {/* 7. Death Status */}
+          <div>
+            <label htmlFor="deathStatus" className="mb-1 block text-sm text-admin-text-muted">
+              Status
+            </label>
+            <select
+              id="deathStatus"
+              value={filters.deathStatus || "deceased"}
+              onChange={(e) =>
+                handleFilterChange({
+                  deathStatus: e.target.value as ActorCoverageFilters["deathStatus"],
+                })
+              }
+              className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
+            >
+              <option value="deceased">Deceased</option>
+              <option value="alive">Alive</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+
+          {/* 8. Unattributed Facts */}
+          <div className="flex items-end pb-1">
+            <label className="flex items-center gap-2 text-sm text-admin-text-muted">
+              <input
+                type="checkbox"
+                checked={!!filters.unattributedFacts}
+                onChange={(e) =>
+                  handleFilterChange({
+                    unattributedFacts: e.target.checked || undefined,
+                  })
+                }
+                className="rounded border-admin-border"
+              />
+              Unattributed facts
+            </label>
+          </div>
+
+          {/* 9. Death Date From */}
           <DateInput
             id="deathDateStart"
             label="Death Date From"

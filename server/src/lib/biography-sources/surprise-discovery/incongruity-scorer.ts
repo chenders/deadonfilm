@@ -16,11 +16,14 @@ import { stripMarkdownCodeFences } from "../../claude-batch/response-parser.js"
 import type { AutocompleteSuggestion, IncongruityCandidate } from "./types.js"
 
 const MODEL = "claude-haiku-4-5-20251001"
-const MAX_TOKENS = 1024
+const MAX_TOKENS = 4096
 
 // Haiku pricing per million tokens
 const INPUT_COST_PER_MILLION = 1.0
 const OUTPUT_COST_PER_MILLION = 5.0
+
+/** Maximum candidates per Haiku call to avoid response truncation. */
+const BATCH_SIZE = 30
 
 /**
  * Builds the prompt for Haiku incongruity scoring.
@@ -140,46 +143,59 @@ export async function scoreIncongruity(
     return { candidates: [], costUsd: 0 }
   }
 
-  const terms = suggestions.map((s) => s.term)
-  const expectedTerms = new Set(terms)
-  const prompt = buildIncongruityPrompt(actorName, terms)
+  const allTerms = suggestions.map((s) => s.term)
+  const expectedTerms = new Set(allTerms)
 
   logger.debug(
-    { actorName, termCount: terms.length },
+    { actorName, termCount: allTerms.length, batches: Math.ceil(allTerms.length / BATCH_SIZE) },
     "incongruity-scorer: scoring suggestions with Haiku"
   )
 
-  try {
-    const client = new Anthropic()
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      messages: [{ role: "user", content: prompt }],
-    })
+  // Batch into chunks to avoid response truncation
+  const allCandidates: IncongruityCandidate[] = []
+  let totalCost = 0
 
-    const inputTokens = response.usage.input_tokens
-    const outputTokens = response.usage.output_tokens
-    const costUsd = calculateCost(inputTokens, outputTokens)
+  for (let i = 0; i < allTerms.length; i += BATCH_SIZE) {
+    const batchTerms = allTerms.slice(i, i + BATCH_SIZE)
+    const prompt = buildIncongruityPrompt(actorName, batchTerms)
 
-    const textBlock = response.content.find((block) => block.type === "text")
-    if (!textBlock || textBlock.type !== "text") {
-      logger.warn({ actorName }, "incongruity-scorer: no text block in Haiku response")
-      return { candidates: [], costUsd }
+    try {
+      const client = new Anthropic()
+      const response = await client.messages.create({
+        model: MODEL,
+        max_tokens: MAX_TOKENS,
+        messages: [{ role: "user", content: prompt }],
+      })
+
+      const inputTokens = response.usage.input_tokens
+      const outputTokens = response.usage.output_tokens
+      totalCost += calculateCost(inputTokens, outputTokens)
+
+      const textBlock = response.content.find((block) => block.type === "text")
+      if (!textBlock || textBlock.type !== "text") {
+        logger.warn(
+          { actorName, batch: Math.floor(i / BATCH_SIZE) + 1 },
+          "incongruity-scorer: no text block in Haiku response"
+        )
+        continue
+      }
+
+      const candidates = parseHaikuResponse(textBlock.text, expectedTerms)
+      if (candidates) {
+        allCandidates.push(...candidates)
+      }
+    } catch (error) {
+      logger.error(
+        { actorName, error, batch: Math.floor(i / BATCH_SIZE) + 1 },
+        "incongruity-scorer: Haiku API call failed"
+      )
     }
-
-    const candidates = parseHaikuResponse(textBlock.text, expectedTerms)
-    if (!candidates) {
-      return { candidates: [], costUsd }
-    }
-
-    logger.debug(
-      { actorName, scored: candidates.length, costUsd },
-      "incongruity-scorer: scoring complete"
-    )
-
-    return { candidates, costUsd }
-  } catch (error) {
-    logger.error({ actorName, error }, "incongruity-scorer: Haiku API call failed")
-    return { candidates: [], costUsd: 0 }
   }
+
+  logger.debug(
+    { actorName, scored: allCandidates.length, costUsd: totalCost },
+    "incongruity-scorer: scoring complete"
+  )
+
+  return { candidates: allCandidates, costUsd: totalCost }
 }

@@ -148,7 +148,9 @@ When renaming functions, changing APIs, or refactoring modules, **always update 
 
 - **Null safety**: Always guard `rows[0]` with optional chaining and fallback (`rows[0]?.cnt ?? 0`). Guard config spreads (`...(config?.field ?? {})`)
 - **DRY**: Extract helpers before duplicating logic across views (e.g., desktop table + mobile cards). Extract shared test mocks across files
-- **Accessibility**: Icon-only links/buttons need `aria-label`. Touch targets minimum 44x44px. Don't use `aria-hidden` as the only content in a cell
+- **Accessibility**: All text must meet WCAG AA contrast ratios (4.5:1 normal, 3:1 large). Icon-only links/buttons need `aria-label`. Touch targets minimum 44x44px. Don't use `aria-hidden` as the only content in a cell
+- **External links**: All links to external domains must use `target="_blank" rel="nofollow noopener noreferrer"`
+- **Source attribution must be provable**: Every fact attributed to a source must be traceable to that specific, verified source. Source attribution is captured at extraction time, not inferred after the fact. If provenance is unknown, the fact has no source link.
 - **Type safety**: `pg` auto-parses JSON columns — type as parsed type (`MyType[]`), not `string`. Use `unknown` over `any`
 - **AbortSignal**: Combine caller signals with timeouts using ternary + `AbortSignal.any()` — never `??` which defeats the timeout
 - **Testing**: Ship tests with new code in the same commit. Assert payload contents, not just that functions were called. Mock data types must match real SQL output types
@@ -201,6 +203,22 @@ The CI workflow splits build from tests to minimize E2E critical path:
 - Pre-commit hooks run ESLint and Prettier via husky + lint-staged
 - Production runs in Docker containers: app, worker, nginx, cron, PostgreSQL, two Redis instances (cache + jobs)
 - Cron jobs: TMDB sync (every 2h), sitemap generation (daily 6 AM PT), movie seeding (weekly Sun 4 AM PT), find uncertain deaths (weekly Sun 5 AM PT)
+
+### Cache Invalidation
+
+**When modifying actor data directly** (via SQL, scripts, or one-off operations), always invalidate the Redis cache so the frontend reflects the change. The API caches actor responses in Redis — without invalidation, stale data will be served.
+
+```bash
+# Invalidate a specific actor's cache
+redis-cli -h localhost -p 6379 DEL "actor:id:{ACTOR_ID}:v:2" "related-actors:id:{ACTOR_ID}"
+
+# Find all cache keys for an actor
+redis-cli -h localhost -p 6379 KEYS "*{ACTOR_ID}*"
+```
+
+The `invalidateActorCache(actorId)` function in `server/src/lib/cache.ts` handles this programmatically — use it in scripts. The bio enrichment DB writer (`writeBiographyToProduction`) already calls it after writes. One-off SQL changes bypass this, so manual invalidation is required.
+
+**Do not** use `curl` to verify data after cache invalidation — that re-populates the cache. Instead use `redis-cli GET` to inspect the cache or query the database directly.
 
 ## JavaScript/CommonJS Files
 

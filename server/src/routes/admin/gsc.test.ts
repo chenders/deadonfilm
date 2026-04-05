@@ -22,6 +22,7 @@ import {
   getSitemaps,
   inspectUrl,
   daysAgo,
+  categorizeUrl,
 } from "../../lib/gsc-client.js"
 import {
   getSearchPerformanceHistory,
@@ -31,6 +32,7 @@ import {
   getIndexingStatusHistory,
   getGscAlerts,
   acknowledgeGscAlert,
+  writeGscSnapshot,
 } from "../../lib/db/admin-gsc-queries.js"
 
 function findHandler(path: string) {
@@ -585,11 +587,19 @@ describe("admin GSC routes", () => {
 
     it("snapshots data successfully with transaction", async () => {
       vi.mocked(isGscConfigured).mockReturnValue(true)
+      vi.mocked(categorizeUrl).mockReturnValue("actor")
       vi.mocked(getSearchPerformanceOverTime).mockResolvedValue(mockPerformance)
       vi.mocked(getTopQueries).mockResolvedValue(mockQueries)
       vi.mocked(getTopPages).mockResolvedValue(mockPages)
       vi.mocked(getPerformanceByPageType).mockResolvedValue(mockPageTypes)
       vi.mocked(getSitemaps).mockResolvedValue(mockSitemaps)
+      vi.mocked(writeGscSnapshot).mockResolvedValue({
+        performanceDays: 1,
+        queries: 1,
+        pages: 1,
+        pageTypes: 1,
+        indexing: { totalSubmitted: 100, totalIndexed: 80 },
+      })
 
       await handler!(mockReq as Request, mockRes as Response, mockNext)
 
@@ -598,6 +608,19 @@ describe("admin GSC routes", () => {
       expect(queries[0]).toBe("BEGIN")
       expect(queries[queries.length - 1]).toBe("COMMIT")
       expect(mockClient.release).toHaveBeenCalled()
+
+      // Verify writeGscSnapshot was called with the client and snapshot data
+      expect(writeGscSnapshot).toHaveBeenCalledWith(
+        mockClient,
+        expect.objectContaining({
+          yesterday: expect.any(String),
+          performance: mockPerformance,
+          queries: mockQueries,
+          pages: expect.any(Array),
+          pageTypes: mockPageTypes,
+          sitemaps: mockSitemaps,
+        })
+      )
 
       // Verify success response
       expect(jsonSpy).toHaveBeenCalledWith(
@@ -633,12 +656,7 @@ describe("admin GSC routes", () => {
       vi.mocked(getTopPages).mockResolvedValue(mockPages)
       vi.mocked(getPerformanceByPageType).mockResolvedValue(mockPageTypes)
       vi.mocked(getSitemaps).mockResolvedValue(mockSitemaps)
-
-      // BEGIN succeeds, first INSERT fails
-      mockClient.query
-        .mockResolvedValueOnce(undefined) // BEGIN
-        .mockRejectedValueOnce(new Error("DB write error")) // INSERT fails
-        .mockResolvedValue(undefined) // ROLLBACK
+      vi.mocked(writeGscSnapshot).mockRejectedValue(new Error("DB write error"))
 
       await handler!(mockReq as Request, mockRes as Response, mockNext)
 
