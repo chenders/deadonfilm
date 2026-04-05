@@ -121,7 +121,7 @@ function printComparison(
   oldNarrative: string | null,
   newNarrative: string | null,
   oldFacts: string[],
-  newFacts: string[]
+  newFacts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>
 ): void {
   console.log(`\n${"─".repeat(70)}`)
   console.log(`  ${actorName}`)
@@ -199,7 +199,7 @@ function printComparison(
   if (newFacts.length > 0) {
     console.log(`\n  LESSER-KNOWN FACTS (${newFacts.length}):`)
     for (const fact of newFacts) {
-      console.log(`    • ${fact}`)
+      console.log(`    • ${fact.text}`)
     }
   }
 

@@ -157,7 +157,9 @@ describe("scoreResult", () => {
     const data = makeBiographyData({
       education: "Attended Harvard on a scholarship",
       preFameLife: "Worked at the family store",
-      lesserKnownFacts: ["Grew up in Whittier, California"],
+      lesserKnownFacts: [
+        { text: "Grew up in Whittier, California", sourceUrl: null, sourceName: null },
+      ],
       lifeNotableFactors: ["scholar", "political_figure", "military_service"],
       hasSubstantiveContent: true,
     })

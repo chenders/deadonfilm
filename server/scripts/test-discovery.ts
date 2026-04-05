@@ -40,9 +40,8 @@ async function main() {
     if (result.newLesserKnownFacts.length > 0) {
       console.log("New lesser-known facts:")
       result.newLesserKnownFacts.forEach((f, i) => {
-        const fact = typeof f === "string" ? { text: f } : f
-        console.log(`  ${i + 1}. ${fact.text}`)
-        if (fact.sourceUrl) console.log(`     Source: ${fact.sourceName} → ${fact.sourceUrl}`)
+        console.log(`  ${i + 1}. ${f.text}`)
+        if (f.sourceUrl) console.log(`     Source: ${f.sourceName} → ${f.sourceUrl}`)
       })
     }
     if (result.updatedNarrative) {

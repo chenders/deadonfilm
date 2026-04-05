@@ -109,7 +109,7 @@ function combineTextFields(data: BiographyData): string {
   const parts = fields.filter((f): f is string => f != null)
 
   if (data.lesserKnownFacts.length > 0) {
-    parts.push(data.lesserKnownFacts.join(" "))
+    parts.push(data.lesserKnownFacts.map((f) => f.text).join(" "))
   }
 
   return parts.join(" ")

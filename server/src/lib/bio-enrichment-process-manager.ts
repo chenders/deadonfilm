@@ -82,6 +82,10 @@ export async function startBioEnrichmentRun(config: BioEnrichmentRunConfig): Pro
         concurrency: config.concurrency,
         sortBy: config.sortBy ?? "popularity",
         useStaging: false,
+        discoveryEnabled: true,
+        discoveryIntegrationStrategy: "append-only" as const,
+        discoveryIncongruityThreshold: 7,
+        discoveryMaxCostPerActor: 0.1,
         sourceCategories: config.sourceCategories
           ? {
               free: config.sourceCategories.free ?? true,

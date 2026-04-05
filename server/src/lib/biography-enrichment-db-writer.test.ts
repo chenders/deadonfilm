@@ -39,7 +39,10 @@ function makeBiographyData(overrides: Partial<BiographyData> = {}): BiographyDat
     fameCatalyst: "Discovered by a talent scout in a school play.",
     personalStruggles: "Battled alcoholism throughout the 1960s.",
     relationships: "Married three times.",
-    lesserKnownFacts: ["Played college football", "Was a chess champion"],
+    lesserKnownFacts: [
+      { text: "Played college football", sourceUrl: null, sourceName: null },
+      { text: "Was a chess champion", sourceUrl: null, sourceName: null },
+    ],
     hasSubstantiveContent: true,
     alternateNames: [],
     gender: null,
@@ -92,7 +95,12 @@ describe("writeBiographyToProduction", () => {
     expect(params[9]).toBe(data.fameCatalyst)
     expect(params[10]).toBe(data.personalStruggles)
     expect(params[11]).toBe(data.relationships)
-    expect(params[12]).toEqual(["Played college football", "Was a chess champion"])
+    expect(params[12]).toEqual(
+      JSON.stringify([
+        { text: "Played college football", sourceUrl: null, sourceName: null },
+        { text: "Was a chess champion", sourceUrl: null, sourceName: null },
+      ])
+    )
     expect(params[13]).toBeNull() // alternateNames (empty → null)
     expect(params[14]).toBeNull() // gender
     expect(params[15]).toBeNull() // nationality
