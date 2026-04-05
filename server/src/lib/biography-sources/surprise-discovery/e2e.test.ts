@@ -53,6 +53,7 @@ vi.mock("../../claude-batch/response-parser.js", () => ({
 
 // Use fake timers so the 100ms REQUEST_DELAY_MS between autocomplete queries resolves instantly
 vi.useFakeTimers()
+afterAll(() => vi.useRealTimers())
 
 // ── Imports (after mocks) ─────────────────────────────────────────────────────
 

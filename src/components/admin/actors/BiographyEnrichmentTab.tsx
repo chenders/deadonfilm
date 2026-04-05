@@ -631,7 +631,10 @@ export default function BiographyEnrichmentTab() {
                       min={0}
                       step={0.01}
                       value={discoveryMaxCost}
-                      onChange={(e) => setDiscoveryMaxCost(parseFloat(e.target.value) || 0.1)}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value)
+                        setDiscoveryMaxCost(isNaN(val) ? 0.1 : val)
+                      }}
                       className="w-20 rounded border border-admin-border bg-admin-surface-base px-2 py-1 text-sm text-admin-text-primary"
                     />
                   </label>

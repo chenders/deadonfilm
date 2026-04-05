@@ -212,8 +212,8 @@ The CI workflow splits build from tests to minimize E2E critical path:
 # Invalidate a specific actor's cache
 redis-cli -h localhost -p 6379 DEL "actor:id:{ACTOR_ID}:v:2" "related-actors:id:{ACTOR_ID}"
 
-# Find all cache keys for an actor
-redis-cli -h localhost -p 6379 KEYS "*{ACTOR_ID}*"
+# Find cache keys for an actor (dev only — use SCAN in production)
+redis-cli -h localhost -p 6379 --scan --pattern "*{ACTOR_ID}*"
 ```
 
 The `invalidateActorCache(actorId)` function in `server/src/lib/cache.ts` handles this programmatically — use it in scripts. The bio enrichment DB writer (`writeBiographyToProduction`) already calls it after writes. One-off SQL changes bypass this, so manual invalidation is required.

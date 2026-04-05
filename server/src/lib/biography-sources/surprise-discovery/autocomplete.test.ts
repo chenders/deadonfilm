@@ -23,6 +23,7 @@ vi.mock("../../death-sources/cache.js", () => ({
 
 // Use fake timers so the 100ms REQUEST_DELAY_MS between queries resolves instantly
 vi.useFakeTimers()
+afterAll(() => vi.useRealTimers())
 
 // Import after mocks are established
 import { fetchAutocompleteSuggestions } from "./autocomplete.js"

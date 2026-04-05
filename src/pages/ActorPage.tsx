@@ -146,6 +146,16 @@ function formatCareerStatus(status: string | null): string | null {
 
 const INITIAL_FACTS_SHOWN = 5
 
+/** Only allow http/https URLs to prevent javascript:/data: injection. */
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === "http:" || parsed.protocol === "https:"
+  } catch {
+    return false
+  }
+}
+
 function LesserKnownFacts({
   facts,
 }: {
@@ -164,7 +174,7 @@ function LesserKnownFacts({
             <span className="mt-1 text-brown-medium">&bull;</span>
             <span>
               {fact.text}
-              {fact.sourceUrl && fact.sourceName && (
+              {fact.sourceUrl && fact.sourceName && isSafeUrl(fact.sourceUrl) && (
                 <>
                   {" "}
                   <a
