@@ -21,6 +21,9 @@ const KEYWORD_SUFFIXES = ["why", "did", "secret", "weird", "surprising"]
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz".split("")
 const REQUEST_DELAY_MS = 100
 
+/** Total number of HTTP queries per fresh autocomplete run (26×2 letter patterns + 5 keywords). */
+export const QUERY_PATTERN_COUNT = ALPHABET.length * 2 + KEYWORD_SUFFIXES.length
+
 /**
  * Result type for fetchAutocompleteSuggestions.
  */

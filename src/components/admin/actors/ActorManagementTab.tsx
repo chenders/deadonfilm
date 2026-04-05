@@ -100,8 +100,11 @@ export default function ActorManagementTab() {
     deathEnrichmentVersion: searchParams.get("deathEnrichmentVersion") || undefined,
     bioEnrichmentVersion: searchParams.get("bioEnrichmentVersion") || undefined,
     unattributedFacts: searchParams.get("unattributedFacts") === "true" || undefined,
-    deathStatus:
-      (searchParams.get("deathStatus") as ActorCoverageFilters["deathStatus"]) || "deceased",
+    deathStatus: ((): ActorCoverageFilters["deathStatus"] => {
+      const raw = searchParams.get("deathStatus")
+      if (raw === "deceased" || raw === "alive" || raw === "all") return raw
+      return "deceased"
+    })(),
     orderBy: (searchParams.get("orderBy") as ActorCoverageFilters["orderBy"]) || "popularity",
     orderDirection: (searchParams.get("orderDirection") as "asc" | "desc") || "desc",
   }

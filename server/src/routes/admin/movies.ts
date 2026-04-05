@@ -9,6 +9,7 @@ import { Router, type Request, type Response } from "express"
 import { getPool } from "../../lib/db.js"
 import { logger } from "../../lib/logger.js"
 import { logAdminAction } from "../../lib/admin-auth.js"
+import { DEFAULT_DISCOVERY_CONFIG } from "../../lib/biography-sources/surprise-discovery/types.js"
 
 const router = Router()
 
@@ -159,10 +160,10 @@ router.post("/:tmdbId/enrich-bios", async (req: Request, res: Response): Promise
         allowRegeneration: false,
         sortBy: "popularity",
         useStaging: false,
-        discoveryEnabled: true,
-        discoveryIntegrationStrategy: "append-only" as const,
-        discoveryIncongruityThreshold: 7,
-        discoveryMaxCostPerActor: 0.1,
+        discoveryEnabled: DEFAULT_DISCOVERY_CONFIG.enabled,
+        discoveryIntegrationStrategy: DEFAULT_DISCOVERY_CONFIG.integrationStrategy,
+        discoveryIncongruityThreshold: DEFAULT_DISCOVERY_CONFIG.incongruityThreshold,
+        discoveryMaxCostPerActor: DEFAULT_DISCOVERY_CONFIG.maxCostPerActorUsd,
       },
       { createdBy: "admin" }
     )

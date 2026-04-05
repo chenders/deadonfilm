@@ -14,7 +14,7 @@
 
 import { logger } from "../../logger.js"
 import { getPool } from "../../db/pool.js"
-import { fetchAutocompleteSuggestions } from "./autocomplete.js"
+import { fetchAutocompleteSuggestions, QUERY_PATTERN_COUNT } from "./autocomplete.js"
 import { filterBoringSuggestions } from "./boring-filter.js"
 import type { BoringFilterContext } from "./boring-filter.js"
 import { scoreIncongruity } from "./incongruity-scorer.js"
@@ -204,7 +204,7 @@ export async function runSurpriseDiscovery(
     autocomplete: {
       // 57 queries when run fresh (26 quoted-letter + 26 quoted-space-letter + 5 keyword);
       // 0 when served from cache since no HTTP requests were made.
-      queriesRun: autocompleteFromCache ? 0 : 57,
+      queriesRun: autocompleteFromCache ? 0 : QUERY_PATTERN_COUNT,
       totalSuggestions: suggestions.length,
       uniqueSuggestions: suggestions.length,
       byPattern,

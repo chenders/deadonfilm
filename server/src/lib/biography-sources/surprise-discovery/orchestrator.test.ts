@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 // Mock all sub-modules before any imports
 vi.mock("./autocomplete.js", () => ({
   fetchAutocompleteSuggestions: vi.fn().mockResolvedValue({ suggestions: [], fromCache: false }),
+  QUERY_PATTERN_COUNT: 57,
 }))
 vi.mock("./boring-filter.js", () => ({
   filterBoringSuggestions: vi.fn().mockReturnValue({ kept: [], dropped: 0, droppedByReason: {} }),
