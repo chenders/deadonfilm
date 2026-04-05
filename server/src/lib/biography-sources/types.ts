@@ -81,6 +81,11 @@ export enum BiographySourceType {
 
   // Unmapped (fallback for unknown debriefer source types)
   UNMAPPED = "unmapped-bio",
+
+  // Surprise Discovery
+  AUTOCOMPLETE_DISCOVERY = "autocomplete-discovery",
+  REDDIT_DISCOVERY = "reddit-discovery",
+  DISCOVERY_VERIFICATION = "discovery-verification",
 }
 
 // ============================================================================
