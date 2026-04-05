@@ -77,8 +77,7 @@ NEWLY VERIFIED FINDINGS:
 ${findingsList}
 
 For each finding, decide how to handle it:
-- LESSER_KNOWN_FACT: A surprising standalone tidbit that doesn't fit naturally into the narrative prose. Write a single, punchy sentence.
-- NARRATIVE_INSERT: A biographical fact that should be woven into the narrative prose. Write the sentence to insert, and note where it fits (e.g., "after the paragraph about early life").
+- LESSER_KNOWN_FACT: A surprising standalone tidbit. Write a single, punchy sentence.
 - DISCARD: The finding is not valuable enough to add (already covered, too minor, or doesn't add meaningful context).
 
 DISCARD any finding that is simply about a movie, TV show, or role they appeared in — that information belongs in the filmography, not here. A fact is only worth including if it reveals something SURPRISING about the person beyond their work. "She was in Fast & Furious" is filmography. "She BEGGED Vin Diesel to cast her because she wanted to drive fast cars" is a surprising personal detail.
@@ -90,7 +89,7 @@ Respond with ONLY valid JSON in this exact format:
   "findings": [
     {
       "term": "the association term",
-      "destination": "lesserKnownFacts" | "narrative" | "discarded",
+      "destination": "lesserKnownFacts" | "discarded",
       "text": "the fact text to add (empty string if discarded)"
     }
   ],
@@ -323,10 +322,16 @@ export async function integrateFindings(
       }
     })
 
-    // Collect new lesser-known facts (non-empty text for lesserKnownFacts destination)
-    // Include source attribution from the verified finding when available.
+    // Collect new lesser-known facts. In append-only mode (updatedNarrative is null),
+    // "narrative" findings are also collected as facts since the narrative isn't being
+    // rewritten — otherwise they'd be silently dropped.
     const newLesserKnownFacts = parsed.findings
-      .filter((f) => f.destination === "lesserKnownFacts" && f.text.trim().length > 0)
+      .filter(
+        (f) =>
+          f.text.trim().length > 0 &&
+          (f.destination === "lesserKnownFacts" ||
+            (f.destination === "narrative" && parsed.updatedNarrative === null))
+      )
       .map((f) => {
         const original = findings.find((r) => r.term === f.term)
         return {

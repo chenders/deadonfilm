@@ -211,83 +211,27 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
             // Run surprise discovery if enabled
             if (discoveryEnabled !== false && result.data.narrative) {
               try {
-                const { runSurpriseDiscovery } =
-                  await import("../../biography-sources/surprise-discovery/orchestrator.js")
-                const { DEFAULT_DISCOVERY_CONFIG } =
-                  await import("../../biography-sources/surprise-discovery/types.js")
-
-                const discoveryConfig = {
-                  ...DEFAULT_DISCOVERY_CONFIG,
-                  enabled: true,
-                  ...(discoveryIntegrationStrategy !== undefined && {
-                    integrationStrategy: discoveryIntegrationStrategy,
-                  }),
-                  ...(discoveryIncongruityThreshold !== undefined && {
-                    incongruityThreshold: discoveryIncongruityThreshold,
-                  }),
-                  ...(discoveryMaxCostPerActor !== undefined && {
-                    maxCostPerActorUsd: discoveryMaxCostPerActor,
-                  }),
-                }
-
-                const discoveryResult = await runSurpriseDiscovery(
+                const { runDiscoveryAndPersist } =
+                  await import("../../biography-sources/surprise-discovery/persist.js")
+                const discoveryResult = await runDiscoveryAndPersist(
+                  db,
                   { id: actor.id, name: actor.name, tmdb_id: actor.tmdb_id },
                   result.data.narrative,
                   result.data.lesserKnownFacts || [],
-                  discoveryConfig
+                  {
+                    integrationStrategy: discoveryIntegrationStrategy,
+                    incongruityThreshold: discoveryIncongruityThreshold,
+                    maxCostPerActorUsd: discoveryMaxCostPerActor,
+                  }
                 )
 
-                // Write discovery results to DB
-                if (
-                  discoveryResult.hasFindings ||
-                  discoveryResult.discoveryResults.autocomplete.queriesRun > 0
-                ) {
-                  const updateFields: string[] = ["discovery_results = $2"]
-                  const updateParams: unknown[] = [
-                    actor.id,
-                    JSON.stringify(discoveryResult.discoveryResults),
-                  ]
-                  let paramIdx = 3
-
-                  if (discoveryResult.newLesserKnownFacts.length > 0) {
-                    // Prepend discovery facts (most surprising) before enrichment facts
-                    updateFields.push(
-                      `lesser_known_facts = $${paramIdx}::jsonb || COALESCE(lesser_known_facts, '[]'::jsonb)`
-                    )
-                    updateParams.push(JSON.stringify(discoveryResult.newLesserKnownFacts))
-                    paramIdx++
-                  }
-
-                  if (discoveryResult.updatedNarrative) {
-                    updateFields.push(`narrative = $${paramIdx}`)
-                    updateParams.push(discoveryResult.updatedNarrative)
-                    paramIdx++
-                  }
-
-                  await db.query(
-                    `UPDATE actor_biography_details SET ${updateFields.join(", ")} WHERE actor_id = $1`,
-                    updateParams
-                  )
-
-                  // Sync actors.biography if narrative was updated
-                  if (discoveryResult.updatedNarrative) {
-                    await db.query(
-                      `UPDATE actors SET biography = $1, biography_version = COALESCE(biography_version, 0) + 1 WHERE id = $2`,
-                      [discoveryResult.updatedNarrative, actor.id]
-                    )
-                  }
-
-                  // Re-invalidate cache after discovery write (the earlier invalidation
-                  // from writeBiographyToProduction ran before this UPDATE)
-                  const { invalidateActorCache } = await import("../../cache.js")
-                  await invalidateActorCache(actor.id)
+                if (discoveryResult) {
+                  actorLogs.push({
+                    timestamp: new Date().toISOString(),
+                    level: "info",
+                    message: `Discovery: ${discoveryResult.newLesserKnownFacts.length} new facts, cost: $${discoveryResult.discoveryResults.costUsd.toFixed(4)}`,
+                  })
                 }
-
-                actorLogs.push({
-                  timestamp: new Date().toISOString(),
-                  level: "info",
-                  message: `Discovery: ${discoveryResult.newLesserKnownFacts.length} new facts, cost: $${discoveryResult.discoveryResults.costUsd.toFixed(4)}`,
-                })
               } catch (discoveryError) {
                 // Discovery failure should not fail the enrichment
                 const errMsg =

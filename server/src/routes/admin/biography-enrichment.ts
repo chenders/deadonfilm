@@ -180,76 +180,52 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
     const discoveryEnabled = req.body.discoveryEnabled !== false // default true
     if (discoveryEnabled && result.data?.hasSubstantiveContent && result.data?.narrative) {
       try {
-        const { runSurpriseDiscovery } =
-          await import("../../lib/biography-sources/surprise-discovery/orchestrator.js")
-        const { DEFAULT_DISCOVERY_CONFIG } =
-          await import("../../lib/biography-sources/surprise-discovery/types.js")
-
-        const discoveryConfig = {
-          ...DEFAULT_DISCOVERY_CONFIG,
-          ...(req.body.discoveryIntegrationStrategy !== undefined && {
-            integrationStrategy: req.body.discoveryIntegrationStrategy,
-          }),
-          ...(req.body.discoveryIncongruityThreshold !== undefined && {
-            incongruityThreshold: req.body.discoveryIncongruityThreshold,
-          }),
-          ...(req.body.discoveryMaxCostPerActor !== undefined && {
-            maxCostPerActorUsd: req.body.discoveryMaxCostPerActor,
-          }),
+        // Validate discovery overrides
+        const overrides: Record<string, unknown> = {}
+        if (req.body.discoveryIntegrationStrategy !== undefined) {
+          const strategy = req.body.discoveryIntegrationStrategy
+          if (strategy !== "append-only" && strategy !== "re-synthesize") {
+            res.status(400).json({
+              error: {
+                message: "discoveryIntegrationStrategy must be 'append-only' or 're-synthesize'",
+              },
+            })
+            return
+          }
+          overrides.integrationStrategy = strategy
+        }
+        if (req.body.discoveryIncongruityThreshold !== undefined) {
+          const threshold = Number(req.body.discoveryIncongruityThreshold)
+          if (!Number.isInteger(threshold) || threshold < 1 || threshold > 10) {
+            res.status(400).json({
+              error: {
+                message: "discoveryIncongruityThreshold must be an integer between 1 and 10",
+              },
+            })
+            return
+          }
+          overrides.incongruityThreshold = threshold
+        }
+        if (req.body.discoveryMaxCostPerActor !== undefined) {
+          const maxCost = Number(req.body.discoveryMaxCostPerActor)
+          if (isNaN(maxCost) || maxCost < 0) {
+            res.status(400).json({
+              error: { message: "discoveryMaxCostPerActor must be a non-negative number" },
+            })
+            return
+          }
+          overrides.maxCostPerActorUsd = maxCost
         }
 
-        discoveryResult = await runSurpriseDiscovery(
+        const { runDiscoveryAndPersist } =
+          await import("../../lib/biography-sources/surprise-discovery/persist.js")
+        discoveryResult = await runDiscoveryAndPersist(
+          pool,
           { id: actor.id, name: actor.name, tmdb_id: actor.tmdb_id },
           result.data.narrative,
           result.data.lesserKnownFacts || [],
-          discoveryConfig
+          overrides
         )
-
-        // Write discovery results and any new findings to DB
-        if (
-          discoveryResult.hasFindings ||
-          discoveryResult.discoveryResults.autocomplete.queriesRun > 0
-        ) {
-          const updateFields: string[] = ["discovery_results = $2"]
-          const updateParams: unknown[] = [
-            actorId,
-            JSON.stringify(discoveryResult.discoveryResults),
-          ]
-          let paramIdx = 3
-
-          if (discoveryResult.newLesserKnownFacts.length > 0) {
-            // Prepend discovery facts (most surprising) before enrichment facts
-            updateFields.push(
-              `lesser_known_facts = $${paramIdx}::jsonb || COALESCE(lesser_known_facts, '[]'::jsonb)`
-            )
-            updateParams.push(JSON.stringify(discoveryResult.newLesserKnownFacts))
-            paramIdx++
-          }
-
-          if (discoveryResult.updatedNarrative) {
-            updateFields.push(`narrative = $${paramIdx}`)
-            updateParams.push(discoveryResult.updatedNarrative)
-            paramIdx++
-          }
-
-          await pool.query(
-            `UPDATE actor_biography_details SET ${updateFields.join(", ")} WHERE actor_id = $1`,
-            updateParams
-          )
-
-          // Sync actors.biography if narrative was updated
-          if (discoveryResult.updatedNarrative) {
-            await pool.query(
-              `UPDATE actors SET biography = $1, biography_version = COALESCE(biography_version, 0) + 1 WHERE id = $2`,
-              [discoveryResult.updatedNarrative, actorId]
-            )
-          }
-
-          // Re-invalidate cache after discovery write (the earlier invalidation
-          // from writeBiographyToProduction ran before this UPDATE)
-          const { invalidateActorCache } = await import("../../lib/cache.js")
-          await invalidateActorCache(actorId)
-        }
       } catch (discoveryError) {
         logger.error({ error: discoveryError, actorId }, "Surprise discovery failed (non-fatal)")
       }
