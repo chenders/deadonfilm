@@ -2,6 +2,7 @@ import { vi, describe, it, expect, beforeEach } from "vitest"
 import type { Pool } from "pg"
 import type { BiographyData, BiographySourceEntry } from "./biography-sources/types.js"
 import { BiographySourceType } from "./biography-sources/types.js"
+import { BIO_ENRICHMENT_VERSION } from "./enrichment-version.js"
 
 // Mock cache module
 vi.mock("./cache.js", () => ({
@@ -163,7 +164,7 @@ describe("writeBiographyToProduction", () => {
     expect(updateCall[0]).toContain("biography_version = $2")
     expect(updateCall[0]).toContain("biography_source_type = 'enriched'")
     expect(updateCall[0]).toContain("updated_at = NOW()")
-    expect(updateCall[1]).toEqual(["Full narrative text", "6.0.0", 42])
+    expect(updateCall[1]).toEqual(["Full narrative text", BIO_ENRICHMENT_VERSION, 42])
   })
 
   it("skips actors table update when narrative is null", async () => {

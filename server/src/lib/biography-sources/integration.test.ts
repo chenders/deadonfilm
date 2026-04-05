@@ -14,6 +14,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import type { Pool } from "pg"
+import { BIO_ENRICHMENT_VERSION } from "../enrichment-version.js"
 
 // ============================================================================
 // Mocks — must be declared before imports
@@ -778,7 +779,7 @@ describe("Biography Enrichment Integration Test", () => {
       expect(updateCall[0]).toContain("biography = $1")
       expect(updateCall[0]).toContain("biography_version = $2")
       expect(updateCall[1][0]).toContain("Glendale Union High School") // narrative
-      expect(updateCall[1][1]).toBe("6.0.0") // BIO_ENRICHMENT_VERSION
+      expect(updateCall[1][1]).toBe(BIO_ENRICHMENT_VERSION)
       expect(updateCall[1][2]).toBe(testActor.id)
 
       // Cache invalidated

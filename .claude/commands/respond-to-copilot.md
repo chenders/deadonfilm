@@ -115,7 +115,30 @@ Review and respond to GitHub Copilot review comments on a pull request. Loops un
 The loop ends when:
 
 - Copilot's latest review has **no new comments** (clean review), OR
-- The poll in step 10 times out (report this and stop)
+- The poll in step 10 times out (report this and stop), OR
+- **Diminishing returns**: 3+ consecutive rounds where ALL comments are cosmetic/stylistic rather than bug fixes, security issues, or correctness improvements
+
+### Judging diminishing returns
+
+Err on the side of **continuing** — it's better to do one extra round than to miss a real bug before it reaches `main`. A comment is worth implementing if it:
+
+- Fixes a potential bug, race condition, or data corruption issue
+- Addresses a security concern (injection, URL validation, etc.)
+- Prevents silent failures or data loss
+- Improves type safety in ways that catch real errors
+- Adds missing test coverage for new behavior
+- Fixes accessibility violations (WCAG, aria)
+- Reduces meaningful code duplication (not just stylistic DRY)
+
+A comment is likely diminishing returns if it:
+
+- Suggests renaming variables for style preference
+- Requests comments/documentation that don't affect correctness
+- Proposes abstractions for code that appears only 1-2 times
+- Suggests performance optimizations without evidence of a problem
+- Repeats a suggestion already addressed in a prior round (Copilot reviewing stale diff)
+
+When you judge a full round as diminishing returns, still reply to each comment explaining your reasoning, but note in your summary that you're stopping the loop. If even ONE comment in a round is a real bug or correctness issue, continue.
 
 When complete, report a summary: total rounds, comments addressed, comments declined.
 
