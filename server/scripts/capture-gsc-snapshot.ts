@@ -26,7 +26,9 @@ import {
   categorizeUrl,
   daysAgo,
 } from "../src/lib/gsc-client.js"
+import { writeGscSnapshot, type GscPageRow } from "../src/lib/db/admin-gsc-queries.js"
 import { logger } from "../src/lib/logger.js"
+import { invalidateByPattern } from "../src/lib/cache.js"
 import { startCronjobRun, completeCronjobRun } from "../src/lib/cronjob-tracking.js"
 import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 
@@ -39,6 +41,35 @@ const program = new Command()
     })
   })
 
+/** Categorize raw GSC page rows into typed page rows with page_type. */
+function categorizePages(
+  rows: Array<{
+    keys: string[]
+    clicks: number
+    impressions: number
+    ctr: number
+    position: number
+  }>
+): GscPageRow[] {
+  return rows.map((row) => {
+    const pageUrl = row.keys[0]
+    let path: string
+    try {
+      path = new URL(pageUrl).pathname
+    } catch {
+      path = pageUrl
+    }
+    return {
+      page_url: pageUrl,
+      page_type: categorizeUrl(path),
+      clicks: row.clicks,
+      impressions: row.impressions,
+      ctr: row.ctr,
+      position: row.position,
+    }
+  })
+}
+
 async function runSnapshot(): Promise<void> {
   const pool = getPool()
   let runId: number | undefined
@@ -50,6 +81,13 @@ async function runSnapshot(): Promise<void> {
     }
 
     logger.info("Starting GSC snapshot capture")
+
+    // Clear GSC cache so we get fresh data from the API, not stale Redis entries
+    const cleared = await invalidateByPattern("gsc:*")
+    if (cleared > 0) {
+      logger.info({ cleared }, "Cleared stale GSC cache entries")
+    }
+
     runId = await startCronjobRun(pool, "gsc-snapshot")
 
     const yesterday = daysAgo(1)
@@ -58,7 +96,7 @@ async function runSnapshot(): Promise<void> {
     // Fetch all data from GSC API
     const performance = await getSearchPerformanceOverTime(thirtyDaysAgo, yesterday)
     const queries = await getTopQueries(yesterday, yesterday, 100)
-    const pages = await getTopPages(yesterday, yesterday, 100)
+    const rawPages = await getTopPages(yesterday, yesterday, 100)
     const pageTypes = await getPerformanceByPageType(yesterday, yesterday)
 
     let sitemaps: Awaited<ReturnType<typeof getSitemaps>>
@@ -77,99 +115,17 @@ async function runSnapshot(): Promise<void> {
     try {
       await client.query("BEGIN")
 
-      // Search performance (last 30 days)
-      for (const row of performance.rows) {
-        await client.query(
-          `INSERT INTO gsc_search_performance (date, search_type, clicks, impressions, ctr, position)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (date, search_type)
-           DO UPDATE SET clicks = $3, impressions = $4, ctr = $5, position = $6, fetched_at = now()`,
-          [row.keys[0], "web", row.clicks, row.impressions, row.ctr, row.position]
-        )
-      }
-
-      // Top queries (yesterday) — delete stale rows first so re-runs don't accumulate beyond N
-      await client.query(`DELETE FROM gsc_top_queries WHERE date = $1`, [yesterday])
-      for (const row of queries.rows) {
-        await client.query(
-          `INSERT INTO gsc_top_queries (date, query, clicks, impressions, ctr, position)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (date, query)
-           DO UPDATE SET clicks = $3, impressions = $4, ctr = $5, position = $6, fetched_at = now()`,
-          [yesterday, row.keys[0], row.clicks, row.impressions, row.ctr, row.position]
-        )
-      }
-
-      // Top pages (yesterday) — delete stale rows first so re-runs don't accumulate beyond N
-      await client.query(`DELETE FROM gsc_top_pages WHERE date = $1`, [yesterday])
-      for (const row of pages.rows) {
-        const pageUrl = row.keys[0]
-        let path: string
-        try {
-          path = new URL(pageUrl).pathname
-        } catch {
-          path = pageUrl
-        }
-        const pageType = categorizeUrl(path)
-
-        await client.query(
-          `INSERT INTO gsc_top_pages (date, page_url, page_type, clicks, impressions, ctr, position)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           ON CONFLICT (date, page_url)
-           DO UPDATE SET page_type = $3, clicks = $4, impressions = $5, ctr = $6, position = $7, fetched_at = now()`,
-          [yesterday, pageUrl, pageType, row.clicks, row.impressions, row.ctr, row.position]
-        )
-      }
-
-      // Page type performance (yesterday)
-      for (const [pageType, data] of Object.entries(pageTypes)) {
-        await client.query(
-          `INSERT INTO gsc_page_type_performance (date, page_type, clicks, impressions, ctr, position)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (date, page_type)
-           DO UPDATE SET clicks = $3, impressions = $4, ctr = $5, position = $6, fetched_at = now()`,
-          [yesterday, pageType, data.clicks, data.impressions, data.ctr, data.position]
-        )
-      }
-
-      // Indexing status from sitemaps
-      if (sitemaps.length > 0) {
-        let totalSubmitted = 0
-        let totalIndexed = 0
-        const indexDetails: Record<string, { submitted: number; indexed: number }> = {}
-
-        for (const sitemap of sitemaps) {
-          for (const content of sitemap.contents) {
-            totalSubmitted += content.submitted
-            totalIndexed += content.indexed
-            if (!indexDetails[content.type]) {
-              indexDetails[content.type] = { submitted: 0, indexed: 0 }
-            }
-            indexDetails[content.type].submitted += content.submitted
-            indexDetails[content.type].indexed += content.indexed
-          }
-        }
-
-        await client.query(
-          `INSERT INTO gsc_indexing_status (date, total_submitted, total_indexed, index_details)
-           VALUES ($1, $2, $3, $4)
-           ON CONFLICT (date)
-           DO UPDATE SET total_submitted = $2, total_indexed = $3, index_details = $4, fetched_at = now()`,
-          [yesterday, totalSubmitted, totalIndexed, JSON.stringify(indexDetails)]
-        )
-      }
+      const result = await writeGscSnapshot(client, {
+        yesterday,
+        performance,
+        queries,
+        pages: categorizePages(rawPages.rows),
+        pageTypes,
+        sitemaps,
+      })
 
       await client.query("COMMIT")
-
-      logger.info(
-        {
-          performanceDays: performance.rows.length,
-          queries: queries.rows.length,
-          pages: pages.rows.length,
-          pageTypes: Object.keys(pageTypes).length,
-        },
-        "GSC snapshot captured successfully"
-      )
+      logger.info(result, "GSC snapshot captured successfully")
     } catch (txError) {
       await client.query("ROLLBACK")
       throw txError
