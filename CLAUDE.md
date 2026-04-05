@@ -78,6 +78,7 @@ server/src/                   # Backend
 ├── lib/                      # Core library modules
 │   ├── death-sources/        # Death enrichment system (orchestrator, sources, AI providers)
 │   ├── biography-sources/    # Biography enrichment system (orchestrator, sources, Claude synthesis)
+│   │   └── surprise-discovery/  # Post-enrichment discovery agent (autocomplete, scoring, verification)
 │   ├── shared/               # Shared utilities (concurrency, rate limiting, DDG search, sanitization)
 │   ├── biography/            # Biography utilities (golden test cases, Wikipedia fetcher)
 │   ├── jobs/                 # BullMQ queue manager, workers, handlers

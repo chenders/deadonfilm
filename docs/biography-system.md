@@ -103,7 +103,7 @@ Sources within each phase run concurrently, respecting per-domain rate limits vi
 | `fameCatalyst` | string | What launched them into public life |
 | `personalStruggles` | string | Addiction, legal issues, health challenges |
 | `relationships` | string | Marriages, partnerships, children |
-| `lesserKnownFacts` | string[] | Surprising or little-known facts |
+| `lesserKnownFacts` | object[] | Surprising facts with source attribution (`{text, sourceUrl, sourceName}`) |
 | `hasSubstantiveContent` | boolean | Whether biography has enough personal detail |
 | `alternateNames` | string[] | Stage names, maiden names, nicknames |
 | `gender` | string \| null | Gender identity |
@@ -118,11 +118,55 @@ Sources within each phase run concurrently, respecting per-domain rate limits vi
 | `actor_biography_details` | Enriched biography: narrative, family, education, factors, sources |
 | `biography_legacy` | One-time archive of old `actors.biography` before first enrichment |
 | `actors.biography` | Updated with `narrative` from enrichment |
-| `actors.biography_version` | Semver string set on enrichment (e.g., "5.0.0") |
+| `actors.biography_version` | Semver string set on enrichment (e.g., "7.0.0") |
+
+## Surprise Discovery Agent
+
+After enrichment completes, the **surprise discovery agent** runs as a post-enrichment phase to find facts the source-based pipeline can't discover. It works by asking "what does the public unexpectedly associate with this person?" rather than searching biographical sources.
+
+### Three-Phase Pipeline
+
+**Phase 1: Autocomplete → Boring Filter → Incongruity Scoring**
+- Queries Google Autocomplete with 57 patterns per actor (26 quoted-letter, 26 space-letter, 5 keyword suffixes)
+- Boring filter drops obvious results: filmography matches, co-star names, generic SEO terms, terms already in biography
+- Claude Haiku scores remaining associations for incongruity (1-10 scale); only candidates above threshold (default: 7) proceed
+
+**Phase 2: Reddit Research → Claim Verification**
+- For each high-scoring candidate, searches Reddit via Google CSE (or Brave fallback) for discussion threads
+- Extracts claims from thread snippets
+- Verifies claims against reliable journalistic sources (Tier 1 news, trade press, quality publications with reliability ≥ 0.9)
+- Only verified claims proceed to integration
+
+**Phase 3: Integration**
+- Claude Sonnet synthesizes verified findings into source-attributed lesser-known facts
+- Two strategies: `append-only` (add new facts to existing list) or `re-synthesize` (rebuild narrative with new findings)
+- Each fact includes `sourceUrl` and `sourceName` for provenance
+
+### Configuration
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `enabled` | `true` | Whether to run discovery after enrichment |
+| `integrationStrategy` | `"append-only"` | How to integrate findings (`append-only` or `re-synthesize`) |
+| `incongruityThreshold` | `7` | Minimum Haiku score (1-10) to research a candidate |
+| `maxCostPerActorUsd` | `0.10` | Cost limit per actor for discovery phase |
+
+### Architecture
+
+| Component | Path | Purpose |
+|-----------|------|---------|
+| Orchestrator | `server/src/lib/biography-sources/surprise-discovery/orchestrator.ts` | Wires phases together with logging and cost tracking |
+| Autocomplete | `surprise-discovery/autocomplete.ts` | Google Autocomplete client (57 queries/actor) |
+| Boring filter | `surprise-discovery/boring-filter.ts` | Heuristic filter using filmography, co-stars, blocklist |
+| Incongruity scorer | `surprise-discovery/incongruity-scorer.ts` | Claude Haiku scoring in batches of 30 |
+| Reddit researcher | `surprise-discovery/reddit-researcher.ts` | Google CSE / Brave search for Reddit threads |
+| Verifier | `surprise-discovery/verifier.ts` | Searches reliable sources for claim corroboration |
+| Integrator | `surprise-discovery/integrator.ts` | Claude Sonnet synthesis of verified findings |
+| Types | `surprise-discovery/types.ts` | `DiscoveryConfig`, `DiscoveryResult`, shared constants |
 
 ## Lesser-Known Facts
 
-The enrichment pipeline extracts surprising personal facts that most biographies never mention. These are displayed as a bullet-point list on actor pages under the heading "Lesser-Known Facts."
+Lesser-known facts come from two sources: the enrichment pipeline (Stage 3 Claude synthesis) and the surprise discovery agent (Phase 3 integration). Facts are stored as JSONB objects with source attribution: `{text, sourceUrl, sourceName}`. They are displayed as a bullet-point list on actor pages under the heading "Lesser-Known Facts," with source links for attributed facts.
 
 Examples from Robert Redford's page:
 - Got fired from his first job as a supermarket box boy and again from a position his father found him at Standard Oil
@@ -130,7 +174,7 @@ Examples from Robert Redford's page:
 - Lived as a bohemian in 1950s Paris, where French students challenged him politically about the Algerian War
 - Received death threats in the 1970s for his environmental activism against Utah developments
 
-The facts are produced by Claude during Stage 3 synthesis. The prompt instructs Claude to identify facts that are genuinely surprising or little-known — not standard career achievements or widely repeated anecdotes.
+The enrichment pipeline's facts are produced by Claude during Stage 3 synthesis. The surprise discovery agent's facts are verified against journalistic sources and include provenance links.
 
 ## Life Circumstance Tags
 

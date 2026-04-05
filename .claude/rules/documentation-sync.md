@@ -69,11 +69,13 @@ CLAUDE.md and rule files are written by Claude and read by Claude. They drift si
 | When you... | Update |
 |-------------|--------|
 | Add a new enrichment source file under `server/src/lib/death-sources/sources/` or `server/src/lib/biography-sources/sources/` | Register it in the orchestrator; update source phase tables in `death-enrichment.md` and/or `biography-enrichment.md` |
+| Add a new subsystem to death or biography enrichment (e.g., a new pipeline phase, agent, or post-processing step) | Bump the version in `server/src/lib/enrichment-version.ts`; document in `.claude/rules/{death,biography}-enrichment.md`, `docs/{death-research-pipeline,biography-system}.md`, `.github/docs/copilot-reference.md`, `README.md`, and `src/pages/DataSourcesPage.tsx` |
 | Add a new directory under `server/src/lib/` | Add it to the Key Directories tree in `CLAUDE.md` |
 | Add a new route file under `server/src/routes/` | Add the route pattern to Key API Routes in `CLAUDE.md` if it's user-facing |
 | Add or remove a cron job in `docker-compose.yml` | Update the cron jobs line in Development Notes in `CLAUDE.md` |
 | Add a new env var that scripts or routes require | Add it to the Environment Variables section in `CLAUDE.md` |
 | Add a new npm dependency that's architecturally significant | Update Key Dependencies in `CLAUDE.md` |
 | Change how `npm run dev` or other root scripts work | Update Common Commands in `CLAUDE.md` |
+| Make a major feature change that affects enrichment output (new data fields, new pipeline stages, changed synthesis behavior) | Bump the relevant version in `server/src/lib/enrichment-version.ts` (major for new capabilities, minor for enhancements, patch for fixes) |
 
 **Do NOT maintain counts** of pages, hooks, sources, or other things that grow organically — these go stale immediately. Use qualitative descriptions instead of exact numbers in CLAUDE.md and rule files.
