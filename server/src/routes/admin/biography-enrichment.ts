@@ -43,7 +43,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     // Build WHERE clause
     const params: unknown[] = []
     let paramIndex = 1
-    const conditions: string[] = ["a.deathday IS NOT NULL"]
+    const conditions: string[] = []
 
     if (searchName) {
       const words = splitSearchWords(searchName)
@@ -60,7 +60,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       conditions.push(`abd.id IS NULL`)
     }
 
-    const whereClause = conditions.join(" AND ")
+    const whereClause = conditions.length > 0 ? conditions.join(" AND ") : "TRUE"
 
     // Count total
     const countResult = await pool.query(
@@ -85,12 +85,12 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       dataParams
     )
 
-    // Get enrichment stats
+    // Get enrichment stats (biography enrichment applies to all actors, not just deceased)
     const statsResult = await pool.query(
       `SELECT
-         COUNT(*) FILTER (WHERE deathday IS NOT NULL) as total_deceased,
-         COUNT(*) FILTER (WHERE deathday IS NOT NULL AND id IN (SELECT actor_id FROM actor_biography_details)) as enriched,
-         COUNT(*) FILTER (WHERE deathday IS NOT NULL AND id NOT IN (SELECT actor_id FROM actor_biography_details)) as needs_enrichment
+         COUNT(*) as total_actors,
+         COUNT(*) FILTER (WHERE id IN (SELECT actor_id FROM actor_biography_details)) as enriched,
+         COUNT(*) FILTER (WHERE id NOT IN (SELECT actor_id FROM actor_biography_details)) as needs_enrichment
        FROM actors`
     )
 
@@ -113,7 +113,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
         totalPages: Math.ceil(parseInt(countResult.rows[0]?.total ?? "0", 10) / pageSize),
       },
       stats: {
-        totalDeceased: parseInt(statsResult.rows[0]?.total_deceased ?? "0", 10),
+        totalActors: parseInt(statsResult.rows[0]?.total_actors ?? "0", 10),
         enriched: parseInt(statsResult.rows[0]?.enriched ?? "0", 10),
         needsEnrichment: parseInt(statsResult.rows[0]?.needs_enrichment ?? "0", 10),
       },
@@ -166,11 +166,85 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
       await writeBiographyToProduction(pool, actorId, result.data, result.sources)
     }
 
+    // Run surprise discovery if enabled and bio was written
+    let discoveryResult = null
+    const discoveryEnabled = req.body.discoveryEnabled !== false // default true
+    if (discoveryEnabled && result.data?.hasSubstantiveContent && result.data?.narrative) {
+      try {
+        const { runSurpriseDiscovery } =
+          await import("../../lib/biography-sources/surprise-discovery/orchestrator.js")
+        const { DEFAULT_DISCOVERY_CONFIG } =
+          await import("../../lib/biography-sources/surprise-discovery/types.js")
+
+        const discoveryConfig = {
+          ...DEFAULT_DISCOVERY_CONFIG,
+          ...(req.body.discoveryIntegrationStrategy && {
+            integrationStrategy: req.body.discoveryIntegrationStrategy,
+          }),
+          ...(req.body.discoveryIncongruityThreshold && {
+            incongruityThreshold: req.body.discoveryIncongruityThreshold,
+          }),
+          ...(req.body.discoveryMaxCostPerActor && {
+            maxCostPerActorUsd: req.body.discoveryMaxCostPerActor,
+          }),
+        }
+
+        discoveryResult = await runSurpriseDiscovery(
+          { id: actor.id, name: actor.name, tmdb_id: actor.tmdb_id },
+          result.data.narrative,
+          result.data.lesserKnownFacts || [],
+          discoveryConfig
+        )
+
+        // Write discovery results and any new findings to DB
+        if (
+          discoveryResult.hasFindings ||
+          discoveryResult.discoveryResults.autocomplete.queriesRun > 0
+        ) {
+          const updateFields: string[] = ["discovery_results = $2"]
+          const updateParams: unknown[] = [
+            actorId,
+            JSON.stringify(discoveryResult.discoveryResults),
+          ]
+          let paramIdx = 3
+
+          if (discoveryResult.newLesserKnownFacts.length > 0) {
+            updateFields.push(
+              `lesser_known_facts = COALESCE(lesser_known_facts, ARRAY[]::text[]) || $${paramIdx}::text[]`
+            )
+            updateParams.push(discoveryResult.newLesserKnownFacts)
+            paramIdx++
+          }
+
+          if (discoveryResult.updatedNarrative) {
+            updateFields.push(`narrative = $${paramIdx}`)
+            updateParams.push(discoveryResult.updatedNarrative)
+            paramIdx++
+          }
+
+          await pool.query(
+            `UPDATE actor_biography_details SET ${updateFields.join(", ")} WHERE actor_id = $1`,
+            updateParams
+          )
+        }
+      } catch (discoveryError) {
+        logger.error({ error: discoveryError, actorId }, "Surprise discovery failed (non-fatal)")
+      }
+    }
+
     res.json({
       success: true,
       enriched: result.data?.hasSubstantiveContent || false,
       data: result.data,
       stats: result.stats,
+      discovery: discoveryResult
+        ? {
+            hasFindings: discoveryResult.hasFindings,
+            newFactsCount: discoveryResult.newLesserKnownFacts.length,
+            narrativeUpdated: discoveryResult.updatedNarrative !== null,
+            costUsd: discoveryResult.discoveryResults.costUsd,
+          }
+        : null,
     })
   } catch (error) {
     logger.error({ error, actorId }, "Failed to enrich actor biography")
