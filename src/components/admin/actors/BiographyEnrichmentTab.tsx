@@ -140,6 +140,10 @@ async function resynthesizeSingleActor(
 async function queueBatchEnrichment(params: {
   limit?: number
   minPopularity?: number
+  discoveryEnabled?: boolean
+  discoveryIntegrationStrategy?: "append-only" | "re-synthesize"
+  discoveryIncongruityThreshold?: number
+  discoveryMaxCostPerActor?: number
 }): Promise<{ jobId: string; queued: boolean; message: string }> {
   const response = await fetch(adminApi("/biography-enrichment/enrich-batch"), {
     method: "POST",
@@ -148,6 +152,10 @@ async function queueBatchEnrichment(params: {
     body: JSON.stringify({
       limit: params.limit || 10,
       minPopularity: params.minPopularity,
+      discoveryEnabled: params.discoveryEnabled,
+      discoveryIntegrationStrategy: params.discoveryIntegrationStrategy,
+      discoveryIncongruityThreshold: params.discoveryIncongruityThreshold,
+      discoveryMaxCostPerActor: params.discoveryMaxCostPerActor,
     }),
   })
 
@@ -325,6 +333,10 @@ export default function BiographyEnrichmentTab() {
   const [enrichingActorId, setEnrichingActorId] = useState<number | null>(null)
   const [resynthesizingActorId, setResynthesizingActorId] = useState<number | null>(null)
   const [activeBatchJobId, setActiveBatchJobId] = useState<string | null>(null)
+  const [discoveryEnabled, setDiscoveryEnabled] = useState(true)
+  const [discoveryStrategy, setDiscoveryStrategy] = useState<"append-only" | "re-synthesize">(
+    "append-only"
+  )
   const pageSize = 50
 
   // Debounced search input
@@ -414,6 +426,8 @@ export default function BiographyEnrichmentTab() {
       await batchMutation.mutateAsync({
         limit: batchLimit,
         minPopularity: parseFloat(minPopularity) || 0,
+        discoveryEnabled,
+        discoveryIntegrationStrategy: discoveryStrategy,
       })
     } catch {
       // Error state handled by mutation
@@ -563,6 +577,39 @@ export default function BiographyEnrichmentTab() {
               />
               Unattributed facts only
             </label>
+          </div>
+
+          {/* Surprise Discovery */}
+          <div className="col-span-full mt-1 border-t border-admin-border pt-3">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-admin-text-muted">
+              Surprise Discovery
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2 text-sm text-admin-text-muted">
+                <input
+                  type="checkbox"
+                  checked={discoveryEnabled}
+                  onChange={(e) => setDiscoveryEnabled(e.target.checked)}
+                  className="rounded border-admin-border"
+                />
+                Enable discovery
+              </label>
+              {discoveryEnabled && (
+                <label className="flex items-center gap-2 text-sm text-admin-text-muted">
+                  Strategy:
+                  <select
+                    value={discoveryStrategy}
+                    onChange={(e) =>
+                      setDiscoveryStrategy(e.target.value as "append-only" | "re-synthesize")
+                    }
+                    className="rounded border border-admin-border bg-admin-surface-base px-2 py-1 text-sm text-admin-text-primary"
+                  >
+                    <option value="append-only">Append only</option>
+                    <option value="re-synthesize">Re-synthesize</option>
+                  </select>
+                </label>
+              )}
+            </div>
           </div>
 
           {/* Batch Limit */}
