@@ -1,33 +1,51 @@
 # Respond to Copilot
 
-Review and respond to GitHub Copilot review comments on a pull request.
+Review and respond to GitHub Copilot review comments on a pull request. Loops until Copilot has no new comments.
 
 ## Arguments
 
-- `$ARGUMENTS` - The PR number or branch name (optional, defaults to current branch)
+- `$ARGUMENTS` - PR number or branch name (optional, defaults to current branch)
 
 ## Instructions
 
+### Per-round steps
+
 1. **Identify the PR**
-   - If a PR number is provided, use it directly
-   - If a branch name is provided, find the PR for that branch
-   - If no argument provided, use the current branch to find its PR
-   - Run `gh pr view [PR] --json number,headRefName,comments,reviews` to get PR details
+   - If PR number provided, use directly
+   - Otherwise find PR for current branch via `gh pr view`
 
-2. **Fetch all review comments**
-   - Run `gh api repos/{owner}/{repo}/pulls/{pr_number}/comments` to get all review comments
-   - Filter for comments from `github-actions[bot]` or `copilot` that represent Copilot suggestions
-   - Also check `gh pr view [PR] --json reviews` for review-level comments
+2. **Fetch all review comments from BOTH endpoints**
 
-3. **Analyze each comment**
-   For each Copilot comment, evaluate:
+   Copilot posts comments via two different mechanisms. You MUST check both:
+
+   **Endpoint A — PR-level comments** (inline diff comments):
+   ```bash
+   gh api --paginate repos/chenders/deadonfilm/pulls/{pr_number}/comments --jq '.[] | {id, body, path, line}'
+   ```
+
+   **Endpoint B — Review-attached comments** (comments posted as part of a review):
+   ```bash
+   # First get all review IDs from Copilot
+   REVIEW_IDS=$(gh api --paginate repos/chenders/deadonfilm/pulls/{pr_number}/reviews --jq '.[] | select(.user.login == "copilot-pull-request-reviewer[bot]") | .id')
+
+   # Then fetch comments for each review
+   for rid in $REVIEW_IDS; do
+     gh api --paginate repos/chenders/deadonfilm/pulls/{pr_number}/reviews/$rid/comments --jq '.[] | {id, body, path, line}'
+   done
+   ```
+
+   Merge the results from both endpoints, deduplicating by comment ID (the same comment may appear in both).
+
+3. **Check for new comments** — If there are no new unaddressed comments (from either endpoint) since the last round, the loop is done. Report the final status and stop.
+
+4. **Analyze each new comment**
    - **Validity**: Is the suggestion technically correct?
    - **Relevance**: Does it apply to the actual code context?
    - **Value**: Would implementing it improve code quality, security, performance, or maintainability?
    - **Scope**: Is it within the scope of this PR, or is it unrelated cleanup?
    - **Trade-offs**: Are there downsides to the suggestion (complexity, over-engineering, etc.)?
 
-4. **Categorize suggestions**
+5. **Categorize suggestions**
    - **Will implement**: Valid, valuable, and within scope
    - **Won't implement**: Invalid, not valuable, or has significant trade-offs
    - **Needs discussion**: Unclear or requires user input
@@ -37,83 +55,74 @@ Review and respond to GitHub Copilot review comments on a pull request.
    - If it's too large, ask the user: "This suggestion would require significant work. Should I implement it now, or would you prefer to defer it to a separate PR?"
    - Only create tracking issues if the user explicitly asks for deferral
 
-5. **Make changes for accepted suggestions**
-   - Implement the changes for suggestions you've decided to accept
-   - Run tests to ensure changes don't break anything: `npm test && cd server && npm test`
+6. **Implement accepted suggestions**
+   - Make changes
+   - Run tests: `npm test && cd server && npm test`
    - Run quality checks: `npm run lint && npm run type-check`
+   - Commit: "Address Copilot review feedback"
+   - Push changes
+   - Note the commit SHA: `git rev-parse --short HEAD`
 
-6. **Commit and push changes before responding**
-   - Stage and commit with a message like: "Address Copilot review feedback"
-   - Push the changes to update the PR
-   - Note the commit SHA for use in responses: `git rev-parse --short HEAD`
+7. **Reply to each comment**
 
-7. **Respond to each comment on GitHub**
-   Use `gh api` to reply to each comment:
    ```bash
-   gh api repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies \
-     -method POST -f body="Your response"
+   gh api -X POST repos/chenders/deadonfilm/pulls/{pr_number}/comments/{id}/replies -f body="Fixed in $(git rev-parse --short HEAD). Explanation."
    ```
 
    Response format:
-   - **If implemented**: Reference the commit SHA and explain what change was made. Use format: "Fixed in <commit_sha>. <explanation>"
-   - **If not implemented**: Explain why (invalid suggestion, out of scope, trade-offs, etc.)
+   - **If implemented**: "Fixed in <sha>. <explanation>"
+   - **If not implemented**: Explain why
    - **If needs discussion**: Ask clarifying questions
 
-8. **REQUIRED: Resolve implemented comment threads**
-
-   **This step is mandatory for any comments where you implemented fixes.** Do not skip this step.
-
-   After responding to comments, resolve the threads using the GraphQL API:
-
-   **Step 8a:** Query for thread IDs (thread IDs have `PRRT_` prefix, different from comment IDs which have `PRRC_` prefix):
+8. **Resolve implemented threads** (use PRRT_ thread IDs, not PRRC_ comment IDs)
 
    ```bash
-   gh api graphql -f query='
-     query {
-       repository(owner: "{owner}", name: "{repo}") {
-         pullRequest(number: {pr_number}) {
-           reviewThreads(first: 50) {
-             nodes {
-               id
-               isResolved
-               comments(first: 1) { nodes { body } }
-             }
-           }
-         }
-       }
-     }
-   '
+   # Get thread IDs
+   gh api graphql -f query='query { repository(owner: "chenders", name: "deadonfilm") { pullRequest(number: {pr_number}) { reviewThreads(first: 50) { nodes { id isResolved comments(first: 1) { nodes { body } } } } } } }'
+
+   # Resolve
+   gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "PRRT_..."}) { thread { isResolved } } }'
    ```
 
-   **Step 8b:** For each comment where you implemented the fix, resolve its thread using the `PRRT_` ID:
+   Rules:
+   - Resolve threads where you implemented the fix
+   - Do NOT resolve threads where you declined
+
+9. **Re-request Copilot review** — capture the review count BEFORE re-requesting to avoid a race condition where the review arrives instantly:
+
    ```bash
-   gh api graphql -f query='
-     mutation {
-       resolveReviewThread(input: {threadId: "PRRT_kwDO..."}) {
-         thread { isResolved }
-       }
-     }
-   '
+   # Capture baseline FIRST — filter to Copilot reviews only and paginate
+   BEFORE_COUNT=$(gh api --paginate repos/chenders/deadonfilm/pulls/{pr_number}/reviews --jq '.[] | select(.user.login == "copilot-pull-request-reviewer[bot]") | .id' | wc -l | tr -d ' ')
+
+   # Then re-request
+   gh api repos/chenders/deadonfilm/pulls/{pr_number}/requested_reviewers -X POST -f 'reviewers[]=copilot-pull-request-reviewer[bot]'
    ```
 
-   **Rules:**
-   - ✅ Resolve threads where you implemented the suggested fix
-   - ❌ Do NOT resolve threads where you declined to make changes
+10. **Wait for the new review** — Poll until Copilot review count exceeds `BEFORE_COUNT`:
 
-9. **Notify user to request Copilot re-review**
-   If any changes were committed and pushed, tell the user:
+    ```bash
+    gh api --paginate repos/chenders/deadonfilm/pulls/{pr_number}/reviews --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer[bot]")] | length'
+    ```
 
-   > "Changes pushed. To trigger a Copilot re-review, click the 🔄 re-request button next to Copilot's name in the Reviewers section on the PR page."
+    Poll every 15 seconds. Timeout after 10 minutes (assume review is delayed).
 
-   **Why manual?** GitHub has no API or CLI to re-request a review from a reviewer that has already submitted one. The REST API `POST /pulls/{pr}/requested_reviewers` and `gh pr edit --add-reviewer` only work for initial requests — they return success but silently do nothing for re-reviews. This is a [known GitHub limitation](https://github.com/orgs/community/discussions/186152).
+    **CRITICAL:** The baseline count MUST be captured before re-requesting (step 9). If captured after, the new review may already be included, causing the poll to never trigger.
+
+11. **Loop back to step 2** — Fetch comments again and check for new ones.
+
+### Completion criteria
+
+The loop ends when:
+
+- Copilot's latest review has **no new comments** (clean review), OR
+- The poll in step 10 times out (report this and stop)
+
+When complete, report a summary: total rounds, comments addressed, comments declined.
 
 ## Example Responses
 
 **Implemented (simple fix):**
 > Fixed in 2f50cc1. Added null check before accessing the property to prevent potential runtime errors.
-
-**Implemented (refactoring):**
-> Fixed in 3a8bc12. Extracted the shared logic into a reusable utility function in `src/lib/utils.ts` and updated both call sites to use it.
 
 **Implemented (security fix):**
 > Fixed in 5d9ef34. Changed from string interpolation to parameterized query to prevent SQL injection.
@@ -122,23 +131,12 @@ Review and respond to GitHub Copilot review comments on a pull request.
 > This suggestion doesn't apply here - the variable is already guaranteed to be non-null at this point due to the guard clause on line 42.
 
 **Not implemented (trade-off):**
-> Chose not to implement this. While the suggested abstraction would reduce duplication, it would also add complexity for a pattern that only appears twice in the codebase. Will reconsider if this pattern appears more frequently.
-
-## Completion Checklist
-
-Before finishing, verify you have completed ALL of these steps:
-
-- [ ] Analyzed all Copilot comments
-- [ ] Implemented accepted suggestions
-- [ ] Ran tests and quality checks
-- [ ] Committed and pushed changes
-- [ ] Responded to each comment on GitHub
-- [ ] **Resolved implemented comment threads** (step 8 - don't skip!)
-- [ ] Notified user to manually re-request Copilot review (if changes were made)
+> Chose not to implement this. While the suggested abstraction would reduce duplication, it would also add complexity for a pattern that only appears twice in the codebase.
 
 ## Notes
 
-- Be respectful and constructive in responses
-- Don't dismiss suggestions without explanation
-- If you're unsure about a suggestion, ask the user before responding
-- Copilot comments may appear as regular review comments or as part of a review
+- Never dismiss suggestions without explanation
+- Never defer work without explicit user approval
+- Thread IDs (PRRT_) are NOT the same as comment IDs (PRRC_)
+- Track comment IDs across rounds to distinguish new comments from previously addressed ones
+- **CRITICAL:** GitHub has two comment endpoints — `pulls/{pr}/comments` (PR-level) and `pulls/{pr}/reviews/{review_id}/comments` (review-level). Copilot uses BOTH. Always check both endpoints or you will miss comments.
