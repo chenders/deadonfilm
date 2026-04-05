@@ -23,11 +23,13 @@ const NUM_RESULTS = 10
 /**
  * High-reliability domains (ReliabilityTier >= 0.9).
  *
- * Includes Tier 1 News (0.95), Trade Press (0.9), and reference sites.
- * Excludes SEARCH_AGGREGATOR (0.7), AI_MODEL (0.55), and UGC sources.
+ * Includes Tier 1 News (0.95) and Trade Press (0.9) only.
+ * Excludes SECONDARY_COMPILATION (0.85, e.g. Wikipedia, biography.com),
+ * MARGINAL_EDITORIAL (0.65, e.g. people.com, ew.com),
+ * SEARCH_AGGREGATOR (0.7), AI_MODEL (0.55), and UGC sources.
  */
 const RELIABLE_DOMAINS = new Set([
-  // Tier 1 News
+  // Tier 1 News (0.95)
   "theguardian.com",
   "nytimes.com",
   "bbc.com",
@@ -36,15 +38,11 @@ const RELIABLE_DOMAINS = new Set([
   "reuters.com",
   "washingtonpost.com",
   "latimes.com",
-  // Trade Press
+  // Trade Press (0.9)
   "variety.com",
   "deadline.com",
   "hollywoodreporter.com",
-  // Reference
-  "britannica.com",
-  "biography.com",
-  "en.wikipedia.org",
-  // Quality Publications
+  // Quality Publications (0.9+)
   "newyorker.com",
   "theatlantic.com",
   "smithsonianmag.com",
@@ -55,8 +53,6 @@ const RELIABLE_DOMAINS = new Set([
   "independent.co.uk",
   "npr.org",
   "pbs.org",
-  "people.com",
-  "ew.com",
 ])
 
 /**
@@ -120,7 +116,7 @@ async function searchViaGoogle(
   url.searchParams.set("q", query)
   url.searchParams.set("num", String(NUM_RESULTS))
 
-  const response = await fetch(url.toString())
+  const response = await fetch(url.toString(), { signal: AbortSignal.timeout(10000) })
 
   if (!response.ok) {
     throw new Error(`Google CSE returned ${response.status}: ${response.statusText}`)
@@ -153,6 +149,7 @@ async function searchViaBrave(
   url.searchParams.set("count", String(NUM_RESULTS))
 
   const response = await fetch(url.toString(), {
+    signal: AbortSignal.timeout(10000),
     headers: {
       Accept: "application/json",
       "X-Subscription-Token": apiKey,

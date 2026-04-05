@@ -154,7 +154,8 @@ export async function runSurpriseDiscovery(
 
   logger.info({ actorName: actor.name }, "discovery:autocomplete starting")
 
-  const suggestions = await fetchAutocompleteSuggestions(actor.name)
+  const autocompleteResult = await fetchAutocompleteSuggestions(actor.name)
+  const { suggestions, fromCache: autocompleteFromCache } = autocompleteResult
 
   const byPattern: Record<string, number> = {}
   for (const s of suggestions) {
@@ -201,7 +202,9 @@ export async function runSurpriseDiscovery(
   const phase1Results: DiscoveryResults = {
     ...buildEmptyResults(config),
     autocomplete: {
-      queriesRun: 57, // 26 quoted-letter + 26 quoted-space-letter + 5 keyword
+      // 57 queries when run fresh (26 quoted-letter + 26 quoted-space-letter + 5 keyword);
+      // 0 when served from cache since no HTTP requests were made.
+      queriesRun: autocompleteFromCache ? 0 : 57,
       totalSuggestions: suggestions.length,
       uniqueSuggestions: suggestions.length,
       byPattern,

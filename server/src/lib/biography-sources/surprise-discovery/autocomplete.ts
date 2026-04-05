@@ -22,6 +22,15 @@ const ALPHABET = "abcdefghijklmnopqrstuvwxyz".split("")
 const REQUEST_DELAY_MS = 100
 
 /**
+ * Result type for fetchAutocompleteSuggestions.
+ */
+export interface AutocompleteResult {
+  suggestions: AutocompleteSuggestion[]
+  /** True if results came from cache; false if queries were actually run. */
+  fromCache: boolean
+}
+
+/**
  * Fetches autocomplete suggestions for an actor across 57 query patterns.
  *
  * Runs three pattern groups:
@@ -33,16 +42,17 @@ const REQUEST_DELAY_MS = 100
  * keeping the first occurrence across all patterns.
  *
  * @param actorName - Full actor name (e.g. "John Wayne")
- * @returns Deduplicated list of autocomplete suggestions with provenance
+ * @returns Deduplicated suggestions with provenance, and a fromCache flag
  */
-export async function fetchAutocompleteSuggestions(
-  actorName: string
-): Promise<AutocompleteSuggestion[]> {
+export async function fetchAutocompleteSuggestions(actorName: string): Promise<AutocompleteResult> {
   // Check cache first
   const cached = await getCachedQuery(CACHE_SOURCE_TYPE, actorName)
   if (cached?.responseRaw) {
     logger.debug({ actorName }, "Autocomplete cache hit")
-    return cached.responseRaw as AutocompleteSuggestion[]
+    return {
+      suggestions: cached.responseRaw as AutocompleteSuggestion[],
+      fromCache: true,
+    }
   }
 
   const startTime = Date.now()
@@ -88,7 +98,7 @@ export async function fetchAutocompleteSuggestions(
     responseTimeMs: Date.now() - startTime,
   }).catch((err) => logger.warn({ err }, "Failed to cache autocomplete results"))
 
-  return results
+  return { suggestions: results, fromCache: false }
 }
 
 /**

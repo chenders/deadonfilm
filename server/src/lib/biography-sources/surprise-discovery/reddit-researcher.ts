@@ -52,7 +52,7 @@ async function searchViaGoogle(
   url.searchParams.set("q", query)
   url.searchParams.set("num", String(MAX_RESULTS))
 
-  const response = await fetch(url.toString())
+  const response = await fetch(url.toString(), { signal: AbortSignal.timeout(10000) })
 
   if (!response.ok) {
     throw new Error(`Google CSE returned ${response.status}: ${response.statusText}`)
@@ -85,6 +85,7 @@ async function searchViaBrave(
   url.searchParams.set("count", String(MAX_RESULTS))
 
   const response = await fetch(url.toString(), {
+    signal: AbortSignal.timeout(10000),
     headers: {
       Accept: "application/json",
       "X-Subscription-Token": apiKey,

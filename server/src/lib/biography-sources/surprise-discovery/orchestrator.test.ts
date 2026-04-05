@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 // Mock all sub-modules before any imports
 vi.mock("./autocomplete.js", () => ({
-  fetchAutocompleteSuggestions: vi.fn().mockResolvedValue([]),
+  fetchAutocompleteSuggestions: vi.fn().mockResolvedValue({ suggestions: [], fromCache: false }),
 }))
 vi.mock("./boring-filter.js", () => ({
   filterBoringSuggestions: vi.fn().mockReturnValue({ kept: [], dropped: 0, droppedByReason: {} }),
@@ -104,14 +104,17 @@ describe("runSurpriseDiscovery", () => {
   })
 
   it("stops at Phase 1 when boring filter drops everything (no candidates)", async () => {
-    vi.mocked(fetchAutocompleteSuggestions).mockResolvedValue([
-      {
-        fullText: "helen mirren age",
-        term: "age",
-        queryPattern: "keyword",
-        rawQuery: '"helen mirren" a',
-      },
-    ])
+    vi.mocked(fetchAutocompleteSuggestions).mockResolvedValue({
+      suggestions: [
+        {
+          fullText: "helen mirren age",
+          term: "age",
+          queryPattern: "keyword",
+          rawQuery: '"helen mirren" a',
+        },
+      ],
+      fromCache: false,
+    })
 
     // boring filter drops everything
     vi.mocked(filterBoringSuggestions).mockReturnValue({
@@ -142,14 +145,17 @@ describe("runSurpriseDiscovery", () => {
   })
 
   it("stops at Phase 1 when no candidates score above the threshold", async () => {
-    vi.mocked(fetchAutocompleteSuggestions).mockResolvedValue([
-      {
-        fullText: "helen mirren karate",
-        term: "karate",
-        queryPattern: "keyword",
-        rawQuery: '"helen mirren" karate',
-      },
-    ])
+    vi.mocked(fetchAutocompleteSuggestions).mockResolvedValue({
+      suggestions: [
+        {
+          fullText: "helen mirren karate",
+          term: "karate",
+          queryPattern: "keyword",
+          rawQuery: '"helen mirren" karate',
+        },
+      ],
+      fromCache: false,
+    })
 
     vi.mocked(filterBoringSuggestions).mockReturnValue({
       kept: [
@@ -194,7 +200,10 @@ describe("runSurpriseDiscovery", () => {
       rawQuery: '"helen mirren" karate',
     }
 
-    vi.mocked(fetchAutocompleteSuggestions).mockResolvedValue([suggestion])
+    vi.mocked(fetchAutocompleteSuggestions).mockResolvedValue({
+      suggestions: [suggestion],
+      fromCache: false,
+    })
 
     vi.mocked(filterBoringSuggestions).mockReturnValue({
       kept: [suggestion],
@@ -295,10 +304,10 @@ describe("runSurpriseDiscovery", () => {
       rawQuery: `"helen mirren" ${term}`,
     })
 
-    vi.mocked(fetchAutocompleteSuggestions).mockResolvedValue([
-      makeSuggestion("term-a"),
-      makeSuggestion("term-b"),
-    ])
+    vi.mocked(fetchAutocompleteSuggestions).mockResolvedValue({
+      suggestions: [makeSuggestion("term-a"), makeSuggestion("term-b")],
+      fromCache: false,
+    })
 
     vi.mocked(filterBoringSuggestions).mockReturnValue({
       kept: [makeSuggestion("term-a"), makeSuggestion("term-b")],
@@ -340,7 +349,10 @@ describe("runSurpriseDiscovery", () => {
       rawQuery: '"helen mirren" c',
     }
 
-    vi.mocked(fetchAutocompleteSuggestions).mockResolvedValue([suggestion])
+    vi.mocked(fetchAutocompleteSuggestions).mockResolvedValue({
+      suggestions: [suggestion],
+      fromCache: false,
+    })
 
     vi.mocked(filterBoringSuggestions).mockReturnValue({
       kept: [suggestion],

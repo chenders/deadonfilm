@@ -186,13 +186,13 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
 
         const discoveryConfig = {
           ...DEFAULT_DISCOVERY_CONFIG,
-          ...(req.body.discoveryIntegrationStrategy && {
+          ...(req.body.discoveryIntegrationStrategy !== undefined && {
             integrationStrategy: req.body.discoveryIntegrationStrategy,
           }),
-          ...(req.body.discoveryIncongruityThreshold && {
+          ...(req.body.discoveryIncongruityThreshold !== undefined && {
             incongruityThreshold: req.body.discoveryIncongruityThreshold,
           }),
-          ...(req.body.discoveryMaxCostPerActor && {
+          ...(req.body.discoveryMaxCostPerActor !== undefined && {
             maxCostPerActorUsd: req.body.discoveryMaxCostPerActor,
           }),
         }

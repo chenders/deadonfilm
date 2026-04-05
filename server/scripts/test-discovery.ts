@@ -76,14 +76,12 @@ async function main() {
         `\nWrote ${result.newLesserKnownFacts.length} new facts + discovery results to DB`
       )
 
-      // Clear Redis cache
+      // Clear Redis cache - use explicit keys, not KEYS pattern scan
       const Redis = (await import("ioredis")).default
       const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379")
-      const keys = await redis.keys(`*${row.id}*`)
-      if (keys.length > 0) {
-        await redis.del(...keys)
-        console.log(`Cleared ${keys.length} Redis cache keys: ${keys.join(", ")}`)
-      }
+      const keysToDelete = [`actor:id:${row.id}:v:2`, `related-actors:id:${row.id}`]
+      await redis.del(...keysToDelete)
+      console.log(`Cleared Redis cache keys: ${keysToDelete.join(", ")}`)
       await redis.quit()
     }
 

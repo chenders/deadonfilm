@@ -26,6 +26,7 @@ vi.useFakeTimers()
 
 // Import after mocks are established
 import { fetchAutocompleteSuggestions } from "./autocomplete.js"
+import type { AutocompleteResult } from "./autocomplete.js"
 import { getCachedQuery, setCachedQuery } from "../../death-sources/cache.js"
 
 /**
@@ -50,7 +51,7 @@ describe("fetchAutocompleteSuggestions", () => {
    * Helper that runs the function under test while automatically advancing
    * fake timers so that REQUEST_DELAY_MS sleeps resolve instantly.
    */
-  async function runWithTimers(name: string): Promise<AutocompleteSuggestion[]> {
+  async function runWithTimers(name: string): Promise<AutocompleteResult> {
     const promise = fetchAutocompleteSuggestions(name)
     await vi.runAllTimersAsync()
     return promise
@@ -59,6 +60,11 @@ describe("fetchAutocompleteSuggestions", () => {
   it("runs exactly 57 queries per actor (26 quoted-letter + 26 quoted-space-letter + 5 keyword)", async () => {
     await runWithTimers("John Wayne")
     expect(mockFetch).toHaveBeenCalledTimes(57)
+  })
+
+  it("returns fromCache: false when queries are run", async () => {
+    const result = await runWithTimers("John Wayne")
+    expect(result.fromCache).toBe(false)
   })
 
   it("collects suggestions from all query patterns", async () => {
@@ -70,8 +76,8 @@ describe("fetchAutocompleteSuggestions", () => {
     // All other calls return empty
     mockFetch.mockResolvedValue(makeAutocompleteResponse("", []))
 
-    const results = await runWithTimers("John Wayne")
-    expect(results.length).toBeGreaterThan(0)
+    const { suggestions } = await runWithTimers("John Wayne")
+    expect(suggestions.length).toBeGreaterThan(0)
   })
 
   it("extracts the association term by removing the actor name prefix", async () => {
@@ -80,8 +86,8 @@ describe("fetchAutocompleteSuggestions", () => {
     )
     mockFetch.mockResolvedValue(makeAutocompleteResponse("", []))
 
-    const results = await runWithTimers("John Wayne")
-    const suggestion = results.find((s) => s.fullText === "john wayne afraid of horses")
+    const { suggestions } = await runWithTimers("John Wayne")
+    const suggestion = suggestions.find((s) => s.fullText === "john wayne afraid of horses")
 
     expect(suggestion).toBeDefined()
     expect(suggestion!.term).toBe("afraid of horses")
@@ -104,8 +110,8 @@ describe("fetchAutocompleteSuggestions", () => {
     // Rest empty
     mockFetch.mockResolvedValue(makeAutocompleteResponse("", []))
 
-    const results = await runWithTimers("John Wayne")
-    const matches = results.filter((s) => s.term === "afraid of horses")
+    const { suggestions } = await runWithTimers("John Wayne")
+    const matches = suggestions.filter((s) => s.term === "afraid of horses")
 
     expect(matches).toHaveLength(1)
     // First occurrence is from quoted-letter pattern
@@ -133,11 +139,11 @@ describe("fetchAutocompleteSuggestions", () => {
     )
     mockFetch.mockResolvedValue(makeAutocompleteResponse("", []))
 
-    const results = await runWithTimers("John Wayne")
+    const { suggestions } = await runWithTimers("John Wayne")
 
-    const quotedLetter = results.find((s) => s.term === "asthma")
-    const spaceLetter = results.find((s) => s.term === "born where")
-    const keyword = results.find((s) => s.term === "why did he wear a wig")
+    const quotedLetter = suggestions.find((s) => s.term === "asthma")
+    const spaceLetter = suggestions.find((s) => s.term === "born where")
+    const keyword = suggestions.find((s) => s.term === "why did he wear a wig")
 
     expect(quotedLetter?.queryPattern).toBe("quoted-letter")
     expect(spaceLetter?.queryPattern).toBe("quoted-space-letter")
@@ -150,18 +156,18 @@ describe("fetchAutocompleteSuggestions", () => {
     )
     mockFetch.mockResolvedValue(makeAutocompleteResponse("", []))
 
-    const results = await runWithTimers("John Wayne")
-    const suggestion = results.find((s) => s.term === "actor")
+    const { suggestions } = await runWithTimers("John Wayne")
+    const suggestion = suggestions.find((s) => s.term === "actor")
 
     expect(suggestion?.rawQuery).toBe('"John Wayne" a')
   })
 
-  it("handles fetch failures gracefully, returning empty array", async () => {
+  it("handles fetch failures gracefully, returning empty suggestions", async () => {
     mockFetch.mockRejectedValue(new Error("Network error"))
 
-    const results = await runWithTimers("John Wayne")
+    const { suggestions } = await runWithTimers("John Wayne")
 
-    expect(results).toEqual([])
+    expect(suggestions).toEqual([])
   })
 
   it("handles partial fetch failures, returning suggestions from successful calls", async () => {
@@ -174,26 +180,26 @@ describe("fetchAutocompleteSuggestions", () => {
     // Rest empty
     mockFetch.mockResolvedValue(makeAutocompleteResponse("", []))
 
-    const results = await runWithTimers("John Wayne")
+    const { suggestions } = await runWithTimers("John Wayne")
 
-    expect(results.length).toBeGreaterThan(0)
-    expect(results.some((s) => s.term === "born in iowa")).toBe(true)
+    expect(suggestions.length).toBeGreaterThan(0)
+    expect(suggestions.some((s) => s.term === "born in iowa")).toBe(true)
   })
 
-  it("handles empty autocomplete responses, returning empty array", async () => {
+  it("handles empty autocomplete responses, returning empty suggestions", async () => {
     mockFetch.mockResolvedValue(makeAutocompleteResponse("", []))
 
-    const results = await runWithTimers("John Wayne")
+    const { suggestions } = await runWithTimers("John Wayne")
 
-    expect(results).toEqual([])
+    expect(suggestions).toEqual([])
   })
 
   it("handles non-ok HTTP responses gracefully", async () => {
     mockFetch.mockResolvedValue({ ok: false, status: 429 })
 
-    const results = await runWithTimers("John Wayne")
+    const { suggestions } = await runWithTimers("John Wayne")
 
-    expect(results).toEqual([])
+    expect(suggestions).toEqual([])
   })
 
   it("ignores suggestions that don't start with the actor name", async () => {
@@ -206,11 +212,11 @@ describe("fetchAutocompleteSuggestions", () => {
     )
     mockFetch.mockResolvedValue(makeAutocompleteResponse("", []))
 
-    const results = await runWithTimers("John Wayne")
+    const { suggestions } = await runWithTimers("John Wayne")
 
     // Only the suggestion starting with "john wayne" should be included
-    expect(results).toHaveLength(1)
-    expect(results[0].term).toBe("afraid of horses")
+    expect(suggestions).toHaveLength(1)
+    expect(suggestions[0].term).toBe("afraid of horses")
   })
 
   it("ignores suggestions where the actor name is the entire suggestion", async () => {
@@ -222,10 +228,10 @@ describe("fetchAutocompleteSuggestions", () => {
     )
     mockFetch.mockResolvedValue(makeAutocompleteResponse("", []))
 
-    const results = await runWithTimers("John Wayne")
+    const { suggestions } = await runWithTimers("John Wayne")
 
-    expect(results).toHaveLength(1)
-    expect(results[0].term).toBe("actor")
+    expect(suggestions).toHaveLength(1)
+    expect(suggestions[0].term).toBe("actor")
   })
 
   it("returns AutocompleteSuggestion objects with all required fields", async () => {
@@ -234,10 +240,10 @@ describe("fetchAutocompleteSuggestions", () => {
     )
     mockFetch.mockResolvedValue(makeAutocompleteResponse("", []))
 
-    const results = await runWithTimers("John Wayne")
+    const { suggestions } = await runWithTimers("John Wayne")
 
-    expect(results).toHaveLength(1)
-    const s: AutocompleteSuggestion = results[0]
+    expect(suggestions).toHaveLength(1)
+    const s: AutocompleteSuggestion = suggestions[0]
     expect(s).toMatchObject({
       fullText: "john wayne afraid of horses",
       term: "afraid of horses",
@@ -271,9 +277,10 @@ describe("fetchAutocompleteSuggestions", () => {
       costUsd: null,
     })
 
-    const results = await fetchAutocompleteSuggestions("John Wayne")
+    const result = await fetchAutocompleteSuggestions("John Wayne")
 
-    expect(results).toEqual(cachedSuggestions)
+    expect(result.suggestions).toEqual(cachedSuggestions)
+    expect(result.fromCache).toBe(true)
     expect(mockFetch).not.toHaveBeenCalled()
     expect(setCachedQuery).not.toHaveBeenCalled()
   })

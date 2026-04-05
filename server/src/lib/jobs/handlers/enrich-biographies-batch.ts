@@ -219,13 +219,15 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
                 const discoveryConfig = {
                   ...DEFAULT_DISCOVERY_CONFIG,
                   enabled: true,
-                  ...(discoveryIntegrationStrategy && {
+                  ...(discoveryIntegrationStrategy !== undefined && {
                     integrationStrategy: discoveryIntegrationStrategy,
                   }),
-                  ...(discoveryIncongruityThreshold && {
+                  ...(discoveryIncongruityThreshold !== undefined && {
                     incongruityThreshold: discoveryIncongruityThreshold,
                   }),
-                  ...(discoveryMaxCostPerActor && { maxCostPerActorUsd: discoveryMaxCostPerActor }),
+                  ...(discoveryMaxCostPerActor !== undefined && {
+                    maxCostPerActorUsd: discoveryMaxCostPerActor,
+                  }),
                 }
 
                 const discoveryResult = await runSurpriseDiscovery(

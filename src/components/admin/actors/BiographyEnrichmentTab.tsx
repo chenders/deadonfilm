@@ -337,6 +337,8 @@ export default function BiographyEnrichmentTab() {
   const [discoveryStrategy, setDiscoveryStrategy] = useState<"append-only" | "re-synthesize">(
     "append-only"
   )
+  const [discoveryThreshold, setDiscoveryThreshold] = useState(7)
+  const [discoveryMaxCost, setDiscoveryMaxCost] = useState(0.1)
   const pageSize = 50
 
   // Debounced search input
@@ -428,6 +430,8 @@ export default function BiographyEnrichmentTab() {
         minPopularity: parseFloat(minPopularity) || 0,
         discoveryEnabled,
         discoveryIntegrationStrategy: discoveryStrategy,
+        discoveryIncongruityThreshold: discoveryThreshold,
+        discoveryMaxCostPerActor: discoveryMaxCost,
       })
     } catch {
       // Error state handled by mutation
@@ -595,19 +599,43 @@ export default function BiographyEnrichmentTab() {
                 Enable discovery
               </label>
               {discoveryEnabled && (
-                <label className="flex items-center gap-2 text-sm text-admin-text-muted">
-                  Strategy:
-                  <select
-                    value={discoveryStrategy}
-                    onChange={(e) =>
-                      setDiscoveryStrategy(e.target.value as "append-only" | "re-synthesize")
-                    }
-                    className="rounded border border-admin-border bg-admin-surface-base px-2 py-1 text-sm text-admin-text-primary"
-                  >
-                    <option value="append-only">Append only</option>
-                    <option value="re-synthesize">Re-synthesize</option>
-                  </select>
-                </label>
+                <>
+                  <label className="flex items-center gap-2 text-sm text-admin-text-muted">
+                    Strategy:
+                    <select
+                      value={discoveryStrategy}
+                      onChange={(e) =>
+                        setDiscoveryStrategy(e.target.value as "append-only" | "re-synthesize")
+                      }
+                      className="rounded border border-admin-border bg-admin-surface-base px-2 py-1 text-sm text-admin-text-primary"
+                    >
+                      <option value="append-only">Append only</option>
+                      <option value="re-synthesize">Re-synthesize</option>
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-admin-text-muted">
+                    Threshold:
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={discoveryThreshold}
+                      onChange={(e) => setDiscoveryThreshold(parseInt(e.target.value) || 7)}
+                      className="w-16 rounded border border-admin-border bg-admin-surface-base px-2 py-1 text-sm text-admin-text-primary"
+                    />
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-admin-text-muted">
+                    Max cost:
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={discoveryMaxCost}
+                      onChange={(e) => setDiscoveryMaxCost(parseFloat(e.target.value) || 0.1)}
+                      className="w-20 rounded border border-admin-border bg-admin-surface-base px-2 py-1 text-sm text-admin-text-primary"
+                    />
+                  </label>
+                </>
               )}
             </div>
           </div>
