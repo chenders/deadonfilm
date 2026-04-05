@@ -297,6 +297,10 @@ export const enrichBiographiesBatchPayloadSchema = z.object({
       books: z.boolean().default(true),
     })
     .optional(),
+  discoveryEnabled: z.boolean().default(true),
+  discoveryIntegrationStrategy: z.enum(["append-only", "re-synthesize"]).default("append-only"),
+  discoveryIncongruityThreshold: z.number().int().min(1).max(10).default(7),
+  discoveryMaxCostPerActor: z.number().min(0).default(0.1),
 })
 
 // Content popularity calculation payload

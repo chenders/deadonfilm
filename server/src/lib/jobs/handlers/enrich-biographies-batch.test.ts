@@ -35,6 +35,22 @@ vi.mock("../../biography-enrichment-db-writer.js", () => ({
   writeBiographyToStaging: (...args: unknown[]) => mockWriteToStaging(...args),
 }))
 
+// Mock surprise discovery orchestrator
+const mockRunSurpriseDiscovery = vi.fn()
+
+vi.mock("../../biography-sources/surprise-discovery/orchestrator.js", () => ({
+  runSurpriseDiscovery: (...args: unknown[]) => mockRunSurpriseDiscovery(...args),
+}))
+
+vi.mock("../../biography-sources/surprise-discovery/types.js", () => ({
+  DEFAULT_DISCOVERY_CONFIG: {
+    enabled: true,
+    integrationStrategy: "append-only",
+    incongruityThreshold: 7,
+    maxCostPerActorUsd: 0.1,
+  },
+}))
+
 // Mock newrelic
 vi.mock("newrelic", () => ({
   default: {
@@ -69,6 +85,7 @@ function createMockJob(data: Record<string, unknown> = {}) {
     data: {
       allowRegeneration: false,
       useStaging: false,
+      discoveryEnabled: false, // disabled by default; override in discovery-specific tests
       ...data,
     },
     attemptsMade: 0,
@@ -156,6 +173,19 @@ describe("EnrichBiographiesBatchHandler", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     handler = new EnrichBiographiesBatchHandler()
+
+    // Default: discovery returns no findings and no queries run (avoids extra DB write)
+    mockRunSurpriseDiscovery.mockResolvedValue({
+      hasFindings: false,
+      updatedNarrative: null,
+      newLesserKnownFacts: [],
+      discoveryResults: {
+        costUsd: 0,
+        autocomplete: { queriesRun: 0, totalSuggestions: 0 },
+        reddit: { queriesRun: 0, postsFound: 0 },
+        verification: { factsChecked: 0, factsVerified: 0 },
+      },
+    })
   })
 
   describe("configuration", () => {
@@ -414,6 +444,157 @@ describe("EnrichBiographiesBatchHandler", () => {
       expect(mockWriteToStaging).not.toHaveBeenCalled()
       expect(result.data?.actorsEnriched).toBe(0)
       expect(result.data?.results[0].enriched).toBe(false)
+    })
+
+    describe("surprise discovery", () => {
+      it("should run discovery when discoveryEnabled is true", async () => {
+        const actor1 = makeActorRow(100, "John Wayne")
+        mockQuery.mockResolvedValueOnce({ rows: [actor1] })
+        mockEnrichActor.mockResolvedValueOnce(makeSuccessfulResult(100))
+
+        const job = createMockJob({ actorIds: [100], discoveryEnabled: true })
+        await handler.process(job as any)
+
+        expect(mockRunSurpriseDiscovery).toHaveBeenCalledOnce()
+        expect(mockRunSurpriseDiscovery).toHaveBeenCalledWith(
+          { id: 100, name: "John Wayne", tmdb_id: 1000 },
+          "A longer narrative about the actor's life.",
+          [],
+          expect.objectContaining({ enabled: true })
+        )
+      })
+
+      it("should skip discovery when discoveryEnabled is false", async () => {
+        const actor1 = makeActorRow(100, "John Wayne")
+        mockQuery.mockResolvedValueOnce({ rows: [actor1] })
+        mockEnrichActor.mockResolvedValueOnce(makeSuccessfulResult(100))
+
+        const job = createMockJob({ actorIds: [100], discoveryEnabled: false })
+        await handler.process(job as any)
+
+        expect(mockRunSurpriseDiscovery).not.toHaveBeenCalled()
+      })
+
+      it("should skip discovery when enrichment produces no substantive content", async () => {
+        const actor1 = makeActorRow(100, "John Wayne")
+        mockQuery.mockResolvedValueOnce({ rows: [actor1] })
+        mockEnrichActor.mockResolvedValueOnce(makeNoContentResult(100))
+
+        const job = createMockJob({ actorIds: [100], discoveryEnabled: true })
+        await handler.process(job as any)
+
+        expect(mockRunSurpriseDiscovery).not.toHaveBeenCalled()
+      })
+
+      it("should write discovery results to DB when queriesRun > 0", async () => {
+        const actor1 = makeActorRow(100, "John Wayne")
+        mockQuery.mockResolvedValueOnce({ rows: [actor1] })
+        mockEnrichActor.mockResolvedValueOnce(makeSuccessfulResult(100))
+
+        mockRunSurpriseDiscovery.mockResolvedValueOnce({
+          hasFindings: false,
+          updatedNarrative: null,
+          newLesserKnownFacts: [],
+          discoveryResults: {
+            costUsd: 0.002,
+            autocomplete: { queriesRun: 3, totalSuggestions: 10 },
+            reddit: { queriesRun: 0, postsFound: 0 },
+            verification: { factsChecked: 0, factsVerified: 0 },
+          },
+        })
+        // Allow the DB write to succeed
+        mockQuery.mockResolvedValueOnce({ rows: [] })
+
+        const job = createMockJob({ actorIds: [100], discoveryEnabled: true })
+        await handler.process(job as any)
+
+        // Should write discovery_results even with no new facts
+        expect(mockQuery).toHaveBeenCalledWith(
+          expect.stringContaining("UPDATE actor_biography_details SET"),
+          expect.arrayContaining([100])
+        )
+      })
+
+      it("should prepend new facts and update narrative when discovery has findings", async () => {
+        const actor1 = makeActorRow(100, "John Wayne")
+        mockQuery.mockResolvedValueOnce({ rows: [actor1] })
+        mockEnrichActor.mockResolvedValueOnce(makeSuccessfulResult(100))
+
+        mockRunSurpriseDiscovery.mockResolvedValueOnce({
+          hasFindings: true,
+          updatedNarrative: "Updated narrative with new facts.",
+          newLesserKnownFacts: [
+            {
+              text: "Surprising new fact",
+              sourceUrl: "https://example.com",
+              sourceName: "Example",
+            },
+          ],
+          discoveryResults: {
+            costUsd: 0.005,
+            autocomplete: { queriesRun: 5, totalSuggestions: 20 },
+            reddit: { queriesRun: 2, postsFound: 1 },
+            verification: { factsChecked: 1, factsVerified: 1 },
+          },
+        })
+        // Allow the DB write to succeed
+        mockQuery.mockResolvedValueOnce({ rows: [] })
+
+        const job = createMockJob({ actorIds: [100], discoveryEnabled: true })
+        await handler.process(job as any)
+
+        // Verify the UPDATE query contains lesser_known_facts and narrative
+        const updateCall = mockQuery.mock.calls.find(
+          (call) =>
+            typeof call[0] === "string" &&
+            call[0].includes("UPDATE actor_biography_details") &&
+            call[0].includes("lesser_known_facts")
+        )
+        expect(updateCall).toBeDefined()
+        expect(updateCall![0]).toContain("narrative =")
+        expect(updateCall![1]).toContain(100)
+      })
+
+      it("should not fail enrichment when discovery throws an error", async () => {
+        const actor1 = makeActorRow(100, "John Wayne")
+        mockQuery.mockResolvedValueOnce({ rows: [actor1] })
+        mockEnrichActor.mockResolvedValueOnce(makeSuccessfulResult(100))
+        mockRunSurpriseDiscovery.mockRejectedValueOnce(new Error("Discovery API timeout"))
+
+        const job = createMockJob({ actorIds: [100], discoveryEnabled: true })
+        const result = await handler.process(job as any)
+
+        // Enrichment still succeeds despite discovery failure
+        expect(result.success).toBe(true)
+        expect(result.data?.actorsEnriched).toBe(1)
+        expect(result.data?.results[0].enriched).toBe(true)
+      })
+
+      it("should pass discovery config options to runSurpriseDiscovery", async () => {
+        const actor1 = makeActorRow(100, "John Wayne")
+        mockQuery.mockResolvedValueOnce({ rows: [actor1] })
+        mockEnrichActor.mockResolvedValueOnce(makeSuccessfulResult(100))
+
+        const job = createMockJob({
+          actorIds: [100],
+          discoveryEnabled: true,
+          discoveryIntegrationStrategy: "re-synthesize",
+          discoveryIncongruityThreshold: 9,
+          discoveryMaxCostPerActor: 0.25,
+        })
+        await handler.process(job as any)
+
+        expect(mockRunSurpriseDiscovery).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.anything(),
+          expect.anything(),
+          expect.objectContaining({
+            integrationStrategy: "re-synthesize",
+            incongruityThreshold: 9,
+            maxCostPerActorUsd: 0.25,
+          })
+        )
+      })
     })
   })
 })

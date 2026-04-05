@@ -354,6 +354,10 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
     useStaging,
     sourceCategories,
     sortBy,
+    discoveryEnabled,
+    discoveryIntegrationStrategy,
+    discoveryIncongruityThreshold,
+    discoveryMaxCostPerActor,
   } = req.body
 
   // Validate concurrency before inserting run record
@@ -409,6 +413,10 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
       allowRegeneration: effectiveAllowRegeneration,
       useStaging: useStaging || false,
       sourceCategories,
+      discoveryEnabled,
+      discoveryIntegrationStrategy,
+      discoveryIncongruityThreshold,
+      discoveryMaxCostPerActor,
       source: "enrich-batch",
     }
     const runResult = await pool.query<{ id: number }>(
@@ -437,6 +445,10 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
         sortBy: sortBy === "interestingness" ? "interestingness" : "popularity",
         useStaging: useStaging || false,
         sourceCategories,
+        discoveryEnabled,
+        discoveryIntegrationStrategy,
+        discoveryIncongruityThreshold,
+        discoveryMaxCostPerActor,
       },
       {
         createdBy: "admin",
