@@ -8,8 +8,13 @@
  * 57 free HTTP requests per actor, no API key required.
  */
 
+import { getCachedQuery, setCachedQuery } from "../../death-sources/cache.js"
 import { logger } from "../../logger.js"
+import { BiographySourceType } from "../types.js"
+import type { DataSourceType } from "../../death-sources/types.js"
 import type { AutocompleteSuggestion } from "./types.js"
+
+const CACHE_SOURCE_TYPE = BiographySourceType.AUTOCOMPLETE_DISCOVERY as unknown as DataSourceType
 
 const AUTOCOMPLETE_URL = "https://suggestqueries.google.com/complete/search"
 const KEYWORD_SUFFIXES = ["why", "did", "secret", "weird", "surprising"]
@@ -33,6 +38,14 @@ const REQUEST_DELAY_MS = 100
 export async function fetchAutocompleteSuggestions(
   actorName: string
 ): Promise<AutocompleteSuggestion[]> {
+  // Check cache first
+  const cached = await getCachedQuery(CACHE_SOURCE_TYPE, actorName)
+  if (cached?.responseRaw) {
+    logger.debug({ actorName }, "Autocomplete cache hit")
+    return cached.responseRaw as AutocompleteSuggestion[]
+  }
+
+  const startTime = Date.now()
   const nameLower = actorName.toLowerCase()
   const seen = new Map<string, AutocompleteSuggestion>()
 
@@ -64,7 +77,18 @@ export async function fetchAutocompleteSuggestions(
     }
   }
 
-  return Array.from(seen.values())
+  const results = Array.from(seen.values())
+
+  // Cache results
+  await setCachedQuery({
+    sourceType: CACHE_SOURCE_TYPE,
+    queryString: actorName,
+    responseStatus: 200,
+    responseData: results,
+    responseTimeMs: Date.now() - startTime,
+  }).catch((err) => logger.warn({ err }, "Failed to cache autocomplete results"))
+
+  return results
 }
 
 /**

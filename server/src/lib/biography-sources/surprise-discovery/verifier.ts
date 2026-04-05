@@ -10,8 +10,13 @@
  * if Google is not configured. Tries two query patterns per verification attempt.
  */
 
+import { getCachedQuery, setCachedQuery } from "../../death-sources/cache.js"
 import { logger } from "../../logger.js"
+import { BiographySourceType } from "../types.js"
+import type { DataSourceType } from "../../death-sources/types.js"
 import type { VerificationAttempt } from "./types.js"
+
+const CACHE_SOURCE_TYPE = BiographySourceType.DISCOVERY_VERIFICATION as unknown as DataSourceType
 
 const NUM_RESULTS = 10
 
@@ -242,6 +247,19 @@ export async function verifyClaim(
   verificationUrl?: string
   verificationExcerpt?: string
 }> {
+  const cacheKey = `${actorName}::${term}`
+  const cached = await getCachedQuery(CACHE_SOURCE_TYPE, cacheKey)
+  if (cached?.responseRaw) {
+    logger.debug({ actorName, term }, "Verification cache hit")
+    return cached.responseRaw as {
+      verified: boolean
+      attempts: VerificationAttempt[]
+      verificationSource?: string
+      verificationUrl?: string
+      verificationExcerpt?: string
+    }
+  }
+
   const queries = [`"${actorName}" "${term}"`, `"${actorName}" ${term}`]
 
   const attempts: VerificationAttempt[] = []
@@ -266,13 +284,20 @@ export async function verifyClaim(
           { actorName, term, domain, url: result.link },
           "verifier: claim verified in reliable source"
         )
-        return {
+        const verifiedResult = {
           verified: true,
           attempts,
           verificationSource: domain,
           verificationUrl: result.link,
           verificationExcerpt: result.snippet,
         }
+        await setCachedQuery({
+          sourceType: CACHE_SOURCE_TYPE,
+          queryString: cacheKey,
+          responseStatus: 200,
+          responseData: verifiedResult,
+        }).catch((err) => logger.warn({ err }, "Failed to cache verification results"))
+        return verifiedResult
       }
     }
   }
@@ -282,5 +307,12 @@ export async function verifyClaim(
     "verifier: claim could not be verified in reliable source"
   )
 
-  return { verified: false, attempts }
+  const unverifiedResult = { verified: false, attempts }
+  await setCachedQuery({
+    sourceType: CACHE_SOURCE_TYPE,
+    queryString: cacheKey,
+    responseStatus: 200,
+    responseData: unverifiedResult,
+  }).catch((err) => logger.warn({ err }, "Failed to cache verification results"))
+  return unverifiedResult
 }

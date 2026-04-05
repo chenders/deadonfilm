@@ -15,11 +15,18 @@ vi.mock("../../logger.js", () => ({
   },
 }))
 
+// Mock cache module — cache always misses by default, writes are no-ops
+vi.mock("../../death-sources/cache.js", () => ({
+  getCachedQuery: vi.fn().mockResolvedValue(null),
+  setCachedQuery: vi.fn().mockResolvedValue(undefined),
+}))
+
 // Use fake timers so the 100ms REQUEST_DELAY_MS between queries resolves instantly
 vi.useFakeTimers()
 
 // Import after mocks are established
 import { fetchAutocompleteSuggestions } from "./autocomplete.js"
+import { getCachedQuery, setCachedQuery } from "../../death-sources/cache.js"
 
 /**
  * Build a mock Google Autocomplete response.
@@ -237,5 +244,37 @@ describe("fetchAutocompleteSuggestions", () => {
       queryPattern: "quoted-letter",
       rawQuery: '"John Wayne" a',
     })
+  })
+
+  it("returns cached suggestions on cache hit without making fetch calls", async () => {
+    const cachedSuggestions: AutocompleteSuggestion[] = [
+      {
+        fullText: "john wayne afraid of horses",
+        term: "afraid of horses",
+        queryPattern: "quoted-letter",
+        rawQuery: '"John Wayne" a',
+      },
+    ]
+    vi.mocked(getCachedQuery).mockResolvedValueOnce({
+      id: 1,
+      sourceType: "autocomplete-discovery" as never,
+      actorId: null,
+      queryString: "John Wayne",
+      queryHash: "abc123",
+      responseStatus: 200,
+      responseRaw: cachedSuggestions,
+      isCompressed: false,
+      responseSizeBytes: null,
+      errorMessage: null,
+      queriedAt: new Date(),
+      responseTimeMs: null,
+      costUsd: null,
+    })
+
+    const results = await fetchAutocompleteSuggestions("John Wayne")
+
+    expect(results).toEqual(cachedSuggestions)
+    expect(mockFetch).not.toHaveBeenCalled()
+    expect(setCachedQuery).not.toHaveBeenCalled()
   })
 })

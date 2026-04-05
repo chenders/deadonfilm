@@ -11,6 +11,14 @@ vi.mock("../../logger.js", () => ({
   },
 }))
 
+// Mock cache module — cache always misses by default, writes are no-ops
+vi.mock("../../death-sources/cache.js", () => ({
+  getCachedQuery: vi.fn().mockResolvedValue(null),
+  setCachedQuery: vi.fn().mockResolvedValue(undefined),
+}))
+
+import { getCachedQuery, setCachedQuery } from "../../death-sources/cache.js"
+
 const GOOGLE_CSE_RESPONSE = {
   items: [
     {
@@ -298,5 +306,41 @@ describe("researchOnReddit", () => {
     const result = await researchOnReddit("John Wayne", "GPS navigation")
 
     expect(result.costUsd).toBe(0)
+  })
+
+  it("returns cached result on cache hit without making fetch calls", async () => {
+    const cachedResult = {
+      threads: [
+        {
+          url: "https://www.reddit.com/r/history/comments/abc123/cached/",
+          subreddit: "history",
+          title: "Cached thread title",
+          upvotes: 0,
+        },
+      ],
+      claimExtracted: "Cached claim text",
+      costUsd: 0,
+    }
+    vi.mocked(getCachedQuery).mockResolvedValueOnce({
+      id: 1,
+      sourceType: "reddit-discovery" as never,
+      actorId: null,
+      queryString: "John Wayne::GPS navigation",
+      queryHash: "abc123",
+      responseStatus: 200,
+      responseRaw: cachedResult,
+      isCompressed: false,
+      responseSizeBytes: null,
+      errorMessage: null,
+      queriedAt: new Date(),
+      responseTimeMs: null,
+      costUsd: null,
+    })
+
+    const result = await researchOnReddit("John Wayne", "GPS navigation")
+
+    expect(result).toEqual(cachedResult)
+    expect(fetch).not.toHaveBeenCalled()
+    expect(setCachedQuery).not.toHaveBeenCalled()
   })
 })

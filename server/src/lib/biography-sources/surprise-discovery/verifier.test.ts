@@ -11,6 +11,14 @@ vi.mock("../../logger.js", () => ({
   },
 }))
 
+// Mock cache module — cache always misses by default, writes are no-ops
+vi.mock("../../death-sources/cache.js", () => ({
+  getCachedQuery: vi.fn().mockResolvedValue(null),
+  setCachedQuery: vi.fn().mockResolvedValue(undefined),
+}))
+
+import { getCachedQuery, setCachedQuery } from "../../death-sources/cache.js"
+
 // ── Fixture data ──────────────────────────────────────────────────────────────
 
 const GUARDIAN_RESULT = {
@@ -318,5 +326,38 @@ describe("verifyClaim", () => {
 
     const guardianAttempt = result.attempts.find((a) => a.source === "theguardian.com")
     expect(guardianAttempt).toMatchObject({ source: "theguardian.com", found: true })
+  })
+
+  it("returns cached result on cache hit without making fetch calls", async () => {
+    const cachedResult = {
+      verified: true,
+      attempts: [
+        { source: "theguardian.com", url: "https://theguardian.com/article", found: true },
+      ],
+      verificationSource: "theguardian.com",
+      verificationUrl: "https://theguardian.com/article",
+      verificationExcerpt: "Helen Mirren trained in karate.",
+    }
+    vi.mocked(getCachedQuery).mockResolvedValueOnce({
+      id: 1,
+      sourceType: "discovery-verification" as never,
+      actorId: null,
+      queryString: "Helen Mirren::karate black belt",
+      queryHash: "abc123",
+      responseStatus: 200,
+      responseRaw: cachedResult,
+      isCompressed: false,
+      responseSizeBytes: null,
+      errorMessage: null,
+      queriedAt: new Date(),
+      responseTimeMs: null,
+      costUsd: null,
+    })
+
+    const result = await verifyClaim("Helen Mirren", "karate black belt", "some claim")
+
+    expect(result).toEqual(cachedResult)
+    expect(fetch).not.toHaveBeenCalled()
+    expect(setCachedQuery).not.toHaveBeenCalled()
   })
 })

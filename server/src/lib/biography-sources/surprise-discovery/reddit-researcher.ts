@@ -8,8 +8,13 @@
  * Web search has no per-query cost, so costUsd is always 0.
  */
 
+import { getCachedQuery, setCachedQuery } from "../../death-sources/cache.js"
 import { logger } from "../../logger.js"
+import { BiographySourceType } from "../types.js"
+import type { DataSourceType } from "../../death-sources/types.js"
 import type { RedditThread } from "./types.js"
+
+const CACHE_SOURCE_TYPE = BiographySourceType.REDDIT_DISCOVERY as unknown as DataSourceType
 
 const MAX_RESULTS = 5
 const REDDIT_URL_PATTERN = /reddit\.com\/r\/([^/]+)/
@@ -116,6 +121,17 @@ export async function researchOnReddit(
   actorName: string,
   term: string
 ): Promise<{ threads: RedditThread[]; claimExtracted: string; costUsd: number }> {
+  const cacheKey = `${actorName}::${term}`
+  const cached = await getCachedQuery(CACHE_SOURCE_TYPE, cacheKey)
+  if (cached?.responseRaw) {
+    logger.debug({ actorName, term }, "Reddit research cache hit")
+    return cached.responseRaw as {
+      threads: RedditThread[]
+      claimExtracted: string
+      costUsd: number
+    }
+  }
+
   const query = `"${actorName}" "${term}" site:reddit.com`
 
   const hasGoogle = !!(process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_CX)
@@ -173,5 +189,14 @@ export async function researchOnReddit(
     "reddit-researcher: research complete"
   )
 
-  return { threads, claimExtracted, costUsd: 0 }
+  const result = { threads, claimExtracted, costUsd: 0 }
+
+  await setCachedQuery({
+    sourceType: CACHE_SOURCE_TYPE,
+    queryString: cacheKey,
+    responseStatus: 200,
+    responseData: result,
+  }).catch((err) => logger.warn({ err }, "Failed to cache Reddit research results"))
+
+  return result
 }
