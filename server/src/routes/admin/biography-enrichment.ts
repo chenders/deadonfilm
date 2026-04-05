@@ -235,6 +235,19 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
             `UPDATE actor_biography_details SET ${updateFields.join(", ")} WHERE actor_id = $1`,
             updateParams
           )
+
+          // Sync actors.biography if narrative was updated
+          if (discoveryResult.updatedNarrative) {
+            await pool.query(
+              `UPDATE actors SET biography = $1, biography_version = COALESCE(biography_version, 0) + 1 WHERE id = $2`,
+              [discoveryResult.updatedNarrative, actorId]
+            )
+          }
+
+          // Re-invalidate cache after discovery write (the earlier invalidation
+          // from writeBiographyToProduction ran before this UPDATE)
+          const { invalidateActorCache } = await import("../../lib/cache.js")
+          await invalidateActorCache(actorId)
         }
       } catch (discoveryError) {
         logger.error({ error: discoveryError, actorId }, "Surprise discovery failed (non-fatal)")

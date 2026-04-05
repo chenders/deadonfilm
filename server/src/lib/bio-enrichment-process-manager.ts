@@ -14,6 +14,7 @@ import { getPool } from "./db.js"
 import { logger } from "./logger.js"
 import { queueManager } from "./jobs/queue-manager.js"
 import { JobType } from "./jobs/types.js"
+import { DEFAULT_DISCOVERY_CONFIG } from "./biography-sources/surprise-discovery/types.js"
 import newrelic from "newrelic"
 
 /**
@@ -82,10 +83,10 @@ export async function startBioEnrichmentRun(config: BioEnrichmentRunConfig): Pro
         concurrency: config.concurrency,
         sortBy: config.sortBy ?? "popularity",
         useStaging: false,
-        discoveryEnabled: true,
-        discoveryIntegrationStrategy: "append-only" as const,
-        discoveryIncongruityThreshold: 7,
-        discoveryMaxCostPerActor: 0.1,
+        discoveryEnabled: DEFAULT_DISCOVERY_CONFIG.enabled,
+        discoveryIntegrationStrategy: DEFAULT_DISCOVERY_CONFIG.integrationStrategy,
+        discoveryIncongruityThreshold: DEFAULT_DISCOVERY_CONFIG.incongruityThreshold,
+        discoveryMaxCostPerActor: DEFAULT_DISCOVERY_CONFIG.maxCostPerActorUsd,
         sourceCategories: config.sourceCategories
           ? {
               free: config.sourceCategories.free ?? true,

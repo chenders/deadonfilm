@@ -268,6 +268,19 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
                     `UPDATE actor_biography_details SET ${updateFields.join(", ")} WHERE actor_id = $1`,
                     updateParams
                   )
+
+                  // Sync actors.biography if narrative was updated
+                  if (discoveryResult.updatedNarrative) {
+                    await db.query(
+                      `UPDATE actors SET biography = $1, biography_version = COALESCE(biography_version, 0) + 1 WHERE id = $2`,
+                      [discoveryResult.updatedNarrative, actor.id]
+                    )
+                  }
+
+                  // Re-invalidate cache after discovery write (the earlier invalidation
+                  // from writeBiographyToProduction ran before this UPDATE)
+                  const { invalidateActorCache } = await import("../../cache.js")
+                  await invalidateActorCache(actor.id)
                 }
 
                 actorLogs.push({

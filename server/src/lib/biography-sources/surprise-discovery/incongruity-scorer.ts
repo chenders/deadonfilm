@@ -180,7 +180,7 @@ export async function scoreIncongruity(
         continue
       }
 
-      const candidates = parseHaikuResponse(textBlock.text, expectedTerms)
+      const candidates = parseHaikuResponse(textBlock.text, new Set(batchTerms))
       if (candidates) {
         allCandidates.push(...candidates)
       }

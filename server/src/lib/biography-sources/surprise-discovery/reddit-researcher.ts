@@ -169,8 +169,15 @@ export async function researchOnReddit(
     return { threads: [], claimExtracted: "", costUsd: 0 }
   }
 
-  // Filter to reddit.com URLs only
-  const redditResults = rawResults.filter((r) => r.link.includes("reddit.com"))
+  // Filter to reddit.com URLs only (strict hostname check to avoid substring matches)
+  const redditResults = rawResults.filter((r) => {
+    try {
+      const hostname = new URL(r.link).hostname.replace(/^www\./, "")
+      return hostname === "reddit.com" || hostname.endsWith(".reddit.com")
+    } catch {
+      return false
+    }
+  })
 
   // Keep top 5
   const topResults = redditResults.slice(0, MAX_RESULTS)
