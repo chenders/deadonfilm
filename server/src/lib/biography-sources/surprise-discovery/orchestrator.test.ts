@@ -34,9 +34,7 @@ vi.mock("../../logger.js", () => ({
   },
 }))
 const mockPoolQuery = vi.fn()
-vi.mock("../../db/pool.js", () => ({
-  getPool: () => ({ query: mockPoolQuery }),
-}))
+const mockPool = { query: mockPoolQuery } as any
 
 // Import after mocking
 import { runSurpriseDiscovery } from "./orchestrator.js"
@@ -90,6 +88,7 @@ describe("runSurpriseDiscovery", () => {
 
   it("returns early with empty result when discovery is disabled", async () => {
     const result = await runSurpriseDiscovery(
+      mockPool,
       ACTOR,
       EXISTING_NARRATIVE,
       EXISTING_FACTS,
@@ -128,6 +127,7 @@ describe("runSurpriseDiscovery", () => {
     vi.mocked(scoreIncongruity).mockResolvedValue({ candidates: [], costUsd: 0 })
 
     const result = await runSurpriseDiscovery(
+      mockPool,
       ACTOR,
       EXISTING_NARRATIVE,
       EXISTING_FACTS,
@@ -178,6 +178,7 @@ describe("runSurpriseDiscovery", () => {
     })
 
     const result = await runSurpriseDiscovery(
+      mockPool,
       ACTOR,
       EXISTING_NARRATIVE,
       EXISTING_FACTS,
@@ -264,6 +265,7 @@ describe("runSurpriseDiscovery", () => {
     })
 
     const result = await runSurpriseDiscovery(
+      mockPool,
       ACTOR,
       EXISTING_NARRATIVE,
       EXISTING_FACTS,
@@ -326,6 +328,7 @@ describe("runSurpriseDiscovery", () => {
     })
 
     const result = await runSurpriseDiscovery(
+      mockPool,
       ACTOR,
       EXISTING_NARRATIVE,
       EXISTING_FACTS,
@@ -396,6 +399,7 @@ describe("runSurpriseDiscovery", () => {
     })
 
     const result = await runSurpriseDiscovery(
+      mockPool,
       ACTOR,
       EXISTING_NARRATIVE,
       EXISTING_FACTS,

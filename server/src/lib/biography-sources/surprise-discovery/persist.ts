@@ -48,6 +48,7 @@ export async function runDiscoveryAndPersist(
   }
 
   const discoveryResult = await runSurpriseDiscovery(
+    db,
     actor,
     narrative,
     existingFacts,
@@ -82,10 +83,10 @@ export async function runDiscoveryAndPersist(
 
     // Sync actors.biography if narrative was updated
     if (discoveryResult.updatedNarrative) {
-      await db.query(
-        `UPDATE actors SET biography = $1, biography_version = COALESCE(biography_version, 0) + 1 WHERE id = $2`,
-        [discoveryResult.updatedNarrative, actor.id]
-      )
+      await db.query(`UPDATE actors SET biography = $1, updated_at = NOW() WHERE id = $2`, [
+        discoveryResult.updatedNarrative,
+        actor.id,
+      ])
     }
 
     // Re-invalidate cache after discovery write (the earlier invalidation

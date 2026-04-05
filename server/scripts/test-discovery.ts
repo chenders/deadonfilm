@@ -28,6 +28,7 @@ async function main() {
     console.log("---\n")
 
     const result = await runSurpriseDiscovery(
+      pool,
       { id: row.id, name: row.name, tmdb_id: row.tmdb_id },
       row.narrative ?? "",
       row.lesser_known_facts ?? [],

@@ -12,8 +12,8 @@
  * if no findings are verified.
  */
 
+import type { Pool } from "pg"
 import { logger } from "../../logger.js"
-import { getPool } from "../../db/pool.js"
 import { fetchAutocompleteSuggestions, QUERY_PATTERN_COUNT } from "./autocomplete.js"
 import { filterBoringSuggestions } from "./boring-filter.js"
 import type { BoringFilterContext } from "./boring-filter.js"
@@ -38,16 +38,16 @@ export interface DiscoveryActor {
  * Builds the boring filter context by querying the actor's filmography and
  * co-stars from the database.
  *
+ * @param pool - Database connection pool
  * @param actor - Actor record with id
  * @param bioText - Existing biography text to check for already-covered terms
  * @returns Context object for the boring filter
  */
 async function buildFilterContext(
+  pool: Pool,
   actor: DiscoveryActor,
   bioText: string
 ): Promise<BoringFilterContext> {
-  const pool = getPool()
-
   const movieResult = await pool.query<{ title: string; character_name: string | null }>(
     `SELECT m.title, ama.character_name
      FROM actor_movie_appearances ama
@@ -125,6 +125,7 @@ function buildEmptyResults(config: DiscoveryConfig): DiscoveryResults {
  * results of prior phases. Returns early if no incongruous candidates are
  * found or no findings are verified.
  *
+ * @param pool - Database connection pool for filmography/co-star queries
  * @param actor - Actor to run discovery for
  * @param existingNarrative - Actor's current biography narrative text
  * @param existingFacts - Actor's current lesser-known facts array
@@ -132,6 +133,7 @@ function buildEmptyResults(config: DiscoveryConfig): DiscoveryResults {
  * @returns Discovery result with optional biography updates and full record
  */
 export async function runSurpriseDiscovery(
+  pool: Pool,
   actor: DiscoveryActor,
   existingNarrative: string,
   existingFacts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>,
@@ -171,7 +173,7 @@ export async function runSurpriseDiscovery(
     "discovery:autocomplete complete"
   )
 
-  const filterContext = await buildFilterContext(actor, existingNarrative)
+  const filterContext = await buildFilterContext(pool, actor, existingNarrative)
   const filterResult = filterBoringSuggestions(suggestions, filterContext)
 
   logger.info(

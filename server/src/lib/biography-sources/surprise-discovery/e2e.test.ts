@@ -25,9 +25,7 @@ vi.mock("@anthropic-ai/sdk", () => ({
 }))
 
 const mockPoolQuery = vi.fn()
-vi.mock("../../db/pool.js", () => ({
-  getPool: () => ({ query: mockPoolQuery }),
-}))
+const mockPool = { query: mockPoolQuery } as any
 
 vi.mock("../../death-sources/cache.js", () => ({
   getCachedQuery: vi.fn().mockResolvedValue(null),
@@ -247,6 +245,7 @@ describe("surprise discovery pipeline — end-to-end", () => {
     )
 
     const promise = runSurpriseDiscovery(
+      mockPool,
       ACTOR,
       EXISTING_NARRATIVE,
       EXISTING_FACTS,
@@ -356,6 +355,7 @@ describe("surprise discovery pipeline — end-to-end", () => {
     })
 
     const promise = runSurpriseDiscovery(
+      mockPool,
       ACTOR,
       EXISTING_NARRATIVE,
       EXISTING_FACTS,
@@ -439,7 +439,13 @@ describe("surprise discovery pipeline — end-to-end", () => {
       ])
     )
 
-    const promise = runSurpriseDiscovery(ACTOR, EXISTING_NARRATIVE, EXISTING_FACTS, tightConfig)
+    const promise = runSurpriseDiscovery(
+      mockPool,
+      ACTOR,
+      EXISTING_NARRATIVE,
+      EXISTING_FACTS,
+      tightConfig
+    )
     await vi.runAllTimersAsync()
     const result = await promise
 

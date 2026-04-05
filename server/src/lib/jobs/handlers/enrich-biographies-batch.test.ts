@@ -457,6 +457,7 @@ describe("EnrichBiographiesBatchHandler", () => {
 
         expect(mockRunSurpriseDiscovery).toHaveBeenCalledOnce()
         expect(mockRunSurpriseDiscovery).toHaveBeenCalledWith(
+          expect.anything(), // db pool
           { id: 100, name: "John Wayne", tmdb_id: 1000 },
           "A longer narrative about the actor's life.",
           [],
@@ -585,6 +586,7 @@ describe("EnrichBiographiesBatchHandler", () => {
         await handler.process(job as any)
 
         expect(mockRunSurpriseDiscovery).toHaveBeenCalledWith(
+          expect.anything(), // db pool
           expect.anything(),
           expect.anything(),
           expect.anything(),
