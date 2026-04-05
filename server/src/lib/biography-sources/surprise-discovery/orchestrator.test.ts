@@ -60,7 +60,7 @@ const ACTOR: DiscoveryActor = {
 const EXISTING_NARRATIVE =
   "Helen Mirren grew up in Essex. She became one of Britain's finest actresses."
 
-const EXISTING_FACTS = ["She is a trained dancer"]
+const EXISTING_FACTS = [{ text: "She is a trained dancer", sourceUrl: null, sourceName: null }]
 
 const ENABLED_CONFIG: DiscoveryConfig = {
   enabled: true,
@@ -236,7 +236,13 @@ describe("runSurpriseDiscovery", () => {
 
     vi.mocked(integrateFindings).mockResolvedValue({
       updatedNarrative: null,
-      newLesserKnownFacts: ["She holds a karate black belt."],
+      newLesserKnownFacts: [
+        {
+          text: "She holds a karate black belt.",
+          sourceUrl: "https://theguardian.com/helen-mirren-karate",
+          sourceName: "theguardian.com",
+        },
+      ],
       integrated: [
         {
           term: "karate black belt",
@@ -271,7 +277,13 @@ describe("runSurpriseDiscovery", () => {
     )
 
     expect(result.hasFindings).toBe(true)
-    expect(result.newLesserKnownFacts).toEqual(["She holds a karate black belt."])
+    expect(result.newLesserKnownFacts).toEqual([
+      {
+        text: "She holds a karate black belt.",
+        sourceUrl: "https://theguardian.com/helen-mirren-karate",
+        sourceName: "theguardian.com",
+      },
+    ])
     expect(result.updatedNarrative).toBeNull()
   })
 
@@ -357,7 +369,13 @@ describe("runSurpriseDiscovery", () => {
 
     vi.mocked(integrateFindings).mockResolvedValue({
       updatedNarrative: null,
-      newLesserKnownFacts: ["She is a chess champion."],
+      newLesserKnownFacts: [
+        {
+          text: "She is a chess champion.",
+          sourceUrl: "https://bbc.com/helen-mirren-chess",
+          sourceName: "bbc.com",
+        },
+      ],
       integrated: [
         { term: "chess champion", destination: "lesserKnownFacts", verificationSource: "bbc.com" },
       ],

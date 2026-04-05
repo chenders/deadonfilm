@@ -757,7 +757,7 @@ describe("Biography Enrichment Integration Test", () => {
       expect(upsertParams[9]).toContain("John Ford") // fameCatalyst
       expect(upsertParams[10]).toContain("alcoholism") // personalStruggles
       expect(upsertParams[11]).toContain("Josephine Saenz") // relationships
-      expect(upsertParams[12]).toHaveLength(4) // lesserKnownFacts
+      expect(JSON.parse(upsertParams[12] as string)).toHaveLength(4) // lesserKnownFacts (jsonb)
 
       // SEO fields
       expect(upsertParams[13]).toBeNull() // alternateNames (empty array → null)

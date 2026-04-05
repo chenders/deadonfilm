@@ -129,7 +129,7 @@ export interface DiscoveryResult {
   /** Updated narrative (if changed) */
   updatedNarrative: string | null
   /** New lesser-known facts to append */
-  newLesserKnownFacts: string[]
+  newLesserKnownFacts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>
   /** Full discovery record for storage */
   discoveryResults: DiscoveryResults
 }

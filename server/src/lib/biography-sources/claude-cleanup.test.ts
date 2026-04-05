@@ -593,7 +593,10 @@ describe("claude-cleanup (biography)", () => {
 
       const result = await synthesizeBiography(mockActor, mockSources)
 
-      expect(result.data!.lesserKnownFacts).toEqual(["Real fact", "Another fact"])
+      expect(result.data!.lesserKnownFacts).toEqual([
+        { text: "Real fact", sourceUrl: null, sourceName: null },
+        { text: "Another fact", sourceUrl: null, sourceName: null },
+      ])
     })
 
     it("filters non-string items from life_notable_factors", async () => {

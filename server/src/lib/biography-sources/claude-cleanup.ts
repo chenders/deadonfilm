@@ -219,6 +219,8 @@ LESSER-KNOWN FACTS RULES:
   BAD: Narrative mentions his Navy service → fact says "He served in the U.S. Navy"
   GOOD: Narrative covers childhood → fact reveals "He held a patent for a barbecue grill design"
   GOOD: Narrative covers career → fact reveals "He was a licensed pilot who owned three planes"
+- Order facts from MOST surprising/interesting to LEAST. Lead with the fact that would make
+  someone say "wait, really?" — not the one that's merely unusual.
 
 CRITICAL:
 - Do NOT list filmography or box office numbers in the narrative
@@ -400,7 +402,9 @@ export async function synthesizeBiography(
       typeof parsed.personal_struggles === "string" ? parsed.personal_struggles : null,
     relationships: typeof parsed.relationships === "string" ? parsed.relationships : null,
     lesserKnownFacts: Array.isArray(parsed.lesser_known_facts)
-      ? parsed.lesser_known_facts.filter((f: unknown): f is string => typeof f === "string")
+      ? parsed.lesser_known_facts
+          .filter((f: unknown): f is string => typeof f === "string")
+          .map((text) => ({ text, sourceUrl: null, sourceName: null }))
       : [],
     hasSubstantiveContent:
       typeof parsed.has_substantive_content === "boolean" ? parsed.has_substantive_content : false,

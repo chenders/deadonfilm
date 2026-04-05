@@ -48,8 +48,8 @@ async function buildFilterContext(
 ): Promise<BoringFilterContext> {
   const pool = getPool()
 
-  const movieResult = await pool.query<{ title: string; character: string | null }>(
-    `SELECT m.title, ama.character
+  const movieResult = await pool.query<{ title: string; character_name: string | null }>(
+    `SELECT m.title, ama.character_name
      FROM actor_movie_appearances ama
      JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
      WHERE ama.actor_id = $1
@@ -79,7 +79,9 @@ async function buildFilterContext(
   return {
     movieTitles: movieResult.rows.map((r) => r.title),
     showTitles: showResult.rows.map((r) => r.name),
-    characterNames: movieResult.rows.map((r) => r.character).filter((c): c is string => c !== null),
+    characterNames: movieResult.rows
+      .map((r) => r.character_name)
+      .filter((c): c is string => c !== null),
     costarNames: costarResult.rows.map((r) => r.name),
     bioText,
   }
@@ -132,7 +134,7 @@ function buildEmptyResults(config: DiscoveryConfig): DiscoveryResults {
 export async function runSurpriseDiscovery(
   actor: DiscoveryActor,
   existingNarrative: string,
-  existingFacts: string[],
+  existingFacts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>,
   config: DiscoveryConfig
 ): Promise<DiscoveryResult> {
   const emptyResult: DiscoveryResult = {

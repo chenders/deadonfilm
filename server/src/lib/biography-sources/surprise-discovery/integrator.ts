@@ -52,11 +52,11 @@ export function calculateCost(inputTokens: number, outputTokens: number): number
 export function buildAppendOnlyPrompt(
   actorName: string,
   existingNarrative: string,
-  existingFacts: string[],
+  existingFacts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>,
   findings: ResearchedAssociation[]
 ): string {
   const factsList =
-    existingFacts.length > 0 ? existingFacts.map((f) => `- ${f}`).join("\n") : "(none yet)"
+    existingFacts.length > 0 ? existingFacts.map((f) => `- ${f.text}`).join("\n") : "(none yet)"
 
   const findingsList = findings
     .map(
@@ -111,11 +111,11 @@ Respond with ONLY valid JSON in this exact format:
 export function buildReSynthesizePrompt(
   actorName: string,
   existingNarrative: string,
-  existingFacts: string[],
+  existingFacts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>,
   findings: ResearchedAssociation[]
 ): string {
   const factsList =
-    existingFacts.length > 0 ? existingFacts.map((f) => `- ${f}`).join("\n") : "(none yet)"
+    existingFacts.length > 0 ? existingFacts.map((f) => `- ${f.text}`).join("\n") : "(none yet)"
 
   const findingsList = findings
     .map(
@@ -255,12 +255,12 @@ export function parseSonnetResponse(text: string): SonnetResponse | null {
 export async function integrateFindings(
   actorName: string,
   existingNarrative: string,
-  existingFacts: string[],
+  existingFacts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>,
   findings: ResearchedAssociation[],
   strategy: "append-only" | "re-synthesize"
 ): Promise<{
   updatedNarrative: string | null
-  newLesserKnownFacts: string[]
+  newLesserKnownFacts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>
   integrated: IntegratedFinding[]
   costUsd: number
 }> {
@@ -320,9 +320,17 @@ export async function integrateFindings(
     })
 
     // Collect new lesser-known facts (non-empty text for lesserKnownFacts destination)
+    // Include source attribution from the verified finding when available.
     const newLesserKnownFacts = parsed.findings
       .filter((f) => f.destination === "lesserKnownFacts" && f.text.trim().length > 0)
-      .map((f) => f.text.trim())
+      .map((f) => {
+        const original = findings.find((r) => r.term === f.term)
+        return {
+          text: f.text.trim(),
+          sourceUrl: original?.verificationUrl ?? null,
+          sourceName: original?.verificationSource ?? null,
+        }
+      })
 
     logger.debug(
       {

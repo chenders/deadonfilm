@@ -210,9 +210,9 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
 
           if (discoveryResult.newLesserKnownFacts.length > 0) {
             updateFields.push(
-              `lesser_known_facts = COALESCE(lesser_known_facts, ARRAY[]::text[]) || $${paramIdx}::text[]`
+              `lesser_known_facts = COALESCE(lesser_known_facts, '[]'::jsonb) || $${paramIdx}::jsonb`
             )
-            updateParams.push(discoveryResult.newLesserKnownFacts)
+            updateParams.push(JSON.stringify(discoveryResult.newLesserKnownFacts))
             paramIdx++
           }
 

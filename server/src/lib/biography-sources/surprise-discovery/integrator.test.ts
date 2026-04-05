@@ -39,7 +39,10 @@ const ACTOR_NAME = "Helen Mirren"
 const EXISTING_NARRATIVE =
   "Helen Mirren grew up in Leigh-on-Sea, Essex. Her father changed the family surname from Miroffe to Mirren. She attended drama school and became one of Britain's finest stage actresses before transitioning to film and television."
 
-const EXISTING_FACTS = ["She is a trained dancer", "She speaks some Russian from her heritage"]
+const EXISTING_FACTS = [
+  { text: "She is a trained dancer", sourceUrl: null, sourceName: null },
+  { text: "She speaks some Russian from her heritage", sourceUrl: null, sourceName: null },
+]
 
 function makeResearchedAssociation(
   term: string,
@@ -111,7 +114,11 @@ describe("integrateFindings", () => {
     )
 
     expect(result.newLesserKnownFacts).toHaveLength(1)
-    expect(result.newLesserKnownFacts[0]).toContain("karate")
+    expect(result.newLesserKnownFacts[0].text).toContain("karate")
+    expect(result.newLesserKnownFacts[0].sourceUrl).toBe(
+      "https://theguardian.com/helen-mirren-article"
+    )
+    expect(result.newLesserKnownFacts[0].sourceName).toBe("theguardian.com")
     expect(result.updatedNarrative).toBeNull()
     expect(result.integrated).toHaveLength(1)
     expect(result.integrated[0]).toMatchObject({
@@ -365,7 +372,7 @@ describe("integrateFindings", () => {
     )
 
     expect(result.newLesserKnownFacts).toHaveLength(1)
-    expect(result.newLesserKnownFacts[0]).toContain("karate")
+    expect(result.newLesserKnownFacts[0].text).toContain("karate")
   })
 })
 
