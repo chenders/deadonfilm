@@ -57,7 +57,7 @@ export async function runDiscoveryAndPersist(
 
   // Write discovery results to DB
   if (discoveryResult.hasFindings || discoveryResult.discoveryResults.autocomplete.queriesRun > 0) {
-    const updateFields: string[] = ["discovery_results = $2"]
+    const updateFields: string[] = ["discovery_results = $2", "updated_at = NOW()"]
     const updateParams: unknown[] = [actor.id, JSON.stringify(discoveryResult.discoveryResults)]
     let paramIdx = 3
 

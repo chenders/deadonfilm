@@ -1,8 +1,7 @@
 #!/usr/bin/env tsx
 import "dotenv/config"
 import { Pool } from "pg"
-import { runSurpriseDiscovery } from "../src/lib/biography-sources/surprise-discovery/orchestrator.js"
-import { DEFAULT_DISCOVERY_CONFIG } from "../src/lib/biography-sources/surprise-discovery/types.js"
+import { runDiscoveryAndPersist } from "../src/lib/biography-sources/surprise-discovery/persist.js"
 
 async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
@@ -27,13 +26,18 @@ async function main() {
     console.log(`Existing facts: ${(row.lesser_known_facts ?? []).length}`)
     console.log("---\n")
 
-    const result = await runSurpriseDiscovery(
+    const result = await runDiscoveryAndPersist(
       pool,
       { id: row.id, name: row.name, tmdb_id: row.tmdb_id },
       row.narrative ?? "",
       row.lesser_known_facts ?? [],
-      { ...DEFAULT_DISCOVERY_CONFIG, incongruityThreshold: 7 }
+      {}
     )
+
+    if (!result) {
+      console.log("Discovery returned no result (disabled or failed)")
+      return
+    }
 
     console.log("\n=== RESULTS ===")
     console.log(`Has findings: ${result.hasFindings}`)
@@ -47,43 +51,6 @@ async function main() {
     }
     if (result.updatedNarrative) {
       console.log(`Narrative updated: yes (${result.updatedNarrative.length} chars)`)
-    }
-
-    // Write results to DB
-    if (result.hasFindings || result.discoveryResults.autocomplete.queriesRun > 0) {
-      const updateFields: string[] = ["discovery_results = $2"]
-      const updateParams: unknown[] = [row.id, JSON.stringify(result.discoveryResults)]
-      let paramIdx = 3
-
-      if (result.newLesserKnownFacts.length > 0) {
-        updateFields.push(
-          `lesser_known_facts = $${paramIdx}::jsonb || COALESCE(lesser_known_facts, '[]'::jsonb)`
-        )
-        updateParams.push(JSON.stringify(result.newLesserKnownFacts))
-        paramIdx++
-      }
-
-      if (result.updatedNarrative) {
-        updateFields.push(`narrative = $${paramIdx}`)
-        updateParams.push(result.updatedNarrative)
-        paramIdx++
-      }
-
-      await pool.query(
-        `UPDATE actor_biography_details SET ${updateFields.join(", ")} WHERE actor_id = $1`,
-        updateParams
-      )
-      console.log(
-        `\nWrote ${result.newLesserKnownFacts.length} new facts + discovery results to DB`
-      )
-
-      // Clear Redis cache - use explicit keys, not KEYS pattern scan
-      const Redis = (await import("ioredis")).default
-      const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379")
-      const keysToDelete = [`actor:id:${row.id}:v:2`, `related-actors:id:${row.id}`]
-      await redis.del(...keysToDelete)
-      console.log(`Cleared Redis cache keys: ${keysToDelete.join(", ")}`)
-      await redis.quit()
     }
 
     const dr = result.discoveryResults
