@@ -61,10 +61,11 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       conditions.push(`abd.id IS NULL`)
     }
     if (unattributedFacts) {
-      // Facts where any element has sourceUrl = null
+      // Facts where any element lacks proper source attribution (null, empty, or missing)
       conditions.push(`abd.lesser_known_facts IS NOT NULL AND abd.lesser_known_facts != '[]'::jsonb AND EXISTS (
         SELECT 1 FROM jsonb_array_elements(abd.lesser_known_facts) AS fact
-        WHERE fact->>'sourceUrl' IS NULL
+        WHERE fact->>'sourceUrl' IS NULL OR TRIM(fact->>'sourceUrl') = ''
+           OR fact->>'sourceName' IS NULL OR TRIM(fact->>'sourceName') = ''
       )`)
     }
 

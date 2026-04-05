@@ -466,7 +466,7 @@ router.post("/snapshot", async (_req: Request, res: Response): Promise<void> => 
 
     // Categorize pages before writing
     const pages: GscPageRow[] = rawPages.rows.map((row) => {
-      const pageUrl = row.keys[0]
+      const pageUrl = row.keys[0] ?? ""
       let path: string
       try {
         path = new URL(pageUrl).pathname

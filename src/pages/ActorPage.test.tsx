@@ -807,4 +807,130 @@ describe("ActorPage", () => {
       expect(screen.getByText("Multiple Careers")).toBeInTheDocument()
     })
   })
+
+  describe("LesserKnownFacts", () => {
+    const factsData = [
+      {
+        text: "Fact one about the actor",
+        sourceUrl: "https://example.com/1",
+        sourceName: "Example",
+      },
+      { text: "Fact two about the actor", sourceUrl: null, sourceName: null },
+      {
+        text: "Fact three about the actor",
+        sourceUrl: "https://example.com/3",
+        sourceName: "Source3",
+      },
+      {
+        text: "Fact four about the actor",
+        sourceUrl: "https://example.com/4",
+        sourceName: "Source4",
+      },
+      {
+        text: "Fact five about the actor",
+        sourceUrl: "https://example.com/5",
+        sourceName: "Source5",
+      },
+      {
+        text: "Fact six (hidden by default)",
+        sourceUrl: "https://example.com/6",
+        sourceName: "Source6",
+      },
+      {
+        text: "Fact seven (hidden by default)",
+        sourceUrl: "https://example.com/7",
+        sourceName: "Source7",
+      },
+    ]
+
+    function mockActorWithFacts(facts: typeof factsData) {
+      vi.mocked(api.getActor).mockResolvedValue({
+        ...mockLivingActor,
+        biographyDetails: {
+          narrative: "A test narrative.",
+          narrativeConfidence: "high",
+          lesserKnownFacts: facts,
+          lifeNotableFactors: [],
+          birthplaceDetails: null,
+          familyBackground: null,
+          education: null,
+          educationInstitutions: [],
+          preFameLife: null,
+          fameCatalyst: null,
+          personalStruggles: null,
+          relationships: null,
+          alternateNames: [],
+          gender: null,
+          nationality: null,
+          occupations: [],
+          awards: [],
+        },
+      })
+    }
+
+    it("renders facts and shows toggle when more than 5", async () => {
+      mockActorWithFacts(factsData)
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("biography-facts")).toBeInTheDocument()
+      })
+
+      // First 5 facts visible
+      expect(screen.getByText("Fact one about the actor")).toBeInTheDocument()
+      expect(screen.getByText("Fact five about the actor")).toBeInTheDocument()
+      // 6th and 7th hidden
+      expect(screen.queryByText("Fact six (hidden by default)")).not.toBeInTheDocument()
+
+      // Toggle shows remaining
+      fireEvent.click(screen.getByTestId("facts-toggle"))
+      expect(screen.getByText("Fact six (hidden by default)")).toBeInTheDocument()
+      expect(screen.getByText("Fact seven (hidden by default)")).toBeInTheDocument()
+
+      // Toggle hides again
+      fireEvent.click(screen.getByTestId("facts-toggle"))
+      expect(screen.queryByText("Fact six (hidden by default)")).not.toBeInTheDocument()
+    })
+
+    it("renders source links for facts with valid URLs", async () => {
+      mockActorWithFacts(factsData)
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("biography-facts")).toBeInTheDocument()
+      })
+
+      // Fact with sourceUrl renders a link
+      const sourceLink = screen.getByLabelText("Source: Example (opens in new tab)")
+      expect(sourceLink).toHaveAttribute("href", "https://example.com/1")
+      expect(sourceLink).toHaveAttribute("target", "_blank")
+      expect(sourceLink).toHaveAttribute("rel", "nofollow noopener noreferrer")
+
+      // Fact without sourceUrl does not render a link
+      expect(screen.queryByLabelText("Source: null (opens in new tab)")).not.toBeInTheDocument()
+    })
+
+    it("does not render links for unsafe URLs", async () => {
+      mockActorWithFacts([
+        { text: "Dangerous fact", sourceUrl: "javascript:alert(1)", sourceName: "Evil" },
+        { text: "Data URI fact", sourceUrl: "data:text/html,<h1>hi</h1>", sourceName: "DataURI" },
+        { text: "Safe fact", sourceUrl: "https://example.com/safe", sourceName: "Safe" },
+      ])
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("biography-facts")).toBeInTheDocument()
+      })
+
+      // javascript: URL should NOT render as a link
+      expect(screen.queryByLabelText("Source: Evil (opens in new tab)")).not.toBeInTheDocument()
+      // data: URL should NOT render as a link
+      expect(screen.queryByLabelText("Source: DataURI (opens in new tab)")).not.toBeInTheDocument()
+      // https: URL should render as a link
+      expect(screen.getByLabelText("Source: Safe (opens in new tab)")).toBeInTheDocument()
+    })
+  })
 })

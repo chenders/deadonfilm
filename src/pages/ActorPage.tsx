@@ -181,7 +181,7 @@ function LesserKnownFacts({
                     href={fact.sourceUrl}
                     target="_blank"
                     rel="nofollow noopener noreferrer"
-                    className="inline-flex items-baseline gap-0.5 whitespace-nowrap text-[11px] text-[#9d8975] hover:text-brown-dark"
+                    className="inline-flex items-baseline gap-0.5 whitespace-nowrap text-xs text-text-muted hover:text-brown-dark"
                     aria-label={`Source: ${fact.sourceName} (opens in new tab)`}
                   >
                     — {fact.sourceName}
@@ -495,7 +495,7 @@ export default function ActorPage() {
         {/* Lesser-Known Facts */}
         {data.biographyDetails?.lesserKnownFacts &&
           data.biographyDetails.lesserKnownFacts.length > 0 && (
-            <LesserKnownFacts facts={data.biographyDetails.lesserKnownFacts} />
+            <LesserKnownFacts key={slug} facts={data.biographyDetails.lesserKnownFacts} />
           )}
 
         {/* Career Context */}
