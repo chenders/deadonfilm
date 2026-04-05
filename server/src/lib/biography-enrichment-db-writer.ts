@@ -90,7 +90,7 @@ export async function writeBiographyToProduction(
         data.fameCatalyst,
         data.personalStruggles,
         data.relationships,
-        data.lesserKnownFacts.length > 0 ? JSON.stringify(data.lesserKnownFacts) : null,
+        JSON.stringify(data.lesserKnownFacts),
         data.alternateNames.length > 0 ? data.alternateNames : null,
         data.gender,
         data.nationality,
