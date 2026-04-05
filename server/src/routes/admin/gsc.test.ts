@@ -587,6 +587,7 @@ describe("admin GSC routes", () => {
 
     it("snapshots data successfully with transaction", async () => {
       vi.mocked(isGscConfigured).mockReturnValue(true)
+      vi.mocked(daysAgo).mockReturnValue("2026-04-04")
       vi.mocked(categorizeUrl).mockReturnValue("actor")
       vi.mocked(getSearchPerformanceOverTime).mockResolvedValue(mockPerformance)
       vi.mocked(getTopQueries).mockResolvedValue(mockQueries)
