@@ -334,7 +334,7 @@ export interface GscSnapshotResult {
  * only issues INSERT/DELETE statements via the provided client.
  */
 export async function writeGscSnapshot(
-  client: Pool | PoolClient,
+  client: PoolClient,
   data: GscSnapshotInput
 ): Promise<GscSnapshotResult> {
   const { yesterday, performance, queries, pages, pageTypes, sitemaps } = data

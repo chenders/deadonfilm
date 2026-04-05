@@ -296,7 +296,8 @@ export async function getActorsForCoverage(
   if (filters.unattributedFacts) {
     whereClauses.push(`abd.lesser_known_facts IS NOT NULL AND abd.lesser_known_facts != '[]'::jsonb AND EXISTS (
       SELECT 1 FROM jsonb_array_elements(abd.lesser_known_facts) AS fact
-      WHERE fact->>'sourceUrl' IS NULL
+      WHERE fact->>'sourceUrl' IS NULL OR TRIM(fact->>'sourceUrl') = ''
+         OR fact->>'sourceName' IS NULL OR TRIM(fact->>'sourceName') = ''
     )`)
   }
 

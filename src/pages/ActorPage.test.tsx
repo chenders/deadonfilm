@@ -864,6 +864,7 @@ describe("ActorPage", () => {
           nationality: null,
           occupations: [],
           awards: [],
+          sources: null,
         },
       })
     }
