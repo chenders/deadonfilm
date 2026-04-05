@@ -199,6 +199,15 @@ export function filterBoringSuggestions(
   const droppedByReason: Record<string, number> = {}
   const bioTextLower = context.bioText.toLowerCase()
 
+  // Precompute lowercased context arrays once to avoid re-lowercasing per suggestion
+  const lowerContext: BoringFilterContext = {
+    movieTitles: context.movieTitles.map((t) => t.toLowerCase()),
+    showTitles: context.showTitles.map((t) => t.toLowerCase()),
+    characterNames: context.characterNames.map((t) => t.toLowerCase()),
+    costarNames: context.costarNames.map((t) => t.toLowerCase()),
+    bioText: bioTextLower,
+  }
+
   const afterBasicFilters = suggestions.filter((s) => {
     const term = s.term.toLowerCase()
 
@@ -207,33 +216,17 @@ export function filterBoringSuggestions(
       return false
     }
 
-    if (
-      isFilmographyMatch(term, {
-        movieTitles: context.movieTitles.map((t) => t.toLowerCase()),
-        showTitles: context.showTitles.map((t) => t.toLowerCase()),
-        characterNames: context.characterNames.map((t) => t.toLowerCase()),
-        costarNames: context.costarNames.map((t) => t.toLowerCase()),
-        bioText: "",
-      })
-    ) {
+    if (isFilmographyMatch(term, lowerContext)) {
       droppedByReason["filmography"] = (droppedByReason["filmography"] ?? 0) + 1
       return false
     }
 
-    if (
-      isCostarMatch(term, {
-        ...context,
-        movieTitles: [],
-        showTitles: [],
-        characterNames: [],
-        costarNames: context.costarNames.map((t) => t.toLowerCase()),
-      })
-    ) {
+    if (isCostarMatch(term, lowerContext)) {
       droppedByReason["costar"] = (droppedByReason["costar"] ?? 0) + 1
       return false
     }
 
-    if (isInBio(term, bioTextLower)) {
+    if (bioTextLower.length > 0 && term.length > 3 && bioTextLower.includes(term)) {
       droppedByReason["in-bio"] = (droppedByReason["in-bio"] ?? 0) + 1
       return false
     }
