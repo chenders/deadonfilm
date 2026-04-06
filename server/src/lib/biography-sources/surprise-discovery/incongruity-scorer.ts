@@ -5,7 +5,7 @@
  * for how surprising the association is using Claude Haiku. Returns scored
  * candidates with cost tracking.
  *
- * All candidates are sent in a single batched API call to minimize cost.
+ * Candidates are sent in batches of up to 30 per API call to minimize cost.
  * Model: claude-haiku-4-5-20251001
  * Pricing: input $1.0/M tokens, output $5.0/M tokens
  */
@@ -126,7 +126,7 @@ export function parseHaikuResponse(
 
 /**
  * Score autocomplete suggestions for how surprising their association with
- * the actor is, using Claude Haiku in a single batched call.
+ * the actor is, using Claude Haiku in batches of up to 30.
  *
  * Returns an empty array (no API call) when no suggestions are provided.
  * Handles errors gracefully by returning empty candidates and zero cost.

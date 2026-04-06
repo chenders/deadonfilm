@@ -6,7 +6,6 @@
  */
 
 import type { Pool } from "pg"
-import { logger } from "../../logger.js"
 import type { DiscoveryConfig, DiscoveryResult } from "./types.js"
 import type { DiscoveryActor } from "./orchestrator.js"
 
