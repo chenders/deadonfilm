@@ -24,6 +24,7 @@ import {
   getPerformanceByPageType,
   getSitemaps,
   categorizeUrl,
+  extractPathFromUrl,
   daysAgo,
 } from "../src/lib/gsc-client.js"
 import { writeGscSnapshot, type GscPageRow } from "../src/lib/db/admin-gsc-queries.js"
@@ -53,15 +54,9 @@ function categorizePages(
 ): GscPageRow[] {
   return rows.map((row) => {
     const pageUrl = row.keys[0]
-    let path: string
-    try {
-      path = new URL(pageUrl).pathname
-    } catch {
-      path = pageUrl
-    }
     return {
       page_url: pageUrl,
-      page_type: categorizeUrl(path),
+      page_type: categorizeUrl(extractPathFromUrl(pageUrl)),
       clicks: row.clicks,
       impressions: row.impressions,
       ctr: row.ctr,
