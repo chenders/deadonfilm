@@ -269,8 +269,6 @@ export async function getPerformanceByPageType(
     rowLimit: 5000,
   })
 
-  const siteUrl = getSiteUrl().replace(/\/$/, "")
-
   // Categorize pages by URL pattern
   const categories: Record<
     string,
@@ -279,12 +277,7 @@ export async function getPerformanceByPageType(
 
   for (const row of result.rows) {
     const url = row.keys[0] || ""
-    let path: string
-    try {
-      path = new URL(url).pathname
-    } catch {
-      path = url.replace(siteUrl, "")
-    }
+    const path = extractPathFromUrl(url)
     const category = categorizeUrl(path)
 
     if (!categories[category]) {
@@ -313,6 +306,18 @@ export async function getPerformanceByPageType(
   }
 
   return output
+}
+
+/**
+ * Extract the pathname from a URL string.
+ * Falls back to the raw string on parse failure.
+ */
+export function extractPathFromUrl(url: string): string {
+  try {
+    return new URL(url).pathname
+  } catch {
+    return url
+  }
 }
 
 /**
