@@ -373,6 +373,36 @@ export function buildTVEpisodeSchema(
   }
 }
 
+/**
+ * Build FAQPage schema for actor lesser-known facts.
+ * Aggregates sourced facts into a single Q&A entry.
+ * Returns null when no sourced facts exist.
+ */
+export function buildFactsFAQSchema(
+  actorName: string,
+  facts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>
+): Record<string, unknown> | null {
+  const sourced = facts.filter((f) => f.sourceUrl && f.sourceName)
+  if (sourced.length === 0) return null
+
+  const answerText = sourced.map((f) => `${f.text} (${f.sourceName})`).join(". ") + "."
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: `What are some lesser-known facts about ${actorName}?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: answerText,
+        },
+      },
+    ],
+  }
+}
+
 interface CollectionPageItem {
   name: string
   url: string

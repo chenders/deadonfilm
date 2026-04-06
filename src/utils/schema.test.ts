@@ -5,6 +5,7 @@ import {
   buildTVEpisodeSchema,
   buildCollectionPageSchema,
   buildWebsiteSchema,
+  buildFactsFAQSchema,
 } from "./schema"
 
 describe("buildPersonSchema", () => {
@@ -449,5 +450,56 @@ describe("buildWebsiteSchema", () => {
     expect(action["@type"]).toBe("SearchAction")
     expect(action.target).toBe("https://deadonfilm.com/search?q={search_term_string}")
     expect(action["query-input"]).toBe("required name=search_term_string")
+  })
+})
+
+describe("buildFactsFAQSchema", () => {
+  it("builds FAQPage with aggregated sourced facts", () => {
+    const facts = [
+      {
+        text: "Holds a karate black belt",
+        sourceUrl: "https://theguardian.com/karate",
+        sourceName: "The Guardian",
+      },
+      {
+        text: "Begged to be in Fast & Furious",
+        sourceUrl: "https://people.com/furious",
+        sourceName: "People",
+      },
+    ]
+    const result = buildFactsFAQSchema("Helen Mirren", facts)
+
+    expect(result).not.toBeNull()
+    expect(result!["@context"]).toBe("https://schema.org")
+    expect(result!["@type"]).toBe("FAQPage")
+    const mainEntity = result!.mainEntity as Array<Record<string, unknown>>
+    expect(mainEntity).toHaveLength(1)
+    expect(mainEntity[0].name).toBe("What are some lesser-known facts about Helen Mirren?")
+    const answer = mainEntity[0].acceptedAnswer as Record<string, unknown>
+    expect(answer.text).toContain("Holds a karate black belt (The Guardian)")
+    expect(answer.text).toContain("Begged to be in Fast & Furious (People)")
+  })
+
+  it("excludes facts without sources from the answer", () => {
+    const facts = [
+      { text: "No source", sourceUrl: null, sourceName: null },
+      {
+        text: "Has a source",
+        sourceUrl: "https://bbc.com/1",
+        sourceName: "BBC",
+      },
+    ]
+    const result = buildFactsFAQSchema("John Wayne", facts)
+    const answer = (result!.mainEntity as Array<Record<string, unknown>>)[0]
+      .acceptedAnswer as Record<string, unknown>
+    expect(answer.text).not.toContain("No source")
+    expect(answer.text).toContain("Has a source (BBC)")
+  })
+
+  it("returns null when no sourced facts exist", () => {
+    expect(buildFactsFAQSchema("Nobody", [])).toBeNull()
+    expect(
+      buildFactsFAQSchema("Nobody", [{ text: "Unsourced", sourceUrl: null, sourceName: null }])
+    ).toBeNull()
   })
 })
