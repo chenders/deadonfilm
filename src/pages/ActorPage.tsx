@@ -158,9 +158,9 @@ function isSafeUrl(url: string): boolean {
 }
 
 /** Normalize a fact that may be a plain string (old cached format) or structured object. */
-function normalizeFact(
-  fact: string | { text: string; sourceUrl: string | null; sourceName: string | null }
-): { text: string; sourceUrl: string | null; sourceName: string | null } {
+type LesserKnownFact = BiographyDetails["lesserKnownFacts"][number]
+
+function normalizeFact(fact: string | LesserKnownFact): LesserKnownFact {
   if (typeof fact === "string") return { text: fact, sourceUrl: null, sourceName: null }
   return fact
 }

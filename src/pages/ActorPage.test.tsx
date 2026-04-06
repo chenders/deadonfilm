@@ -937,5 +937,33 @@ describe("ActorPage", () => {
       // https: URL should render as a link
       expect(screen.getByLabelText("Source: Safe (opens in new tab)")).toBeInTheDocument()
     })
+
+    it("renders plain string facts from stale cached responses", async () => {
+      // Old cached responses have lesserKnownFacts as string[], not object[]
+      // The normalizeFact function should handle both formats
+      mockActorWithFacts([
+        "He owned more than 50 bicycles" as unknown as (typeof factsData)[0],
+        "He was a trained mime" as unknown as (typeof factsData)[0],
+        { text: "A normal object fact", sourceUrl: null, sourceName: null },
+      ])
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("biography-facts")).toBeInTheDocument()
+      })
+
+      // String facts should render their text content
+      expect(screen.getByText("He owned more than 50 bicycles")).toBeInTheDocument()
+      expect(screen.getByText("He was a trained mime")).toBeInTheDocument()
+      // Object fact should also render
+      expect(screen.getByText("A normal object fact")).toBeInTheDocument()
+      // No empty bullets — all 3 facts should have text
+      const items = screen.getByTestId("biography-facts").querySelectorAll("li")
+      expect(items).toHaveLength(3)
+      items.forEach((item) => {
+        expect(item.textContent!.trim().length).toBeGreaterThan(1) // more than just the bullet
+      })
+    })
   })
 })
