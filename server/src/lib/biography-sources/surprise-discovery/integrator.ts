@@ -236,7 +236,8 @@ export function parseSonnetResponse(text: string): SonnetResponse | null {
     })
   }
 
-  const updatedNarrative = typeof obj.updatedNarrative === "string" ? obj.updatedNarrative : null
+  const rawNarrative = typeof obj.updatedNarrative === "string" ? obj.updatedNarrative.trim() : null
+  const updatedNarrative = rawNarrative && rawNarrative.length > 0 ? rawNarrative : null
 
   return { findings, updatedNarrative }
 }

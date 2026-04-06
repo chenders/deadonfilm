@@ -48,33 +48,33 @@ async function buildFilterContext(
   actor: DiscoveryActor,
   bioText: string
 ): Promise<BoringFilterContext> {
-  const movieResult = await pool.query<{ title: string; character_name: string | null }>(
-    `SELECT m.title, ama.character_name
-     FROM actor_movie_appearances ama
-     JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
-     WHERE ama.actor_id = $1
-     LIMIT 200`,
-    [actor.id]
-  )
-
-  const showResult = await pool.query<{ name: string }>(
-    `SELECT s.name
-     FROM actor_show_appearances asa
-     JOIN shows s ON s.tmdb_id = asa.show_tmdb_id
-     WHERE asa.actor_id = $1
-     LIMIT 100`,
-    [actor.id]
-  )
-
-  const costarResult = await pool.query<{ name: string }>(
-    `SELECT DISTINCT a.name
-     FROM actor_movie_appearances ama1
-     JOIN actor_movie_appearances ama2 ON ama1.movie_tmdb_id = ama2.movie_tmdb_id
-     JOIN actors a ON a.id = ama2.actor_id
-     WHERE ama1.actor_id = $1 AND ama2.actor_id != $1
-     LIMIT 200`,
-    [actor.id]
-  )
+  const [movieResult, showResult, costarResult] = await Promise.all([
+    pool.query<{ title: string; character_name: string | null }>(
+      `SELECT m.title, ama.character_name
+       FROM actor_movie_appearances ama
+       JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
+       WHERE ama.actor_id = $1
+       LIMIT 200`,
+      [actor.id]
+    ),
+    pool.query<{ name: string }>(
+      `SELECT s.name
+       FROM actor_show_appearances asa
+       JOIN shows s ON s.tmdb_id = asa.show_tmdb_id
+       WHERE asa.actor_id = $1
+       LIMIT 100`,
+      [actor.id]
+    ),
+    pool.query<{ name: string }>(
+      `SELECT DISTINCT a.name
+       FROM actor_movie_appearances ama1
+       JOIN actor_movie_appearances ama2 ON ama1.movie_tmdb_id = ama2.movie_tmdb_id
+       JOIN actors a ON a.id = ama2.actor_id
+       WHERE ama1.actor_id = $1 AND ama2.actor_id != $1
+       LIMIT 200`,
+      [actor.id]
+    ),
+  ])
 
   return {
     movieTitles: movieResult.rows.map((r) => r.title),

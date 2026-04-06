@@ -181,7 +181,8 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
     if (discoveryEnabled && result.data?.hasSubstantiveContent && result.data?.narrative) {
       try {
         // Validate discovery overrides
-        const overrides: Record<string, unknown> = {}
+        const overrides: import("../../lib/biography-sources/surprise-discovery/persist.js").DiscoveryOverrides =
+          {}
         if (req.body.discoveryIntegrationStrategy !== undefined) {
           const strategy = req.body.discoveryIntegrationStrategy
           if (strategy !== "append-only" && strategy !== "re-synthesize") {

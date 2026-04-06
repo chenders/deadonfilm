@@ -10,7 +10,7 @@ import type { DiscoveryConfig, DiscoveryResult } from "./types.js"
 import type { DiscoveryActor } from "./orchestrator.js"
 
 export interface DiscoveryOverrides {
-  integrationStrategy?: string
+  integrationStrategy?: DiscoveryConfig["integrationStrategy"]
   incongruityThreshold?: number
   maxCostPerActorUsd?: number
 }
@@ -36,7 +36,7 @@ export async function runDiscoveryAndPersist(
   const discoveryConfig: DiscoveryConfig = {
     ...DEFAULT_DISCOVERY_CONFIG,
     ...(overrides.integrationStrategy !== undefined && {
-      integrationStrategy: overrides.integrationStrategy as DiscoveryConfig["integrationStrategy"],
+      integrationStrategy: overrides.integrationStrategy,
     }),
     ...(overrides.incongruityThreshold !== undefined && {
       incongruityThreshold: overrides.incongruityThreshold,
