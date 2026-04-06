@@ -57,8 +57,9 @@ export async function callClaudeForJson<T = Record<string, unknown>>(
   const inputTokens = response.usage?.input_tokens ?? 0
   const outputTokens = response.usage?.output_tokens ?? 0
 
-  // Extract text block
-  const textBlock = response.content?.find((block) => block.type === "text")
+  // Extract text block — Array.isArray guard for never-throws contract
+  const contentBlocks = Array.isArray(response.content) ? response.content : []
+  const textBlock = contentBlocks.find((block) => block.type === "text")
   if (!textBlock || textBlock.type !== "text") {
     return {
       data: null,

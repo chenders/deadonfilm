@@ -392,7 +392,9 @@ export async function cleanupWithClaude(
 
   if (claudeResult.error || !claudeResult.data) {
     const errorMsg = claudeResult.error ?? "No data from Claude"
-    console.error(`Claude parse error for ${actor.name}: ${errorMsg}`)
+    console.error(`Claude parse error for ${actor.name}: ${errorMsg}`, {
+      rawSnippet: claudeResult.rawSnippet ?? null,
+    })
     throw new Error(`Failed to parse Claude response: ${errorMsg}`)
   }
 

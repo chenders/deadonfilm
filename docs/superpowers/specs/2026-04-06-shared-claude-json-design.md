@@ -56,9 +56,9 @@ export async function callClaudeForJson<T = Record<string, unknown>>(
 | `server/src/lib/shared/claude-json.ts` | New shared helper |
 | `server/src/lib/shared/claude-json.test.ts` | Tests for all pipeline stages |
 | `server/src/lib/biography-sources/claude-cleanup.ts` | Replace SDK call + parsing with `callClaudeForJson()` |
-| `server/src/lib/biography-sources/claude-cleanup.test.ts` | Update mocks to mock `callClaudeForJson` instead of Anthropic SDK |
+| `server/src/lib/biography-sources/claude-cleanup.test.ts` | Keep mocking Anthropic SDK `messages.create()`; update returned text for assistant-prefill JSON behavior |
 | `server/src/lib/death-sources/claude-cleanup.ts` | Replace SDK call + parsing with `callClaudeForJson()` |
-| `server/src/lib/death-sources/claude-cleanup.test.ts` | Update mocks (if exists) |
+| `server/src/lib/death-sources/claude-cleanup.test.ts` | No mock changes needed (tests cover prompt building, not API calls) |
 
 ## What Stays in Callers
 
