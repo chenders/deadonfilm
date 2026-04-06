@@ -221,6 +221,8 @@ The `invalidateActorCache(actorId)` function in `server/src/lib/cache.ts` handle
 
 **Do not** use `curl` to verify data after cache invalidation — that re-populates the cache. Instead use `redis-cli GET` to inspect the cache or query the database directly.
 
+**When a migration changes the shape of a cached column** (e.g., `text[]` → JSONB objects), the Redis cache still serves the old format until TTL expires. This causes frontend bugs when code expects the new shape. **Always** make the frontend resilient to both old and new formats with a normalizer function, and flush affected cache keys in the migration or a post-migration script.
+
 ## JavaScript/CommonJS Files
 
 These must remain JS/CJS for tooling compatibility: `eslint.config.js`, `postcss.config.js`, `tailwind.config.js`, `server/migrations/*.cjs`, `server/newrelic.cjs`

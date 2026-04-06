@@ -157,10 +157,19 @@ function isSafeUrl(url: string): boolean {
   }
 }
 
+/** Normalize a fact that may be a plain string (old cached format) or structured object. */
+type LesserKnownFact = BiographyDetails["lesserKnownFacts"][number]
+
+function normalizeFact(fact: string | LesserKnownFact): LesserKnownFact {
+  if (typeof fact === "string") return { text: fact, sourceUrl: null, sourceName: null }
+  return fact
+}
+
 function LesserKnownFacts({ facts }: { facts: BiographyDetails["lesserKnownFacts"] }) {
   const [showAll, setShowAll] = useState(false)
-  const visibleFacts = showAll ? facts : facts.slice(0, INITIAL_FACTS_SHOWN)
-  const hiddenCount = facts.length - INITIAL_FACTS_SHOWN
+  const normalizedFacts = facts.map(normalizeFact)
+  const visibleFacts = showAll ? normalizedFacts : normalizedFacts.slice(0, INITIAL_FACTS_SHOWN)
+  const hiddenCount = normalizedFacts.length - INITIAL_FACTS_SHOWN
 
   return (
     <div className="mb-6 rounded-lg bg-surface-elevated p-4" data-testid="biography-facts">
