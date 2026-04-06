@@ -9,7 +9,7 @@ import { getProfileUrl, getPosterUrl } from "@/services/api"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import JsonLd from "@/components/seo/JsonLd"
-import { buildPersonSchema, buildBreadcrumbSchema } from "@/utils/schema"
+import { buildPersonSchema, buildBreadcrumbSchema, buildFactsFAQSchema } from "@/utils/schema"
 import { PersonIcon, FilmReelIcon, TVIcon } from "@/components/icons"
 import { useRelatedActors } from "@/hooks/useRelatedContent"
 import RelatedContent from "@/components/content/RelatedContent"
@@ -327,6 +327,7 @@ export default function ActorPage() {
             occupations: data.biographyDetails?.occupations,
             awards: data.biographyDetails?.awards,
             educationInstitutions: data.biographyDetails?.educationInstitutions,
+            lesserKnownFacts: data.biographyDetails?.lesserKnownFacts,
           },
           slug!
         )}
@@ -337,6 +338,11 @@ export default function ActorPage() {
           { name: actor.name, url: `https://deadonfilm.com${location.pathname}` },
         ])}
       />
+      {data.biographyDetails?.lesserKnownFacts &&
+        (() => {
+          const faqSchema = buildFactsFAQSchema(actor.name, data.biographyDetails.lesserKnownFacts)
+          return faqSchema ? <JsonLd data={faqSchema} /> : null
+        })()}
 
       <div data-testid="actor-page" className="mx-auto max-w-3xl">
         <Breadcrumb items={[{ label: "Home", href: "/" }, { label: actor.name }]} />
