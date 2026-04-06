@@ -113,7 +113,12 @@ export interface BiographyDetails {
   fameCatalyst: string | null
   personalStruggles: string | null
   relationships: string | null
-  lesserKnownFacts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>
+  lesserKnownFacts: Array<{
+    text: string
+    sourceUrl: string | null
+    sourceName: string | null
+    sourceReliable?: boolean
+  }>
   sources: BiographySource[] | null
   // SEO fields
   alternateNames: string[]

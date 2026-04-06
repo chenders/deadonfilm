@@ -14,6 +14,7 @@ import { getCached, setCached, CACHE_KEYS, CACHE_TTL } from "../lib/cache.js"
 import { calculateAge } from "../lib/date-utils.js"
 import { createActorSlug } from "../lib/slug-utils.js"
 import { resolveRelatedCelebritySlugs } from "../lib/related-celebrity-slugs.js"
+import { isReliableSourceUrl } from "../lib/shared/reliable-domains.js"
 
 interface ActorProfileResponse {
   actor: {
@@ -310,7 +311,10 @@ export async function getActor(req: Request, res: Response) {
             fameCatalyst: bioRow.fame_catalyst || null,
             personalStruggles: bioRow.personal_struggles || null,
             relationships: bioRow.relationships || null,
-            lesserKnownFacts: bioRow.lesser_known_facts || [],
+            lesserKnownFacts: (bioRow.lesser_known_facts || []).map((fact) => ({
+              ...fact,
+              sourceReliable: fact.sourceUrl ? isReliableSourceUrl(fact.sourceUrl) : false,
+            })),
             sources: bioRow.sources || null,
             alternateNames: bioRow.alternate_names ?? [],
             gender: bioRow.gender ?? null,
