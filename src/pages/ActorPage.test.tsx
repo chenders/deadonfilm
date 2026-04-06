@@ -843,7 +843,14 @@ describe("ActorPage", () => {
       },
     ]
 
-    function mockActorWithFacts(facts: typeof factsData) {
+    function mockActorWithFacts(
+      facts: Array<{
+        text: string
+        sourceUrl: string | null
+        sourceName: string | null
+        sourceReliable?: boolean
+      }>
+    ) {
       vi.mocked(api.getActor).mockResolvedValue({
         ...mockLivingActor,
         biographyDetails: {
