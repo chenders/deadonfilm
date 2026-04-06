@@ -82,7 +82,12 @@ interface ActorProfileResponse {
     fameCatalyst: string | null
     personalStruggles: string | null
     relationships: string | null
-    lesserKnownFacts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>
+    lesserKnownFacts: Array<{
+      text: string
+      sourceUrl: string | null
+      sourceName: string | null
+      sourceReliable: boolean
+    }>
     sources: Record<string, unknown> | null
     alternateNames: string[]
     gender: string | null
