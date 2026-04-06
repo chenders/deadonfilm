@@ -33,6 +33,25 @@ ls server/migrations/ | cut -d'_' -f1 | sort | uniq -d
 # Should output nothing - any output means duplicate timestamps exist
 ```
 
+## Cache Compatibility for Schema Changes
+
+**When a migration changes the shape of a cached column** (e.g., `text[]` → `jsonb` objects, adding/removing fields from a JSON column), the Redis cache will still serve the old format until TTL expires. This causes frontend bugs when the code expects the new shape.
+
+**Required steps:**
+
+1. **Make the frontend resilient to both formats.** Add a normalizer function that accepts either the old or new shape and returns the new shape. This is the primary defense — cache flushes can fail or miss keys.
+
+2. **Flush affected cache keys in the migration or a post-migration script.** Use `invalidateActorCache(actorId)` for actor data, or pattern-based deletion for broader caches.
+
+3. **Document the format change** in the migration file's JSDoc comment so future developers know both formats existed.
+
+```typescript
+// Example: normalizer for text[] → {text, sourceUrl, sourceName}[]
+function normalizeFact(fact: string | { text: string }) {
+  return typeof fact === "string" ? { text: fact, sourceUrl: null, sourceName: null } : fact
+}
+```
+
 ## JavaScript/CommonJS Files
 
 These must remain JS for tooling: `eslint.config.js`, `postcss.config.js`, `tailwind.config.js`, `server/migrations/*.cjs`, `server/newrelic.cjs`
