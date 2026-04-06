@@ -165,6 +165,23 @@ export async function getActor(req: Request, res: Response) {
         responseTimeMs: Date.now() - startTime,
         cacheHit: true,
       })
+      // Normalize cached lesserKnownFacts (stale cache may have string[] or missing sourceReliable)
+      if (cached.biographyDetails?.lesserKnownFacts) {
+        cached.biographyDetails.lesserKnownFacts = cached.biographyDetails.lesserKnownFacts.map(
+          (fact: unknown) => {
+            const normalized =
+              typeof fact === "string"
+                ? { text: fact, sourceUrl: null, sourceName: null }
+                : (fact as { text: string; sourceUrl: string | null; sourceName: string | null })
+            return {
+              ...normalized,
+              sourceReliable: normalized.sourceUrl
+                ? isReliableSourceUrl(normalized.sourceUrl)
+                : false,
+            }
+          }
+        )
+      }
       return res.set("Cache-Control", "public, max-age=600").json(cached)
     }
 
