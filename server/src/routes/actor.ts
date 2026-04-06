@@ -86,7 +86,7 @@ interface ActorProfileResponse {
       text: string
       sourceUrl: string | null
       sourceName: string | null
-      sourceReliable: boolean
+      sourceReliable?: boolean
     }>
     sources: Record<string, unknown> | null
     alternateNames: string[]
@@ -316,10 +316,17 @@ export async function getActor(req: Request, res: Response) {
             fameCatalyst: bioRow.fame_catalyst || null,
             personalStruggles: bioRow.personal_struggles || null,
             relationships: bioRow.relationships || null,
-            lesserKnownFacts: (bioRow.lesser_known_facts || []).map((fact) => ({
-              ...fact,
-              sourceReliable: fact.sourceUrl ? isReliableSourceUrl(fact.sourceUrl) : false,
-            })),
+            lesserKnownFacts: (bioRow.lesser_known_facts || []).map((fact) => {
+              // Normalize: stale data may have plain strings instead of objects
+              const normalized =
+                typeof fact === "string" ? { text: fact, sourceUrl: null, sourceName: null } : fact
+              return {
+                ...normalized,
+                sourceReliable: normalized.sourceUrl
+                  ? isReliableSourceUrl(normalized.sourceUrl)
+                  : false,
+              }
+            }),
             sources: bioRow.sources || null,
             alternateNames: bioRow.alternate_names ?? [],
             gender: bioRow.gender ?? null,
