@@ -17,6 +17,8 @@ export interface ClaudeJsonResult<T> {
   inputTokens: number
   outputTokens: number
   error?: string
+  /** Truncated raw text from Claude on parse failure, for debugging. */
+  rawSnippet?: string
 }
 
 export async function callClaudeForJson<T = Record<string, unknown>>(
@@ -51,11 +53,12 @@ export async function callClaudeForJson<T = Record<string, unknown>>(
     }
   }
 
-  const inputTokens = response.usage.input_tokens
-  const outputTokens = response.usage.output_tokens
+  // Defensive access — honor the "never throws" contract
+  const inputTokens = response.usage?.input_tokens ?? 0
+  const outputTokens = response.usage?.output_tokens ?? 0
 
   // Extract text block
-  const textBlock = response.content.find((block) => block.type === "text")
+  const textBlock = response.content?.find((block) => block.type === "text")
   if (!textBlock || textBlock.type !== "text") {
     return {
       data: null,
@@ -65,10 +68,10 @@ export async function callClaudeForJson<T = Record<string, unknown>>(
     }
   }
 
-  // Parse JSON: strip fences, prepend { from prefill, repair, parse
+  // Parse JSON: strip fences, restore { from prefill when needed, repair, parse
   try {
     const stripped = stripMarkdownCodeFences(textBlock.text.trim())
-    const withBrace = "{" + stripped
+    const withBrace = stripped.startsWith("{") ? stripped : "{" + stripped
     const repaired = jsonrepair(withBrace)
     const parsed = JSON.parse(repaired) as T
     return { data: parsed, inputTokens, outputTokens }
@@ -78,6 +81,7 @@ export async function callClaudeForJson<T = Record<string, unknown>>(
       inputTokens,
       outputTokens,
       error: `Failed to parse Claude response as JSON: ${error instanceof Error ? error.message : "Unknown error"}`,
+      rawSnippet: textBlock.text.slice(0, 200),
     }
   }
 }

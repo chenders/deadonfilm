@@ -314,6 +314,11 @@ export async function synthesizeBiography(
       actorName: actor.name,
       error: errorMsg,
     })
+    newrelic.noticeError(new Error(errorMsg), {
+      actorId: actor.id,
+      actorName: actor.name,
+      purpose: "biography_synthesis",
+    })
     return {
       data: null,
       costUsd,

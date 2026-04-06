@@ -102,14 +102,23 @@ describe("callClaudeForJson", () => {
     expect(result.outputTokens).toBe(0)
   })
 
-  it("returns error when response is completely unparseable", async () => {
+  it("returns error with rawSnippet when response is completely unparseable", async () => {
     const client = mockClient("Looking at the sources, I can see that...")
     const result = await callClaudeForJson(client, opts)
 
     expect(result.data).toBeNull()
     expect(result.error).toContain("Failed to parse")
+    expect(result.rawSnippet).toBe("Looking at the sources, I can see that...")
     expect(result.inputTokens).toBe(100)
     expect(result.outputTokens).toBe(50)
+  })
+
+  it("handles response that already starts with { (Claude ignores prefill)", async () => {
+    const client = mockClient('{"name": "John", "age": 30}')
+    const result = await callClaudeForJson(client, opts)
+
+    expect(result.data).toEqual({ name: "John", age: 30 })
+    expect(result.error).toBeUndefined()
   })
 
   it("returns error when API call fails", async () => {
