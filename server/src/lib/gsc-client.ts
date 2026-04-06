@@ -269,8 +269,6 @@ export async function getPerformanceByPageType(
     rowLimit: 5000,
   })
 
-  const siteUrl = getSiteUrl().replace(/\/$/, "")
-
   // Categorize pages by URL pattern
   const categories: Record<
     string,
