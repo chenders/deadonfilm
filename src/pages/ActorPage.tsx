@@ -9,7 +9,7 @@ import { getProfileUrl, getPosterUrl } from "@/services/api"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import JsonLd from "@/components/seo/JsonLd"
-import { buildPersonSchema, buildBreadcrumbSchema } from "@/utils/schema"
+import { buildPersonSchema, buildBreadcrumbSchema, buildFactsFAQSchema } from "@/utils/schema"
 import { PersonIcon, FilmReelIcon, TVIcon } from "@/components/icons"
 import { useRelatedActors } from "@/hooks/useRelatedContent"
 import RelatedContent from "@/components/content/RelatedContent"
@@ -172,8 +172,14 @@ function LesserKnownFacts({ facts }: { facts: BiographyDetails["lesserKnownFacts
   const hiddenCount = normalizedFacts.length - INITIAL_FACTS_SHOWN
 
   return (
-    <div className="mb-6 rounded-lg bg-surface-elevated p-4" data-testid="biography-facts">
-      <h2 className="mb-2 font-display text-lg text-brown-dark">Lesser-Known Facts</h2>
+    <section
+      aria-labelledby="lesser-known-facts"
+      className="mb-6 rounded-lg bg-surface-elevated p-4"
+      data-testid="biography-facts"
+    >
+      <h2 id="lesser-known-facts" className="mb-2 font-display text-lg text-brown-dark">
+        Lesser-Known Facts
+      </h2>
       <ul className="space-y-1.5">
         {visibleFacts.map((fact, i) => (
           <li key={i} className="flex items-start gap-2 text-text-primary">
@@ -183,26 +189,30 @@ function LesserKnownFacts({ facts }: { facts: BiographyDetails["lesserKnownFacts
               {fact.sourceUrl && fact.sourceName && isSafeUrl(fact.sourceUrl) && (
                 <>
                   {" "}
-                  <a
-                    href={fact.sourceUrl}
-                    target="_blank"
-                    rel="nofollow noopener noreferrer"
-                    className="inline-flex items-baseline gap-0.5 whitespace-nowrap text-xs text-text-muted hover:text-brown-dark"
-                    aria-label={`Source: ${fact.sourceName} (opens in new tab)`}
-                  >
-                    — {fact.sourceName}
-                    <svg
-                      className="inline h-2.5 w-2.5 flex-shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      aria-hidden="true"
-                      focusable="false"
+                  <cite className="not-italic">
+                    <a
+                      href={fact.sourceUrl}
+                      target="_blank"
+                      rel={
+                        fact.sourceReliable ? "noopener noreferrer" : "nofollow noopener noreferrer"
+                      }
+                      className="inline-flex items-baseline gap-0.5 whitespace-nowrap text-xs text-text-muted hover:text-brown-dark"
+                      aria-label={`Source: ${fact.sourceName} (opens in new tab)`}
                     >
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" />
-                    </svg>
-                  </a>
+                      — {fact.sourceName}
+                      <svg
+                        className="inline h-2.5 w-2.5 flex-shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-hidden="true"
+                        focusable="false"
+                      >
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" />
+                      </svg>
+                    </a>
+                  </cite>
                 </>
               )}
             </span>
@@ -218,7 +228,7 @@ function LesserKnownFacts({ facts }: { facts: BiographyDetails["lesserKnownFacts
           {showAll ? "Show fewer" : `Show ${hiddenCount} more`}
         </button>
       )}
-    </div>
+    </section>
   )
 }
 
@@ -327,6 +337,7 @@ export default function ActorPage() {
             occupations: data.biographyDetails?.occupations,
             awards: data.biographyDetails?.awards,
             educationInstitutions: data.biographyDetails?.educationInstitutions,
+            lesserKnownFacts: data.biographyDetails?.lesserKnownFacts,
           },
           slug!
         )}
@@ -337,6 +348,11 @@ export default function ActorPage() {
           { name: actor.name, url: `https://deadonfilm.com${location.pathname}` },
         ])}
       />
+      {data.biographyDetails?.lesserKnownFacts &&
+        (() => {
+          const faqSchema = buildFactsFAQSchema(actor.name, data.biographyDetails.lesserKnownFacts)
+          return faqSchema ? <JsonLd data={faqSchema} /> : null
+        })()}
 
       <div data-testid="actor-page" className="mx-auto max-w-3xl">
         <Breadcrumb items={[{ label: "Home", href: "/" }, { label: actor.name }]} />

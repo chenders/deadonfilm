@@ -7,6 +7,16 @@
 
 const BASE_URL = "https://deadonfilm.com"
 
+/** Only allow http/https URLs in structured data to prevent javascript:/data: injection. */
+function isHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === "http:" || parsed.protocol === "https:"
+  } catch {
+    return false
+  }
+}
+
 export function buildMovieSchema(
   movie: {
     title: string
@@ -62,6 +72,11 @@ export function buildPersonSchema(
     occupations?: string[] | null
     awards?: string[] | null
     education_institutions?: string[] | null
+    lesser_known_facts?: Array<{
+      text: string
+      sourceUrl: string | null
+      sourceName: string | null
+    }> | null
   },
   slug: string
 ): Record<string, unknown> {
@@ -73,7 +88,7 @@ export function buildPersonSchema(
   const jobTitle =
     (actor.known_for_department && DEPARTMENT_TO_TITLE[actor.known_for_department]) || "Actor"
 
-  return {
+  const schema: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Person",
     name: actor.name,
@@ -97,6 +112,29 @@ export function buildPersonSchema(
         }))
       : undefined,
   }
+
+  // Build knowsAbout from sourced lesser-known facts (http/https only)
+  const sourcedFacts = (actor.lesser_known_facts ?? [])
+    .filter((f) => f.sourceUrl && f.sourceName && isHttpUrl(f.sourceUrl))
+    .slice(0, 10)
+
+  if (sourcedFacts.length > 0) {
+    schema.knowsAbout = sourcedFacts.map((f) => ({
+      "@type": "Thing",
+      name: f.text,
+      description: f.text,
+      subjectOf: {
+        "@type": "Article",
+        url: f.sourceUrl,
+        publisher: {
+          "@type": "Organization",
+          name: f.sourceName,
+        },
+      },
+    }))
+  }
+
+  return schema
 }
 
 export function buildTVSeriesSchema(
@@ -197,5 +235,32 @@ export function buildBreadcrumbSchema(
       name: item.name,
       item: item.url,
     })),
+  }
+}
+
+export function buildFactsFAQSchema(
+  actorName: string,
+  facts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>
+): Record<string, unknown> | null {
+  const sourced = facts
+    .filter((f) => f.sourceUrl && f.sourceName && isHttpUrl(f.sourceUrl))
+    .slice(0, 10)
+  if (sourced.length === 0) return null
+
+  const answerText = sourced.map((f) => `${f.text} (${f.sourceName})`).join(". ") + "."
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: `What are some lesser-known facts about ${actorName}?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: answerText,
+        },
+      },
+    ],
   }
 }

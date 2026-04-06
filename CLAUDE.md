@@ -150,7 +150,7 @@ When renaming functions, changing APIs, or refactoring modules, **always update 
 - **Null safety**: Always guard `rows[0]` with optional chaining and fallback (`rows[0]?.cnt ?? 0`). Guard config spreads (`...(config?.field ?? {})`)
 - **DRY**: Extract helpers before duplicating logic across views (e.g., desktop table + mobile cards). Extract shared test mocks across files
 - **Accessibility**: All text must meet WCAG AA contrast ratios (4.5:1 normal, 3:1 large). Icon-only links/buttons need `aria-label`. Touch targets minimum 44x44px. Don't use `aria-hidden` as the only content in a cell
-- **External links**: All links to external domains must use `target="_blank" rel="nofollow noopener noreferrer"`
+- **External links**: All links to external domains must use `target="_blank" rel="nofollow noopener noreferrer"`. Exception: editorially verified source links (`sourceReliable: true`) may drop `nofollow` for E-E-A-T signaling
 - **Source attribution must be provable**: Every fact attributed to a source must be traceable to that specific, verified source. Source attribution is captured at extraction time, not inferred after the fact. If provenance is unknown, the fact has no source link.
 - **Type safety**: `pg` auto-parses JSON columns — type as parsed type (`MyType[]`), not `string`. Use `unknown` over `any`
 - **AbortSignal**: Combine caller signals with timeouts using ternary + `AbortSignal.any()` — never `??` which defeats the timeout

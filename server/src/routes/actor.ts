@@ -14,6 +14,7 @@ import { getCached, setCached, CACHE_KEYS, CACHE_TTL } from "../lib/cache.js"
 import { calculateAge } from "../lib/date-utils.js"
 import { createActorSlug } from "../lib/slug-utils.js"
 import { resolveRelatedCelebritySlugs } from "../lib/related-celebrity-slugs.js"
+import { isReliableSourceUrl } from "../lib/shared/reliable-domains.js"
 
 interface ActorProfileResponse {
   actor: {
@@ -81,7 +82,12 @@ interface ActorProfileResponse {
     fameCatalyst: string | null
     personalStruggles: string | null
     relationships: string | null
-    lesserKnownFacts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>
+    lesserKnownFacts: Array<{
+      text: string
+      sourceUrl: string | null
+      sourceName: string | null
+      sourceReliable?: boolean
+    }>
     sources: Record<string, unknown> | null
     alternateNames: string[]
     gender: string | null
@@ -159,6 +165,23 @@ export async function getActor(req: Request, res: Response) {
         responseTimeMs: Date.now() - startTime,
         cacheHit: true,
       })
+      // Normalize cached lesserKnownFacts (stale cache may have string[] or missing sourceReliable)
+      if (cached.biographyDetails?.lesserKnownFacts) {
+        cached.biographyDetails.lesserKnownFacts = cached.biographyDetails.lesserKnownFacts.map(
+          (fact: unknown) => {
+            const normalized =
+              typeof fact === "string"
+                ? { text: fact, sourceUrl: null, sourceName: null }
+                : (fact as { text: string; sourceUrl: string | null; sourceName: string | null })
+            return {
+              ...normalized,
+              sourceReliable: normalized.sourceUrl
+                ? isReliableSourceUrl(normalized.sourceUrl)
+                : false,
+            }
+          }
+        )
+      }
       return res.set("Cache-Control", "public, max-age=600").json(cached)
     }
 
@@ -310,7 +333,17 @@ export async function getActor(req: Request, res: Response) {
             fameCatalyst: bioRow.fame_catalyst || null,
             personalStruggles: bioRow.personal_struggles || null,
             relationships: bioRow.relationships || null,
-            lesserKnownFacts: bioRow.lesser_known_facts || [],
+            lesserKnownFacts: (bioRow.lesser_known_facts || []).map((fact) => {
+              // Normalize: stale data may have plain strings instead of objects
+              const normalized =
+                typeof fact === "string" ? { text: fact, sourceUrl: null, sourceName: null } : fact
+              return {
+                ...normalized,
+                sourceReliable: normalized.sourceUrl
+                  ? isReliableSourceUrl(normalized.sourceUrl)
+                  : false,
+              }
+            }),
             sources: bioRow.sources || null,
             alternateNames: bioRow.alternate_names ?? [],
             gender: bioRow.gender ?? null,

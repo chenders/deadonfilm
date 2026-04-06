@@ -22,6 +22,7 @@ import {
   buildTVEpisodeSchema,
   buildWebsiteSchema,
   buildBreadcrumbSchema,
+  buildFactsFAQSchema,
 } from "./schema.js"
 import type { PrerenderPageData } from "./renderer.js"
 import type { MatchResult } from "./url-patterns.js"
@@ -209,8 +210,13 @@ async function getActorPageData(actorId: number): Promise<PrerenderPageData | nu
       occupations: string[] | null
       awards: string[] | null
       education_institutions: string[] | null
+      lesser_known_facts: Array<{
+        text: string
+        sourceUrl: string | null
+        sourceName: string | null
+      }> | null
     }>(
-      `SELECT alternate_names, gender, nationality, occupations, awards, education_institutions
+      `SELECT alternate_names, gender, nationality, occupations, awards, education_institutions, lesser_known_facts
        FROM actor_biography_details
        WHERE actor_id = $1`,
       [actor.id]
@@ -244,7 +250,12 @@ async function getActorPageData(actorId: number): Promise<PrerenderPageData | nu
     occupations: bioSeoRow?.occupations ?? null,
     awards: bioSeoRow?.awards ?? null,
     education_institutions: bioSeoRow?.education_institutions ?? null,
+    lesser_known_facts: bioSeoRow?.lesser_known_facts ?? null,
   }
+
+  const faqSchema = bioSeoRow?.lesser_known_facts
+    ? buildFactsFAQSchema(actor.name, bioSeoRow.lesser_known_facts)
+    : null
 
   return {
     title: `${actor.name} — Dead on Film`,
@@ -258,6 +269,7 @@ async function getActorPageData(actorId: number): Promise<PrerenderPageData | nu
         { name: "Home", url: BASE_URL },
         { name: actor.name, url: canonicalUrl },
       ]),
+      ...(faqSchema ? [faqSchema] : []),
     ],
     heading: actor.name,
     subheading: description,

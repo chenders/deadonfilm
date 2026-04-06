@@ -5,6 +5,7 @@ import {
   buildTVEpisodeSchema,
   buildCollectionPageSchema,
   buildWebsiteSchema,
+  buildFactsFAQSchema,
 } from "./schema"
 
 describe("buildPersonSchema", () => {
@@ -175,6 +176,73 @@ describe("buildPersonSchema", () => {
     expect(result.hasOccupation).toBeUndefined()
     expect(result.award).toBeUndefined()
     expect(result.alumniOf).toBeUndefined()
+  })
+
+  it("includes knowsAbout for sourced facts", () => {
+    const facts = [
+      {
+        text: "Holds a karate black belt",
+        sourceUrl: "https://theguardian.com/karate",
+        sourceName: "The Guardian",
+        sourceReliable: true,
+      },
+      {
+        text: "Begged to be in Fast & Furious",
+        sourceUrl: "https://people.com/furious",
+        sourceName: "People",
+        sourceReliable: false,
+      },
+    ]
+    const result = buildPersonSchema({ ...baseActor, lesserKnownFacts: facts }, "john-wayne-4165")
+    const knowsAbout = result.knowsAbout as Array<Record<string, unknown>>
+    expect(knowsAbout).toHaveLength(2)
+    expect(knowsAbout[0]).toEqual({
+      "@type": "Thing",
+      name: "Holds a karate black belt",
+      description: "Holds a karate black belt",
+      subjectOf: {
+        "@type": "Article",
+        url: "https://theguardian.com/karate",
+        publisher: { "@type": "Organization", name: "The Guardian" },
+      },
+    })
+  })
+
+  it("excludes facts without sourceUrl from knowsAbout", () => {
+    const facts = [
+      { text: "No source fact", sourceUrl: null, sourceName: null },
+      {
+        text: "Sourced fact",
+        sourceUrl: "https://bbc.com/article",
+        sourceName: "BBC",
+        sourceReliable: true,
+      },
+    ]
+    const result = buildPersonSchema({ ...baseActor, lesserKnownFacts: facts }, "john-wayne-4165")
+    const knowsAbout = result.knowsAbout as Array<Record<string, unknown>>
+    expect(knowsAbout).toHaveLength(1)
+    expect((knowsAbout[0].subjectOf as Record<string, unknown>).url).toBe("https://bbc.com/article")
+  })
+
+  it("limits knowsAbout to 10 facts", () => {
+    const facts = Array.from({ length: 15 }, (_, i) => ({
+      text: `Fact ${i}`,
+      sourceUrl: `https://nytimes.com/${i}`,
+      sourceName: "NYT",
+      sourceReliable: true,
+    }))
+    const result = buildPersonSchema({ ...baseActor, lesserKnownFacts: facts }, "john-wayne-4165")
+    expect((result.knowsAbout as unknown[]).length).toBe(10)
+  })
+
+  it("omits knowsAbout when no sourced facts exist", () => {
+    const result = buildPersonSchema(baseActor, "john-wayne-4165")
+    expect(result.knowsAbout).toBeUndefined()
+  })
+
+  it("omits knowsAbout when lesserKnownFacts is empty", () => {
+    const result = buildPersonSchema({ ...baseActor, lesserKnownFacts: [] }, "john-wayne-4165")
+    expect(result.knowsAbout).toBeUndefined()
   })
 })
 
@@ -382,5 +450,56 @@ describe("buildWebsiteSchema", () => {
     expect(action["@type"]).toBe("SearchAction")
     expect(action.target).toBe("https://deadonfilm.com/search?q={search_term_string}")
     expect(action["query-input"]).toBe("required name=search_term_string")
+  })
+})
+
+describe("buildFactsFAQSchema", () => {
+  it("builds FAQPage with aggregated sourced facts", () => {
+    const facts = [
+      {
+        text: "Holds a karate black belt",
+        sourceUrl: "https://theguardian.com/karate",
+        sourceName: "The Guardian",
+      },
+      {
+        text: "Begged to be in Fast & Furious",
+        sourceUrl: "https://people.com/furious",
+        sourceName: "People",
+      },
+    ]
+    const result = buildFactsFAQSchema("Helen Mirren", facts)
+
+    expect(result).not.toBeNull()
+    expect(result!["@context"]).toBe("https://schema.org")
+    expect(result!["@type"]).toBe("FAQPage")
+    const mainEntity = result!.mainEntity as Array<Record<string, unknown>>
+    expect(mainEntity).toHaveLength(1)
+    expect(mainEntity[0].name).toBe("What are some lesser-known facts about Helen Mirren?")
+    const answer = mainEntity[0].acceptedAnswer as Record<string, unknown>
+    expect(answer.text).toContain("Holds a karate black belt (The Guardian)")
+    expect(answer.text).toContain("Begged to be in Fast & Furious (People)")
+  })
+
+  it("excludes facts without sources from the answer", () => {
+    const facts = [
+      { text: "No source", sourceUrl: null, sourceName: null },
+      {
+        text: "Has a source",
+        sourceUrl: "https://bbc.com/1",
+        sourceName: "BBC",
+      },
+    ]
+    const result = buildFactsFAQSchema("John Wayne", facts)
+    const answer = (result!.mainEntity as Array<Record<string, unknown>>)[0]
+      .acceptedAnswer as Record<string, unknown>
+    expect(answer.text).not.toContain("No source")
+    expect(answer.text).toContain("Has a source (BBC)")
+  })
+
+  it("returns null when no sourced facts exist", () => {
+    expect(buildFactsFAQSchema("Nobody", [])).toBeNull()
+    expect(
+      buildFactsFAQSchema("Nobody", [{ text: "Unsourced", sourceUrl: null, sourceName: null }])
+    ).toBeNull()
   })
 })
