@@ -7,6 +7,16 @@ import { createActorSlug } from "./slugify"
 
 const BASE_URL = "https://deadonfilm.com"
 
+/** Only allow http/https URLs in structured data to prevent javascript:/data: injection. */
+function isHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === "http:" || parsed.protocol === "https:"
+  } catch {
+    return false
+  }
+}
+
 interface MovieSchemaInput {
   title: string
   release_date: string
@@ -133,9 +143,9 @@ export function buildPersonSchema(actor: PersonSchemaInput, slug: string): Recor
       : undefined,
   }
 
-  // Build knowsAbout from sourced lesser-known facts
+  // Build knowsAbout from sourced lesser-known facts (http/https only)
   const sourcedFacts = (actor.lesserKnownFacts ?? [])
-    .filter((f) => f.sourceUrl && f.sourceName)
+    .filter((f) => f.sourceUrl && f.sourceName && isHttpUrl(f.sourceUrl))
     .slice(0, 10)
 
   if (sourcedFacts.length > 0) {
@@ -382,7 +392,9 @@ export function buildFactsFAQSchema(
   actorName: string,
   facts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>
 ): Record<string, unknown> | null {
-  const sourced = facts.filter((f) => f.sourceUrl && f.sourceName)
+  const sourced = facts
+    .filter((f) => f.sourceUrl && f.sourceName && isHttpUrl(f.sourceUrl))
+    .slice(0, 10)
   if (sourced.length === 0) return null
 
   const answerText = sourced.map((f) => `${f.text} (${f.sourceName})`).join(". ") + "."
