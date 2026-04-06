@@ -176,6 +176,73 @@ describe("buildPersonSchema", () => {
     expect(result.award).toBeUndefined()
     expect(result.alumniOf).toBeUndefined()
   })
+
+  it("includes knowsAbout for sourced facts", () => {
+    const facts = [
+      {
+        text: "Holds a karate black belt",
+        sourceUrl: "https://theguardian.com/karate",
+        sourceName: "The Guardian",
+        sourceReliable: true,
+      },
+      {
+        text: "Begged to be in Fast & Furious",
+        sourceUrl: "https://people.com/furious",
+        sourceName: "People",
+        sourceReliable: false,
+      },
+    ]
+    const result = buildPersonSchema({ ...baseActor, lesserKnownFacts: facts }, "john-wayne-4165")
+    const knowsAbout = result.knowsAbout as Array<Record<string, unknown>>
+    expect(knowsAbout).toHaveLength(2)
+    expect(knowsAbout[0]).toEqual({
+      "@type": "Thing",
+      name: "Holds a karate black belt",
+      description: "Holds a karate black belt",
+      subjectOf: {
+        "@type": "Article",
+        url: "https://theguardian.com/karate",
+        publisher: { "@type": "Organization", name: "The Guardian" },
+      },
+    })
+  })
+
+  it("excludes facts without sourceUrl from knowsAbout", () => {
+    const facts = [
+      { text: "No source fact", sourceUrl: null, sourceName: null },
+      {
+        text: "Sourced fact",
+        sourceUrl: "https://bbc.com/article",
+        sourceName: "BBC",
+        sourceReliable: true,
+      },
+    ]
+    const result = buildPersonSchema({ ...baseActor, lesserKnownFacts: facts }, "john-wayne-4165")
+    const knowsAbout = result.knowsAbout as Array<Record<string, unknown>>
+    expect(knowsAbout).toHaveLength(1)
+    expect((knowsAbout[0].subjectOf as Record<string, unknown>).url).toBe("https://bbc.com/article")
+  })
+
+  it("limits knowsAbout to 10 facts", () => {
+    const facts = Array.from({ length: 15 }, (_, i) => ({
+      text: `Fact ${i}`,
+      sourceUrl: `https://nytimes.com/${i}`,
+      sourceName: "NYT",
+      sourceReliable: true,
+    }))
+    const result = buildPersonSchema({ ...baseActor, lesserKnownFacts: facts }, "john-wayne-4165")
+    expect((result.knowsAbout as unknown[]).length).toBe(10)
+  })
+
+  it("omits knowsAbout when no sourced facts exist", () => {
+    const result = buildPersonSchema(baseActor, "john-wayne-4165")
+    expect(result.knowsAbout).toBeUndefined()
+  })
+
+  it("omits knowsAbout when lesserKnownFacts is empty", () => {
+    const result = buildPersonSchema({ ...baseActor, lesserKnownFacts: [] }, "john-wayne-4165")
+    expect(result.knowsAbout).toBeUndefined()
+  })
 })
 
 describe("buildTVSeriesSchema", () => {

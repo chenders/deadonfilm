@@ -70,6 +70,12 @@ interface PersonSchemaInput {
   occupations?: string[] | null
   awards?: string[] | null
   educationInstitutions?: string[] | null
+  lesserKnownFacts?: Array<{
+    text: string
+    sourceUrl: string | null
+    sourceName: string | null
+    sourceReliable?: boolean
+  }> | null
 }
 
 // Maps TMDB department to schema.org jobTitle.
@@ -125,6 +131,27 @@ export function buildPersonSchema(actor: PersonSchemaInput, slug: string): Recor
           name,
         }))
       : undefined,
+  }
+
+  // Build knowsAbout from sourced lesser-known facts
+  const sourcedFacts = (actor.lesserKnownFacts ?? [])
+    .filter((f) => f.sourceUrl && f.sourceName)
+    .slice(0, 10)
+
+  if (sourcedFacts.length > 0) {
+    schema.knowsAbout = sourcedFacts.map((f) => ({
+      "@type": "Thing",
+      name: f.text,
+      description: f.text,
+      subjectOf: {
+        "@type": "Article",
+        url: f.sourceUrl,
+        publisher: {
+          "@type": "Organization",
+          name: f.sourceName,
+        },
+      },
+    }))
   }
 
   if (actor.deathday && actor.causeOfDeath) {
