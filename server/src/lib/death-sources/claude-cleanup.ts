@@ -13,8 +13,8 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk"
-import { stripMarkdownCodeFences } from "../claude-batch/response-parser.js"
 import { DeathMannerSchema } from "../claude-batch/schemas.js"
+import { callClaudeForJson } from "../shared/claude-json.js"
 import type {
   ActorForEnrichment,
   CleanedDeathInfo,
@@ -352,29 +352,20 @@ export async function cleanupWithClaude(
   // Log the request
   logger.logClaudeCleanupRequest(actor.id, actor.name, rawSources.length, prompt)
 
-  const response = await anthropic.messages.create({
+  // Call Claude via shared helper (handles prefill, fence stripping, jsonrepair)
+  const claudeResult = await callClaudeForJson<ClaudeCleanupResponse>(anthropic, {
     model: MODEL_ID,
-    max_tokens: MAX_TOKENS,
-    messages: [
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
+    maxTokens: MAX_TOKENS,
+    prompt,
   })
 
-  // Calculate cost
-  const inputTokens = response.usage.input_tokens
-  const outputTokens = response.usage.output_tokens
+  const { inputTokens, outputTokens } = claudeResult
   const costUsd =
     (inputTokens * INPUT_COST_PER_MILLION) / 1_000_000 +
     (outputTokens * OUTPUT_COST_PER_MILLION) / 1_000_000
 
-  // Extract text content for logging
-  const textBlock = response.content.find((block) => block.type === "text")
-  const responseText = textBlock?.type === "text" ? textBlock.text : ""
-
   // Log the response
+  const responseText = claudeResult.data ? JSON.stringify(claudeResult.data) : ""
   logger.logClaudeCleanupResponse(
     actor.id,
     actor.name,
@@ -393,30 +384,21 @@ export async function cleanupWithClaude(
     actorId: actor.id,
     actorName: actor.name,
     model: MODEL_ID,
-    inputTokens: inputTokens,
-    outputTokens: outputTokens,
-    costUsd: costUsd,
+    inputTokens,
+    outputTokens,
+    costUsd,
     purpose: "death_cleanup",
   })
 
-  // Verify we have text content
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("No text response from Claude")
+  if (claudeResult.error || !claudeResult.data) {
+    const errorMsg = claudeResult.error ?? "No data from Claude"
+    console.error(`Claude parse error for ${actor.name}: ${errorMsg}`, {
+      rawSnippet: claudeResult.rawSnippet ?? null,
+    })
+    throw new Error(`Failed to parse Claude response: ${errorMsg}`)
   }
 
-  // Parse JSON response
-  const jsonText = stripMarkdownCodeFences(textBlock.text)
-  let parsed: ClaudeCleanupResponse
-
-  try {
-    parsed = JSON.parse(jsonText) as ClaudeCleanupResponse
-  } catch (error) {
-    console.error(`JSON parse error for ${actor.name}:`, error)
-    console.error("Raw response:", textBlock.text.substring(0, 500))
-    throw new Error(
-      `Failed to parse Claude response: ${error instanceof Error ? error.message : "Unknown error"}`
-    )
-  }
+  const parsed = claudeResult.data
 
   // Convert related_celebrities to proper format
   const relatedCelebrities: RelatedCelebrity[] | null = Array.isArray(parsed.related_celebrities)

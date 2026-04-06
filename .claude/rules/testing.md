@@ -155,6 +155,16 @@ it("returns cached data on cache hit", async () => {
 })
 ```
 
+## Diagnosing Test Failures
+
+When a test run reports failures, **do not re-run the full suite just to find the failing test name**. The failure information is already in the output. Either:
+
+1. **Capture output with `tee`** so you can search it: `npm test 2>&1 | tee /tmp/test-output.txt | tail -5` then `grep "FAIL\|×" /tmp/test-output.txt`
+2. **Use `grep` on the same run**: `npm test 2>&1 | grep -E "FAIL|×"` to extract just the failing test names
+3. **Run only the suspected file** directly: `npx vitest run path/to/suspected.test.ts`
+
+Never run 300 test files a second time when the first run already told you which one failed.
+
 ## Avoid Unused Variables
 
 Remove unused variables before committing, especially in tests:

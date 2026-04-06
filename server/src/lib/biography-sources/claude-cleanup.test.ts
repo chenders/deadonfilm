@@ -112,11 +112,15 @@ function makeMockApiResponse(
   jsonData: Record<string, unknown>,
   tokenOverrides?: { input?: number; output?: number }
 ) {
+  // Strip leading "{" to match assistant prefill behavior —
+  // the API call uses { role: "assistant", content: "{" } so Claude's
+  // response continues from after the opening brace
+  const fullJson = JSON.stringify(jsonData)
   return {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(jsonData),
+        text: fullJson.slice(1),
       },
     ],
     usage: {
@@ -451,9 +455,9 @@ describe("claude-cleanup (biography)", () => {
 
     it("strips markdown fences from response", async () => {
       const validResponse = makeValidClaudeResponse()
-      mockCreate.mockResolvedValue(
-        makeMockApiResponseRaw("```json\n" + JSON.stringify(validResponse) + "\n```")
-      )
+      // With assistant prefill "{", Claude's fenced response omits the leading brace
+      const jsonWithoutBrace = JSON.stringify(validResponse).slice(1)
+      mockCreate.mockResolvedValue(makeMockApiResponseRaw("```json\n" + jsonWithoutBrace + "\n```"))
 
       const result = await synthesizeBiography(mockActor, mockSources)
 
