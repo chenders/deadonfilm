@@ -941,11 +941,12 @@ describe("ActorPage", () => {
     it("renders plain string facts from stale cached responses", async () => {
       // Old cached responses have lesserKnownFacts as string[], not object[]
       // The normalizeFact function should handle both formats
-      mockActorWithFacts([
-        "He owned more than 50 bicycles" as unknown as (typeof factsData)[0],
-        "He was a trained mime" as unknown as (typeof factsData)[0],
+      const staleCachedFacts: Array<string | (typeof factsData)[0]> = [
+        "He owned more than 50 bicycles",
+        "He was a trained mime",
         { text: "A normal object fact", sourceUrl: null, sourceName: null },
-      ])
+      ]
+      mockActorWithFacts(staleCachedFacts as unknown as typeof factsData)
 
       renderWithProviders(<ActorPage />)
 
