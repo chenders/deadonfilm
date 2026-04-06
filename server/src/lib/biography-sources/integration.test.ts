@@ -187,37 +187,41 @@ const WIKIPEDIA_PERSONAL_LIFE_HTML = {
 /**
  * Claude synthesis response with realistic biography JSON.
  */
+// callClaudeForJson prepends "{" from assistant prefill,
+// so the mock response should be the JSON without the leading brace
+const CLAUDE_SYNTHESIS_JSON = {
+  narrative:
+    "The boy who would become John Wayne grew up far from Hollywood glamour. Born Marion Robert Morrison in a small Iowa farmhouse, he spent his earliest years watching his father struggle as a pharmacist in various small towns. When the family relocated to Southern California, young Marion found himself an outsider, a Midwestern kid in a sun-bleached California world. He threw himself into football at Glendale Union High School, where he also served as president of the Latin Society. A football scholarship took him to the University of Southern California, but a body-surfing injury ended his athletic career and, with it, his scholarship. Stranded without tuition money, he took odd jobs at the Fox Film lot — a decision that would reshape American cinema. Wayne married three times. His first marriage to Josephine Saenz produced four children but ended in 1945. His union with Esperanza Baur was turbulent, marked by jealousy and public arguments. His third marriage, to Peruvian actress Pilar Pallete, lasted until his death. He struggled with alcoholism during the 1950s. In 1964, doctors removed his entire left lung after discovering cancer — Wayne later became an advocate for cancer awareness.",
+  narrative_confidence: "high",
+  life_notable_factors: ["athlete", "rags_to_riches", "addiction_recovery"],
+  birthplace_details:
+    "Born in Winterset, Iowa, a small rural town. His family moved to Palmdale and then Glendale, California, during his childhood.",
+  family_background:
+    "Son of Clyde Leonard Morrison, a pharmacist, and Mary Alberta Brown. Had one younger brother, Robert Emmet Morrison.",
+  education:
+    "Attended Glendale Union High School, where he was president of the Latin Society and played football. Received a football scholarship to the University of Southern California but lost it after a body-surfing injury.",
+  pre_fame_life:
+    "After losing his scholarship, took odd jobs at the Fox Film lot to support himself.",
+  fame_catalyst:
+    "His work as a prop man at Fox Film studios led director John Ford to take notice, beginning a decades-long professional relationship.",
+  personal_struggles:
+    "Struggled with alcoholism in the 1950s. Diagnosed with lung cancer in 1964 and had his left lung removed.",
+  relationships:
+    "Married three times: Josephine Saenz (1933-1945), Esperanza Baur (1946-1954), Pilar Pallete (1954-1979). Seven children total.",
+  lesser_known_facts: [
+    "Was president of the Latin Society in high school",
+    "Lost his football scholarship due to a body-surfing injury",
+    "His birth name was Marion Robert Morrison",
+    "His father was a pharmacist who struggled financially",
+  ],
+  has_substantive_content: true,
+}
+
 const CLAUDE_SYNTHESIS_RESPONSE = {
   content: [
     {
       type: "text" as const,
-      text: JSON.stringify({
-        narrative:
-          "The boy who would become John Wayne grew up far from Hollywood glamour. Born Marion Robert Morrison in a small Iowa farmhouse, he spent his earliest years watching his father struggle as a pharmacist in various small towns. When the family relocated to Southern California, young Marion found himself an outsider, a Midwestern kid in a sun-bleached California world. He threw himself into football at Glendale Union High School, where he also served as president of the Latin Society. A football scholarship took him to the University of Southern California, but a body-surfing injury ended his athletic career and, with it, his scholarship. Stranded without tuition money, he took odd jobs at the Fox Film lot — a decision that would reshape American cinema. Wayne married three times. His first marriage to Josephine Saenz produced four children but ended in 1945. His union with Esperanza Baur was turbulent, marked by jealousy and public arguments. His third marriage, to Peruvian actress Pilar Pallete, lasted until his death. He struggled with alcoholism during the 1950s. In 1964, doctors removed his entire left lung after discovering cancer — Wayne later became an advocate for cancer awareness.",
-        narrative_confidence: "high",
-        life_notable_factors: ["athlete", "rags_to_riches", "addiction_recovery"],
-        birthplace_details:
-          "Born in Winterset, Iowa, a small rural town. His family moved to Palmdale and then Glendale, California, during his childhood.",
-        family_background:
-          "Son of Clyde Leonard Morrison, a pharmacist, and Mary Alberta Brown. Had one younger brother, Robert Emmet Morrison.",
-        education:
-          "Attended Glendale Union High School, where he was president of the Latin Society and played football. Received a football scholarship to the University of Southern California but lost it after a body-surfing injury.",
-        pre_fame_life:
-          "After losing his scholarship, took odd jobs at the Fox Film lot to support himself.",
-        fame_catalyst:
-          "His work as a prop man at Fox Film studios led director John Ford to take notice, beginning a decades-long professional relationship.",
-        personal_struggles:
-          "Struggled with alcoholism in the 1950s. Diagnosed with lung cancer in 1964 and had his left lung removed.",
-        relationships:
-          "Married three times: Josephine Saenz (1933-1945), Esperanza Baur (1946-1954), Pilar Pallete (1954-1979). Seven children total.",
-        lesser_known_facts: [
-          "Was president of the Latin Society in high school",
-          "Lost his football scholarship due to a body-surfing injury",
-          "His birth name was Marion Robert Morrison",
-          "His father was a pharmacist who struggled financially",
-        ],
-        has_substantive_content: true,
-      }),
+      text: JSON.stringify(CLAUDE_SYNTHESIS_JSON).slice(1),
     },
   ],
   usage: {
@@ -499,8 +503,9 @@ describe("Biography Enrichment Integration Test", () => {
       const synthesisCallArgs = anthropicMockCreate.mock.calls[0][0]
       expect(synthesisCallArgs.model).toBe("claude-sonnet-4-20250514")
       expect(synthesisCallArgs.max_tokens).toBe(4096)
-      expect(synthesisCallArgs.messages).toHaveLength(1)
+      expect(synthesisCallArgs.messages).toHaveLength(2)
       expect(synthesisCallArgs.messages[0].role).toBe("user")
+      expect(synthesisCallArgs.messages[1]).toEqual({ role: "assistant", content: "{" })
       // Prompt should contain actor name and source material
       expect(synthesisCallArgs.messages[0].content).toContain("John Wayne")
 
@@ -621,26 +626,22 @@ describe("Biography Enrichment Integration Test", () => {
 
     it("filters invalid life_notable_factors from Claude response", async () => {
       // Return response with a mix of valid and invalid factors
+      const factorsJson = JSON.stringify({
+        narrative: "Full narrative about John Wayne's life.",
+        narrative_confidence: "medium",
+        life_notable_factors: ["military_service", "invented_factor", "athlete", "fake_tag"],
+        birthplace_details: null,
+        family_background: null,
+        education: null,
+        pre_fame_life: null,
+        fame_catalyst: null,
+        personal_struggles: null,
+        relationships: null,
+        lesser_known_facts: [],
+        has_substantive_content: true,
+      })
       anthropicMockCreate.mockResolvedValue({
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({
-              narrative: "Full narrative about John Wayne's life.",
-              narrative_confidence: "medium",
-              life_notable_factors: ["military_service", "invented_factor", "athlete", "fake_tag"],
-              birthplace_details: null,
-              family_background: null,
-              education: null,
-              pre_fame_life: null,
-              fame_catalyst: null,
-              personal_struggles: null,
-              relationships: null,
-              lesser_known_facts: [],
-              has_substantive_content: true,
-            }),
-          },
-        ],
+        content: [{ type: "text" as const, text: factorsJson.slice(1) }],
         usage: { input_tokens: 1000, output_tokens: 400 },
       })
 
