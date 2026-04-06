@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { buildPersonSchema } from "./schema.js"
+import { buildPersonSchema, buildFactsFAQSchema } from "./schema.js"
 
 const baseActor = {
   name: "John Wayne",
@@ -73,5 +73,60 @@ describe("buildPersonSchema", () => {
   it("omits image when profile_path is null", () => {
     const result = buildPersonSchema({ ...baseActor, profile_path: null }, "john-wayne-4165")
     expect(result.image).toBeUndefined()
+  })
+
+  it("includes knowsAbout for sourced facts", () => {
+    const result = buildPersonSchema(
+      {
+        ...baseActor,
+        lesser_known_facts: [
+          {
+            text: "Holds a karate black belt",
+            sourceUrl: "https://theguardian.com/karate",
+            sourceName: "The Guardian",
+          },
+          { text: "No source", sourceUrl: null, sourceName: null },
+        ],
+      },
+      "john-wayne-4165"
+    )
+    const knowsAbout = result.knowsAbout as Array<Record<string, unknown>>
+    expect(knowsAbout).toHaveLength(1)
+    expect(knowsAbout[0]).toEqual({
+      "@type": "Thing",
+      name: "Holds a karate black belt",
+      description: "Holds a karate black belt",
+      subjectOf: {
+        "@type": "Article",
+        url: "https://theguardian.com/karate",
+        publisher: { "@type": "Organization", name: "The Guardian" },
+      },
+    })
+  })
+
+  it("omits knowsAbout when no sourced facts", () => {
+    const result = buildPersonSchema(baseActor, "john-wayne-4165")
+    expect(result.knowsAbout).toBeUndefined()
+  })
+})
+
+describe("buildFactsFAQSchema", () => {
+  it("builds FAQPage with sourced facts", () => {
+    const result = buildFactsFAQSchema("John Wayne", [
+      {
+        text: "Was a college football player",
+        sourceUrl: "https://latimes.com/article",
+        sourceName: "LA Times",
+      },
+    ])
+    expect(result).not.toBeNull()
+    expect(result!["@type"]).toBe("FAQPage")
+    const answer = ((result!.mainEntity as unknown[])[0] as Record<string, unknown>)
+      .acceptedAnswer as Record<string, unknown>
+    expect(answer.text).toContain("Was a college football player (LA Times)")
+  })
+
+  it("returns null when no sourced facts", () => {
+    expect(buildFactsFAQSchema("Nobody", [])).toBeNull()
   })
 })
