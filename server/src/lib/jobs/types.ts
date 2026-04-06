@@ -10,6 +10,7 @@
  */
 
 import { z } from "zod"
+import { DEFAULT_DISCOVERY_CONFIG } from "../biography-sources/surprise-discovery/types.js"
 
 // ============================================================
 // JOB TYPES
@@ -297,6 +298,17 @@ export const enrichBiographiesBatchPayloadSchema = z.object({
       books: z.boolean().default(true),
     })
     .optional(),
+  discoveryEnabled: z.boolean().default(DEFAULT_DISCOVERY_CONFIG.enabled),
+  discoveryIntegrationStrategy: z
+    .enum(["append-only", "re-synthesize"])
+    .default(DEFAULT_DISCOVERY_CONFIG.integrationStrategy),
+  discoveryIncongruityThreshold: z
+    .number()
+    .int()
+    .min(1)
+    .max(10)
+    .default(DEFAULT_DISCOVERY_CONFIG.incongruityThreshold),
+  discoveryMaxCostPerActor: z.number().min(0).default(DEFAULT_DISCOVERY_CONFIG.maxCostPerActorUsd),
 })
 
 // Content popularity calculation payload

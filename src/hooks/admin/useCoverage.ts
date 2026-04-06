@@ -79,6 +79,8 @@ export interface ActorCoverageFilters {
   deathManner?: string
   deathEnrichmentVersion?: string
   bioEnrichmentVersion?: string
+  unattributedFacts?: boolean
+  deathStatus?: "deceased" | "alive" | "all"
   orderBy?: "death_date" | "popularity" | "name" | "enriched_at" | "interestingness"
   orderDirection?: "asc" | "desc"
 }
@@ -196,6 +198,12 @@ async function fetchActorsForCoverage(
   }
   if (filters.bioEnrichmentVersion) {
     params.append("bioEnrichmentVersion", filters.bioEnrichmentVersion)
+  }
+  if (filters.unattributedFacts) {
+    params.append("unattributedFacts", "true")
+  }
+  if (filters.deathStatus) {
+    params.append("deathStatus", filters.deathStatus)
   }
 
   const response = await fetch(`/admin/api/coverage/actors?${params.toString()}`, {

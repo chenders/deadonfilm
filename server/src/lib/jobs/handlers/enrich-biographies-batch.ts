@@ -65,6 +65,10 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       useStaging,
       sourceCategories,
       concurrency,
+      discoveryEnabled,
+      discoveryIntegrationStrategy,
+      discoveryIncongruityThreshold,
+      discoveryMaxCostPerActor,
     } = job.data
     const db = getPool()
 
@@ -203,6 +207,42 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
               level: "info",
               message: `Enriched successfully. Confidence: ${result.data.narrativeConfidence || "unknown"}`,
             })
+
+            // Run surprise discovery if enabled
+            if (discoveryEnabled !== false && result.data.narrative) {
+              try {
+                const { runDiscoveryAndPersist } =
+                  await import("../../biography-sources/surprise-discovery/persist.js")
+                const discoveryResult = await runDiscoveryAndPersist(
+                  db,
+                  { id: actor.id, name: actor.name, tmdb_id: actor.tmdb_id },
+                  result.data.narrative,
+                  result.data.lesserKnownFacts || [],
+                  {
+                    integrationStrategy: discoveryIntegrationStrategy,
+                    incongruityThreshold: discoveryIncongruityThreshold,
+                    maxCostPerActorUsd: discoveryMaxCostPerActor,
+                  }
+                )
+
+                if (discoveryResult) {
+                  actorLogs.push({
+                    timestamp: new Date().toISOString(),
+                    level: "info",
+                    message: `Discovery: ${discoveryResult.newLesserKnownFacts.length} new facts, cost: $${discoveryResult.discoveryResults.costUsd.toFixed(4)}`,
+                  })
+                }
+              } catch (discoveryError) {
+                // Discovery failure should not fail the enrichment
+                const errMsg =
+                  discoveryError instanceof Error ? discoveryError.message : "Unknown error"
+                actorLogs.push({
+                  timestamp: new Date().toISOString(),
+                  level: "warn",
+                  message: `Discovery failed (enrichment still succeeded): ${errMsg}`,
+                })
+              }
+            }
 
             results.push({ actorId: actor.id, actorName: actor.name, enriched: true, costUsd })
           } else {

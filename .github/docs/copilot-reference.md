@@ -157,4 +157,8 @@ Phases:
 
 Both systems share the same architecture: parallel source phases, parallel actor processing, gather-all accumulation, Claude synthesis. Shared infrastructure in `server/src/lib/shared/concurrency.ts`.
 
+### Surprise Discovery Agent
+
+Post-enrichment pipeline (`server/src/lib/biography-sources/surprise-discovery/`) that finds unexpected associations via Google Autocomplete → boring filter → Haiku incongruity scoring → Reddit research → reliable source verification → Claude Sonnet integration. Produces source-attributed lesser-known facts stored as JSONB objects (`{text, sourceUrl, sourceName}`). Configuration centralized in `DEFAULT_DISCOVERY_CONFIG`. Discovery results stored in `actor_biography_details.discovery_results`.
+
 See `.claude/rules/biography-enrichment.md` for full details.

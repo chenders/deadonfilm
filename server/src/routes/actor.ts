@@ -81,7 +81,7 @@ interface ActorProfileResponse {
     fameCatalyst: string | null
     personalStruggles: string | null
     relationships: string | null
-    lesserKnownFacts: string[]
+    lesserKnownFacts: Array<{ text: string; sourceUrl: string | null; sourceName: string | null }>
     sources: Record<string, unknown> | null
     alternateNames: string[]
     gender: string | null
@@ -180,7 +180,11 @@ export async function getActor(req: Request, res: Response) {
           fame_catalyst: string | null
           personal_struggles: string | null
           relationships: string | null
-          lesser_known_facts: string[] | null
+          lesser_known_facts: Array<{
+            text: string
+            sourceUrl: string | null
+            sourceName: string | null
+          }> | null
           sources: Record<string, unknown> | null
           alternate_names: string[] | null
           gender: string | null

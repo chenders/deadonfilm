@@ -104,7 +104,7 @@ describe("Admin Biography Enrichment Endpoints", () => {
           ],
         })
         .mockResolvedValueOnce({
-          rows: [{ total_deceased: "100", enriched: "40", needs_enrichment: "60" }],
+          rows: [{ total_actors: "100", enriched: "40", needs_enrichment: "60" }],
         })
 
       const res = await request(app).get("/admin/api/biography-enrichment")
@@ -122,7 +122,7 @@ describe("Admin Biography Enrichment Endpoints", () => {
         bioUpdatedAt: "2026-01-15",
         biographyVersion: "v2",
       })
-      expect(res.body.stats.totalDeceased).toBe(100)
+      expect(res.body.stats.totalActors).toBe(100)
       expect(res.body.stats.enriched).toBe(40)
     })
 
@@ -145,7 +145,7 @@ describe("Admin Biography Enrichment Endpoints", () => {
           ],
         })
         .mockResolvedValueOnce({
-          rows: [{ total_deceased: "100", enriched: "40", needs_enrichment: "60" }],
+          rows: [{ total_actors: "100", enriched: "40", needs_enrichment: "60" }],
         })
 
       const res = await request(app).get("/admin/api/biography-enrichment?searchName=paul+smith")
@@ -159,6 +159,40 @@ describe("Admin Biography Enrichment Endpoints", () => {
       expect(countCall[0]).toContain("a.name ILIKE $1")
       expect(countCall[0]).toContain("a.name ILIKE $2")
       expect(countCall[1]).toEqual(["%paul%", "%smith%"])
+    })
+
+    it("filters by unattributed facts when unattributedFacts=true", async () => {
+      mockPoolQuery
+        .mockResolvedValueOnce({ rows: [{ total: "1" }] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 42,
+              name: "No Source Actor",
+              dof_popularity: "10.0",
+              deathday: "2020-01-01",
+              bio_id: 5,
+              narrative_confidence: "medium",
+              life_notable_factors: null,
+              bio_updated_at: "2026-01-01",
+              biography_version: "v1",
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [{ total_actors: "100", enriched: "40", needs_enrichment: "60" }],
+        })
+
+      const res = await request(app).get("/admin/api/biography-enrichment?unattributedFacts=true")
+
+      expect(res.status).toBe(200)
+      expect(res.body.actors).toHaveLength(1)
+
+      // Verify the count query includes the JSONB attribution predicate
+      const countQuery = mockPoolQuery.mock.calls[0][0]
+      expect(countQuery).toContain("lesser_known_facts IS NOT NULL")
+      expect(countQuery).toContain("sourceUrl")
+      expect(countQuery).toContain("sourceName")
     })
 
     it("returns 500 on database error", async () => {

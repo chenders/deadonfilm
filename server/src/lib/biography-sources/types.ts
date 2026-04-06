@@ -81,6 +81,11 @@ export enum BiographySourceType {
 
   // Unmapped (fallback for unknown debriefer source types)
   UNMAPPED = "unmapped-bio",
+
+  // Surprise Discovery
+  AUTOCOMPLETE_DISCOVERY = "autocomplete-discovery",
+  REDDIT_DISCOVERY = "reddit-discovery",
+  DISCOVERY_VERIFICATION = "discovery-verification",
 }
 
 // ============================================================================
@@ -188,6 +193,15 @@ export interface ActorForBiography {
 // ============================================================================
 
 /**
+ * A single lesser-known fact with optional source attribution.
+ */
+export interface LesserKnownFact {
+  text: string
+  sourceUrl: string | null
+  sourceName: string | null
+}
+
+/**
  * Structured biography data produced by Claude synthesis.
  * These are the user-facing fields for the biography page.
  */
@@ -203,7 +217,7 @@ export interface BiographyData {
   fameCatalyst: string | null
   personalStruggles: string | null
   relationships: string | null
-  lesserKnownFacts: string[]
+  lesserKnownFacts: LesserKnownFact[]
   hasSubstantiveContent: boolean
   // SEO-specific structured fields
   alternateNames: string[]

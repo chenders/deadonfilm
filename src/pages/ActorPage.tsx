@@ -22,6 +22,7 @@ import ProjectLink from "@/components/death/ProjectLink"
 import RelatedCelebrityCard from "@/components/death/RelatedCelebrityCard"
 import BiographySection from "@/components/actor/BiographySection"
 import type { ActorFilmographyMovie, ActorFilmographyShow } from "@/types"
+import type { BiographyDetails } from "@/types/actor"
 
 type FilmographyItem =
   | { type: "movie"; data: ActorFilmographyMovie; year: number | null }
@@ -142,6 +143,74 @@ function formatCareerStatus(status: string | null): string | null {
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ")
+}
+
+const INITIAL_FACTS_SHOWN = 5
+
+/** Only allow http/https URLs to prevent javascript:/data: injection. */
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === "http:" || parsed.protocol === "https:"
+  } catch {
+    return false
+  }
+}
+
+function LesserKnownFacts({ facts }: { facts: BiographyDetails["lesserKnownFacts"] }) {
+  const [showAll, setShowAll] = useState(false)
+  const visibleFacts = showAll ? facts : facts.slice(0, INITIAL_FACTS_SHOWN)
+  const hiddenCount = facts.length - INITIAL_FACTS_SHOWN
+
+  return (
+    <div className="mb-6 rounded-lg bg-surface-elevated p-4" data-testid="biography-facts">
+      <h2 className="mb-2 font-display text-lg text-brown-dark">Lesser-Known Facts</h2>
+      <ul className="space-y-1.5">
+        {visibleFacts.map((fact, i) => (
+          <li key={i} className="flex items-start gap-2 text-text-primary">
+            <span className="mt-1 text-brown-medium">&bull;</span>
+            <span>
+              {fact.text}
+              {fact.sourceUrl && fact.sourceName && isSafeUrl(fact.sourceUrl) && (
+                <>
+                  {" "}
+                  <a
+                    href={fact.sourceUrl}
+                    target="_blank"
+                    rel="nofollow noopener noreferrer"
+                    className="inline-flex items-baseline gap-0.5 whitespace-nowrap text-xs text-text-muted hover:text-brown-dark"
+                    aria-label={`Source: ${fact.sourceName} (opens in new tab)`}
+                  >
+                    — {fact.sourceName}
+                    <svg
+                      className="inline h-2.5 w-2.5 flex-shrink-0"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" />
+                    </svg>
+                  </a>
+                </>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {hiddenCount > 0 && (
+        <button
+          onClick={() => setShowAll(!showAll)}
+          className="mt-3 text-sm text-brown-medium hover:text-brown-dark"
+          data-testid="facts-toggle"
+        >
+          {showAll ? "Show fewer" : `Show ${hiddenCount} more`}
+        </button>
+      )}
+    </div>
+  )
 }
 
 export default function ActorPage() {
@@ -423,17 +492,7 @@ export default function ActorPage() {
         {/* Lesser-Known Facts */}
         {data.biographyDetails?.lesserKnownFacts &&
           data.biographyDetails.lesserKnownFacts.length > 0 && (
-            <div className="mb-6 rounded-lg bg-surface-elevated p-4" data-testid="biography-facts">
-              <h2 className="mb-2 font-display text-lg text-brown-dark">Lesser-Known Facts</h2>
-              <ul className="space-y-1.5">
-                {data.biographyDetails.lesserKnownFacts.map((fact, i) => (
-                  <li key={i} className="flex items-start gap-2 text-text-primary">
-                    <span className="mt-1 text-brown-medium">&bull;</span>
-                    <span>{fact}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <LesserKnownFacts key={slug} facts={data.biographyDetails.lesserKnownFacts} />
           )}
 
         {/* Career Context */}

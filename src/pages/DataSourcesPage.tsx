@@ -160,6 +160,14 @@ export default function DataSourcesPage() {
                 personal struggles &mdash; with career mentioned only in passing, like describing
                 anyone&apos;s job.
               </p>
+              <p className="leading-relaxed">
+                After enrichment, a <strong>surprise discovery agent</strong> searches for
+                unexpected associations the source pipeline can&apos;t find. It queries Google
+                Autocomplete to discover what the public connects with an actor, scores those
+                associations for how surprising they are, researches high-scoring candidates on
+                Reddit, and verifies claims against reliable journalistic sources. Only verified
+                findings with source attribution are added to the biography.
+              </p>
             </div>
           </section>
 

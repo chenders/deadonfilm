@@ -43,6 +43,7 @@ Both systems now share the same architecture: parallel source execution within p
 | Types | `server/src/lib/biography-sources/types.ts` | `BiographySourceType` enum, config interfaces, result types |
 | DB writer | `server/src/lib/biography-enrichment-db-writer.ts` | COALESCE upsert to `actor_biography_details`, legacy archival |
 | Golden tests | `server/src/lib/biography/golden-test-cases.ts` | 7 test actors with automated scoring (0-100) |
+| **Surprise Discovery** | `server/src/lib/biography-sources/surprise-discovery/` | Post-enrichment agent (see below) |
 
 ## Text Quality Pipeline
 
@@ -234,11 +235,62 @@ The biography system is designed to produce **personal narratives**, not career 
 - DB writer uses COALESCE so re-enrichment preserves existing non-null values
 - Empty arrays are converted to null before SQL for COALESCE to work correctly
 
+## Surprise Discovery Agent
+
+Post-enrichment pipeline that discovers facts the source-based pipeline can't find. Runs after biography enrichment completes (when enabled). Integrated into both the single-actor admin route and the batch job handler.
+
+### Pipeline
+
+1. **Google Autocomplete** (57 queries/actor) → deduplicated suggestions
+2. **Boring filter** — drops filmography matches, co-star names, generic SEO, bio-covered terms
+3. **Incongruity scoring** — Claude Haiku scores remaining terms (1-10); only ≥ threshold proceed
+4. **Reddit research** — Google CSE (or Brave) searches Reddit for discussion threads
+5. **Claim verification** — searches reliable sources (domains with reliability ≥ 0.9) for corroboration
+6. **Integration** — Claude Sonnet synthesizes verified findings into source-attributed lesser-known facts
+
+### Architecture
+
+| Component | Path | Purpose |
+|-----------|------|---------|
+| Orchestrator | `surprise-discovery/orchestrator.ts` | Wires phases, logging, cost tracking |
+| Autocomplete | `surprise-discovery/autocomplete.ts` | Google Autocomplete client, exports `QUERY_PATTERN_COUNT` |
+| Boring filter | `surprise-discovery/boring-filter.ts` | Heuristic filter (filmography, co-stars, blocklist) |
+| Incongruity scorer | `surprise-discovery/incongruity-scorer.ts` | Claude Haiku scoring in batches of 30 |
+| Reddit researcher | `surprise-discovery/reddit-researcher.ts` | Google CSE / Brave → Reddit threads |
+| Verifier | `surprise-discovery/verifier.ts` | Reliable source corroboration (`RELIABLE_DOMAINS`) |
+| Integrator | `surprise-discovery/integrator.ts` | Claude Sonnet synthesis of verified findings |
+| Types | `surprise-discovery/types.ts` | `DiscoveryConfig`, `DEFAULT_DISCOVERY_CONFIG` |
+
+### Configuration
+
+Centralized in `DEFAULT_DISCOVERY_CONFIG` (types.ts). All callers import and spread this constant.
+
+```typescript
+{
+  enabled: true,
+  integrationStrategy: "append-only",  // or "re-synthesize"
+  incongruityThreshold: 7,             // 1-10, higher = more surprising only
+  maxCostPerActorUsd: 0.1,
+}
+```
+
+### Key Patterns
+
+- Discovery results are stored in `actor_biography_details.discovery_results` (JSONB)
+- New facts are **prepended** to existing `lesser_known_facts` (discovery facts first)
+- Facts are stored as JSONB objects with source attribution: `{text, sourceUrl, sourceName}`
+- Cache invalidation runs **twice**: once after `writeBiographyToProduction()`, again after discovery writes
+- `actors.biography` is synced when discovery updates the narrative
+- All search providers include `AbortSignal.timeout(10000)` on fetch calls
+- Reddit URL filtering uses strict hostname parsing (not substring match)
+- Batch Haiku validation uses per-batch term sets (not global)
+
 ## Scripts
 
 | Script | Purpose |
 |--------|---------|
 | `server/scripts/enrich-biographies.ts` | Main enrichment CLI (Commander) |
+| `server/scripts/test-discovery.ts` | Test discovery pipeline for a single actor |
 | `cd server && npm run enrich:biographies` | npm shortcut |
 
 ### CLI Options

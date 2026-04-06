@@ -29,7 +29,7 @@ interface EnrichmentActor {
 }
 
 interface EnrichmentStats {
-  totalDeceased: number
+  totalActors: number
   enriched: number
   needsEnrichment: number
 }
@@ -67,7 +67,8 @@ async function fetchEnrichmentActors(
   pageSize: number,
   minPopularity: number,
   needsEnrichment: boolean,
-  searchName: string
+  searchName: string,
+  unattributedFacts: boolean
 ): Promise<EnrichmentResponse> {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -78,6 +79,9 @@ async function fetchEnrichmentActors(
 
   if (searchName.trim()) {
     params.set("searchName", searchName.trim())
+  }
+  if (unattributedFacts) {
+    params.set("unattributedFacts", "true")
   }
 
   const response = await fetch(adminApi(`/biography-enrichment?${params}`), {
@@ -136,6 +140,10 @@ async function resynthesizeSingleActor(
 async function queueBatchEnrichment(params: {
   limit?: number
   minPopularity?: number
+  discoveryEnabled?: boolean
+  discoveryIntegrationStrategy?: "append-only" | "re-synthesize"
+  discoveryIncongruityThreshold?: number
+  discoveryMaxCostPerActor?: number
 }): Promise<{ jobId: string; queued: boolean; message: string }> {
   const response = await fetch(adminApi("/biography-enrichment/enrich-batch"), {
     method: "POST",
@@ -144,6 +152,10 @@ async function queueBatchEnrichment(params: {
     body: JSON.stringify({
       limit: params.limit || 10,
       minPopularity: params.minPopularity,
+      discoveryEnabled: params.discoveryEnabled,
+      discoveryIntegrationStrategy: params.discoveryIntegrationStrategy,
+      discoveryIncongruityThreshold: params.discoveryIncongruityThreshold,
+      discoveryMaxCostPerActor: params.discoveryMaxCostPerActor,
     }),
   })
 
@@ -316,10 +328,17 @@ export default function BiographyEnrichmentTab() {
   const [page, setPage] = useState(1)
   const [minPopularity, setMinPopularity] = useState("0")
   const [needsEnrichment, setNeedsEnrichment] = useState(true)
+  const [unattributedFacts, setUnattributedFacts] = useState(false)
   const [batchLimit, setBatchLimit] = useState(10)
   const [enrichingActorId, setEnrichingActorId] = useState<number | null>(null)
   const [resynthesizingActorId, setResynthesizingActorId] = useState<number | null>(null)
   const [activeBatchJobId, setActiveBatchJobId] = useState<string | null>(null)
+  const [discoveryEnabled, setDiscoveryEnabled] = useState(true)
+  const [discoveryStrategy, setDiscoveryStrategy] = useState<"append-only" | "re-synthesize">(
+    "append-only"
+  )
+  const [discoveryThreshold, setDiscoveryThreshold] = useState(7)
+  const [discoveryMaxCost, setDiscoveryMaxCost] = useState(0.1)
   const pageSize = 50
 
   // Debounced search input
@@ -343,6 +362,7 @@ export default function BiographyEnrichmentTab() {
       pageSize,
       minPopularity,
       needsEnrichment,
+      unattributedFacts,
       searchName,
     ],
     queryFn: () =>
@@ -351,7 +371,8 @@ export default function BiographyEnrichmentTab() {
         pageSize,
         parseFloat(minPopularity) || 0,
         needsEnrichment,
-        searchName
+        searchName,
+        unattributedFacts
       ),
   })
 
@@ -407,6 +428,10 @@ export default function BiographyEnrichmentTab() {
       await batchMutation.mutateAsync({
         limit: batchLimit,
         minPopularity: parseFloat(minPopularity) || 0,
+        discoveryEnabled,
+        discoveryIntegrationStrategy: discoveryStrategy,
+        discoveryIncongruityThreshold: discoveryThreshold,
+        discoveryMaxCostPerActor: discoveryMaxCost,
       })
     } catch {
       // Error state handled by mutation
@@ -437,9 +462,9 @@ export default function BiographyEnrichmentTab() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4">
             <div className="text-2xl font-bold text-admin-text-primary">
-              {stats.totalDeceased.toLocaleString()}
+              {stats.totalActors.toLocaleString()}
             </div>
-            <div className="text-sm text-admin-text-muted">Total Deceased</div>
+            <div className="text-sm text-admin-text-muted">Total Actors</div>
           </div>
           <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4">
             <div className="text-2xl font-bold text-admin-success">
@@ -540,6 +565,82 @@ export default function BiographyEnrichmentTab() {
               <option value="false">All Actors</option>
               <option value="true">Needs Enrichment Only</option>
             </select>
+          </div>
+
+          {/* Unattributed Facts Filter */}
+          <div className="flex items-end pb-1">
+            <label className="flex items-center gap-2 text-sm text-admin-text-muted">
+              <input
+                type="checkbox"
+                checked={unattributedFacts}
+                onChange={(e) => {
+                  setUnattributedFacts(e.target.checked)
+                  setPage(1)
+                }}
+                className="rounded border-admin-border"
+              />
+              Unattributed facts only
+            </label>
+          </div>
+
+          {/* Surprise Discovery */}
+          <div className="col-span-full mt-1 border-t border-admin-border pt-3">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-admin-text-muted">
+              Surprise Discovery
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2 text-sm text-admin-text-muted">
+                <input
+                  type="checkbox"
+                  checked={discoveryEnabled}
+                  onChange={(e) => setDiscoveryEnabled(e.target.checked)}
+                  className="rounded border-admin-border"
+                />
+                Enable discovery
+              </label>
+              {discoveryEnabled && (
+                <>
+                  <label className="flex items-center gap-2 text-sm text-admin-text-muted">
+                    Strategy:
+                    <select
+                      value={discoveryStrategy}
+                      onChange={(e) =>
+                        setDiscoveryStrategy(e.target.value as "append-only" | "re-synthesize")
+                      }
+                      className="rounded border border-admin-border bg-admin-surface-base px-2 py-1 text-sm text-admin-text-primary"
+                    >
+                      <option value="append-only">Append only</option>
+                      <option value="re-synthesize">Re-synthesize</option>
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-admin-text-muted">
+                    Threshold:
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={discoveryThreshold}
+                      onChange={(e) => setDiscoveryThreshold(parseInt(e.target.value) || 7)}
+                      className="w-16 rounded border border-admin-border bg-admin-surface-base px-2 py-1 text-sm text-admin-text-primary"
+                    />
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-admin-text-muted">
+                    Max cost:
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={discoveryMaxCost}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value)
+                        setDiscoveryMaxCost(isNaN(val) ? 0.1 : val)
+                      }}
+                      className="w-20 rounded border border-admin-border bg-admin-surface-base px-2 py-1 text-sm text-admin-text-primary"
+                    />
+                  </label>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Batch Limit */}

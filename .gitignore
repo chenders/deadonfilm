@@ -66,3 +66,4 @@ docs/potentially-wrong-language-data.md
 deadonfilm_pre_imports.sql
 local-files
 .worktrees
+.claude/worktrees/

@@ -163,7 +163,10 @@ describe("BiographySection", () => {
   it("does not render lesser-known facts (rendered by ActorPage instead)", () => {
     const details = makeBiographyDetails({
       narrative: "Bio text",
-      lesserKnownFacts: ["Was an amateur pilot", "Spoke four languages"],
+      lesserKnownFacts: [
+        { text: "Was an amateur pilot", sourceUrl: null, sourceName: null },
+        { text: "Spoke four languages", sourceUrl: null, sourceName: null },
+      ],
     })
     render(<BiographySection biographyDetails={details} />)
 
@@ -200,7 +203,7 @@ describe("BiographySection", () => {
   it("renders nothing when biographyDetails has no narrative", () => {
     const details = makeBiographyDetails({
       lifeNotableFactors: ["scholar"],
-      lesserKnownFacts: ["Some fact"],
+      lesserKnownFacts: [{ text: "Some fact", sourceUrl: null, sourceName: null }],
     })
     const { container } = render(<BiographySection biographyDetails={details} />)
     expect(container.innerHTML).toBe("")

@@ -203,6 +203,17 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
       }
     }
 
+    if (req.query.unattributedFacts !== undefined) {
+      filters.unattributedFacts = req.query.unattributedFacts === "true"
+    }
+
+    if (req.query.deathStatus) {
+      const val = req.query.deathStatus as string
+      if (val === "deceased" || val === "alive" || val === "all") {
+        filters.deathStatus = val
+      }
+    }
+
     if (req.query.orderBy) {
       const validOrderBy = ["death_date", "popularity", "name", "enriched_at", "interestingness"]
       const orderBy = req.query.orderBy as string

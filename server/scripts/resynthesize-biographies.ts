@@ -104,8 +104,10 @@ async function getCurrentNarrative(pool: Pool, actorId: number): Promise<string 
   return result.rows[0]?.narrative ?? null
 }
 
-async function getCurrentLesserKnownFacts(pool: Pool, actorId: number): Promise<string[]> {
-  const result = await pool.query<{ lesser_known_facts: string[] | null }>(
+type LesserKnownFact = { text: string; sourceUrl: string | null; sourceName: string | null }
+
+async function getCurrentLesserKnownFacts(pool: Pool, actorId: number): Promise<LesserKnownFact[]> {
+  const result = await pool.query<{ lesser_known_facts: LesserKnownFact[] | null }>(
     `SELECT lesser_known_facts FROM actor_biography_details WHERE actor_id = $1`,
     [actorId]
   )
@@ -120,8 +122,8 @@ function printComparison(
   actorName: string,
   oldNarrative: string | null,
   newNarrative: string | null,
-  oldFacts: string[],
-  newFacts: string[]
+  oldFacts: LesserKnownFact[],
+  newFacts: LesserKnownFact[]
 ): void {
   console.log(`\n${"─".repeat(70)}`)
   console.log(`  ${actorName}`)
@@ -199,14 +201,14 @@ function printComparison(
   if (newFacts.length > 0) {
     console.log(`\n  LESSER-KNOWN FACTS (${newFacts.length}):`)
     for (const fact of newFacts) {
-      console.log(`    • ${fact}`)
+      console.log(`    • ${fact.text}`)
     }
   }
 
   if (oldFacts.length > 0) {
     console.log(`\n  OLD FACTS (${oldFacts.length}):`)
     for (const fact of oldFacts) {
-      console.log(`    • ${fact}`)
+      console.log(`    • ${fact.text}`)
     }
   }
 }
@@ -285,7 +287,7 @@ async function run(options: {
 
       // Save old narrative/facts for comparison
       let oldNarrative: string | null = null
-      let oldFacts: string[] = []
+      let oldFacts: LesserKnownFact[] = []
       if (options.compare) {
         oldNarrative = await getCurrentNarrative(pool, actor.id)
         oldFacts = await getCurrentLesserKnownFacts(pool, actor.id)

@@ -39,11 +39,12 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     const searchName = (req.query.searchName as string) || ""
     const needsEnrichment = req.query.needsEnrichment === "true"
     const minPopularity = parseFloat(req.query.minPopularity as string) || 0
+    const unattributedFacts = req.query.unattributedFacts === "true"
 
     // Build WHERE clause
     const params: unknown[] = []
     let paramIndex = 1
-    const conditions: string[] = ["a.deathday IS NOT NULL"]
+    const conditions: string[] = []
 
     if (searchName) {
       const words = splitSearchWords(searchName)
@@ -59,8 +60,16 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     if (needsEnrichment) {
       conditions.push(`abd.id IS NULL`)
     }
+    if (unattributedFacts) {
+      // Facts where any element lacks proper source attribution (null, empty, or missing)
+      conditions.push(`abd.lesser_known_facts IS NOT NULL AND abd.lesser_known_facts != '[]'::jsonb AND EXISTS (
+        SELECT 1 FROM jsonb_array_elements(abd.lesser_known_facts) AS fact
+        WHERE fact->>'sourceUrl' IS NULL OR TRIM(fact->>'sourceUrl') = ''
+           OR fact->>'sourceName' IS NULL OR TRIM(fact->>'sourceName') = ''
+      )`)
+    }
 
-    const whereClause = conditions.join(" AND ")
+    const whereClause = conditions.length > 0 ? conditions.join(" AND ") : "TRUE"
 
     // Count total
     const countResult = await pool.query(
@@ -85,12 +94,12 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       dataParams
     )
 
-    // Get enrichment stats
+    // Get enrichment stats (biography enrichment applies to all actors, not just deceased)
     const statsResult = await pool.query(
       `SELECT
-         COUNT(*) FILTER (WHERE deathday IS NOT NULL) as total_deceased,
-         COUNT(*) FILTER (WHERE deathday IS NOT NULL AND id IN (SELECT actor_id FROM actor_biography_details)) as enriched,
-         COUNT(*) FILTER (WHERE deathday IS NOT NULL AND id NOT IN (SELECT actor_id FROM actor_biography_details)) as needs_enrichment
+         COUNT(*) as total_actors,
+         COUNT(*) FILTER (WHERE id IN (SELECT actor_id FROM actor_biography_details)) as enriched,
+         COUNT(*) FILTER (WHERE id NOT IN (SELECT actor_id FROM actor_biography_details)) as needs_enrichment
        FROM actors`
     )
 
@@ -113,7 +122,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
         totalPages: Math.ceil(parseInt(countResult.rows[0]?.total ?? "0", 10) / pageSize),
       },
       stats: {
-        totalDeceased: parseInt(statsResult.rows[0]?.total_deceased ?? "0", 10),
+        totalActors: parseInt(statsResult.rows[0]?.total_actors ?? "0", 10),
         enriched: parseInt(statsResult.rows[0]?.enriched ?? "0", 10),
         needsEnrichment: parseInt(statsResult.rows[0]?.needs_enrichment ?? "0", 10),
       },
@@ -166,11 +175,76 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
       await writeBiographyToProduction(pool, actorId, result.data, result.sources)
     }
 
+    // Run surprise discovery if enabled and bio was written
+    let discoveryResult = null
+    const discoveryEnabled = req.body.discoveryEnabled !== false // default true
+    if (discoveryEnabled && result.data?.hasSubstantiveContent && result.data?.narrative) {
+      try {
+        // Validate discovery overrides
+        const overrides: import("../../lib/biography-sources/surprise-discovery/persist.js").DiscoveryOverrides =
+          {}
+        if (req.body.discoveryIntegrationStrategy !== undefined) {
+          const strategy = req.body.discoveryIntegrationStrategy
+          if (strategy !== "append-only" && strategy !== "re-synthesize") {
+            res.status(400).json({
+              error: {
+                message: "discoveryIntegrationStrategy must be 'append-only' or 're-synthesize'",
+              },
+            })
+            return
+          }
+          overrides.integrationStrategy = strategy
+        }
+        if (req.body.discoveryIncongruityThreshold !== undefined) {
+          const threshold = Number(req.body.discoveryIncongruityThreshold)
+          if (!Number.isInteger(threshold) || threshold < 1 || threshold > 10) {
+            res.status(400).json({
+              error: {
+                message: "discoveryIncongruityThreshold must be an integer between 1 and 10",
+              },
+            })
+            return
+          }
+          overrides.incongruityThreshold = threshold
+        }
+        if (req.body.discoveryMaxCostPerActor !== undefined) {
+          const maxCost = Number(req.body.discoveryMaxCostPerActor)
+          if (isNaN(maxCost) || maxCost < 0) {
+            res.status(400).json({
+              error: { message: "discoveryMaxCostPerActor must be a non-negative number" },
+            })
+            return
+          }
+          overrides.maxCostPerActorUsd = maxCost
+        }
+
+        const { runDiscoveryAndPersist } =
+          await import("../../lib/biography-sources/surprise-discovery/persist.js")
+        discoveryResult = await runDiscoveryAndPersist(
+          pool,
+          { id: actor.id, name: actor.name, tmdb_id: actor.tmdb_id },
+          result.data.narrative,
+          result.data.lesserKnownFacts || [],
+          overrides
+        )
+      } catch (discoveryError) {
+        logger.error({ error: discoveryError, actorId }, "Surprise discovery failed (non-fatal)")
+      }
+    }
+
     res.json({
       success: true,
       enriched: result.data?.hasSubstantiveContent || false,
       data: result.data,
       stats: result.stats,
+      discovery: discoveryResult
+        ? {
+            hasFindings: discoveryResult.hasFindings,
+            newFactsCount: discoveryResult.newLesserKnownFacts.length,
+            narrativeUpdated: discoveryResult.updatedNarrative !== null,
+            costUsd: discoveryResult.discoveryResults.costUsd,
+          }
+        : null,
     })
   } catch (error) {
     logger.error({ error, actorId }, "Failed to enrich actor biography")
@@ -271,6 +345,10 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
     useStaging,
     sourceCategories,
     sortBy,
+    discoveryEnabled,
+    discoveryIntegrationStrategy,
+    discoveryIncongruityThreshold,
+    discoveryMaxCostPerActor,
   } = req.body
 
   // Validate concurrency before inserting run record
@@ -326,6 +404,10 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
       allowRegeneration: effectiveAllowRegeneration,
       useStaging: useStaging || false,
       sourceCategories,
+      discoveryEnabled,
+      discoveryIntegrationStrategy,
+      discoveryIncongruityThreshold,
+      discoveryMaxCostPerActor,
       source: "enrich-batch",
     }
     const runResult = await pool.query<{ id: number }>(
@@ -354,6 +436,10 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
         sortBy: sortBy === "interestingness" ? "interestingness" : "popularity",
         useStaging: useStaging || false,
         sourceCategories,
+        discoveryEnabled,
+        discoveryIntegrationStrategy,
+        discoveryIncongruityThreshold,
+        discoveryMaxCostPerActor,
       },
       {
         createdBy: "admin",

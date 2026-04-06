@@ -2,6 +2,7 @@ import { vi, describe, it, expect, beforeEach } from "vitest"
 import type { Pool } from "pg"
 import type { BiographyData, BiographySourceEntry } from "./biography-sources/types.js"
 import { BiographySourceType } from "./biography-sources/types.js"
+import { BIO_ENRICHMENT_VERSION } from "./enrichment-version.js"
 
 // Mock cache module
 vi.mock("./cache.js", () => ({
@@ -39,7 +40,10 @@ function makeBiographyData(overrides: Partial<BiographyData> = {}): BiographyDat
     fameCatalyst: "Discovered by a talent scout in a school play.",
     personalStruggles: "Battled alcoholism throughout the 1960s.",
     relationships: "Married three times.",
-    lesserKnownFacts: ["Played college football", "Was a chess champion"],
+    lesserKnownFacts: [
+      { text: "Played college football", sourceUrl: null, sourceName: null },
+      { text: "Was a chess champion", sourceUrl: null, sourceName: null },
+    ],
     hasSubstantiveContent: true,
     alternateNames: [],
     gender: null,
@@ -92,7 +96,12 @@ describe("writeBiographyToProduction", () => {
     expect(params[9]).toBe(data.fameCatalyst)
     expect(params[10]).toBe(data.personalStruggles)
     expect(params[11]).toBe(data.relationships)
-    expect(params[12]).toEqual(["Played college football", "Was a chess champion"])
+    expect(params[12]).toEqual(
+      JSON.stringify([
+        { text: "Played college football", sourceUrl: null, sourceName: null },
+        { text: "Was a chess champion", sourceUrl: null, sourceName: null },
+      ])
+    )
     expect(params[13]).toBeNull() // alternateNames (empty → null)
     expect(params[14]).toBeNull() // gender
     expect(params[15]).toBeNull() // nationality
@@ -155,7 +164,7 @@ describe("writeBiographyToProduction", () => {
     expect(updateCall[0]).toContain("biography_version = $2")
     expect(updateCall[0]).toContain("biography_source_type = 'enriched'")
     expect(updateCall[0]).toContain("updated_at = NOW()")
-    expect(updateCall[1]).toEqual(["Full narrative text", "6.0.0", 42])
+    expect(updateCall[1]).toEqual(["Full narrative text", BIO_ENRICHMENT_VERSION, 42])
   })
 
   it("skips actors table update when narrative is null", async () => {
