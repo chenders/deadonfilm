@@ -74,7 +74,9 @@ Review and respond to GitHub Copilot review comments on a pull request. Loops un
    - **If not implemented**: Explain why
    - **If needs discussion**: Ask clarifying questions
 
-8. **Resolve implemented threads** (use PRRT_ thread IDs, not PRRC_ comment IDs)
+8. **Check if PR title/description need updating** — If the changes in this round are substantial enough to affect the PR's scope, summary, or test plan (e.g., new features added, significant behavior changes, architectural refactors), update the PR title and/or description to reflect the current state. Use `gh pr edit {pr_number} --title "..." --body "..."` (with heredoc for the body). Skip this step for trivial fixes (typos, unused imports, comment updates).
+
+9. **Resolve implemented threads** (use PRRT_ thread IDs, not PRRC_ comment IDs)
 
    ```bash
    # Get thread IDs
@@ -88,17 +90,17 @@ Review and respond to GitHub Copilot review comments on a pull request. Loops un
    - Resolve threads where you implemented the fix
    - Do NOT resolve threads where you declined
 
-9. **Re-request Copilot review** — capture the review count BEFORE re-requesting to avoid a race condition where the review arrives instantly:
+10. **Re-request Copilot review** — capture the review count BEFORE re-requesting to avoid a race condition where the review arrives instantly:
 
-   ```bash
-   # Capture baseline FIRST — filter to Copilot reviews only and paginate
-   BEFORE_COUNT=$(gh api --paginate repos/chenders/deadonfilm/pulls/{pr_number}/reviews --jq '.[] | select(.user.login == "copilot-pull-request-reviewer[bot]") | .id' | wc -l | tr -d ' ')
+    ```bash
+    # Capture baseline FIRST — filter to Copilot reviews only and paginate
+    BEFORE_COUNT=$(gh api --paginate repos/chenders/deadonfilm/pulls/{pr_number}/reviews --jq '.[] | select(.user.login == "copilot-pull-request-reviewer[bot]") | .id' | wc -l | tr -d ' ')
 
-   # Then re-request
-   gh api repos/chenders/deadonfilm/pulls/{pr_number}/requested_reviewers -X POST -f 'reviewers[]=copilot-pull-request-reviewer[bot]'
-   ```
+    # Then re-request
+    gh api repos/chenders/deadonfilm/pulls/{pr_number}/requested_reviewers -X POST -f 'reviewers[]=copilot-pull-request-reviewer[bot]'
+    ```
 
-10. **Wait for the new review** — Poll until Copilot review count exceeds `BEFORE_COUNT`:
+11. **Wait for the new review** — Poll until Copilot review count exceeds `BEFORE_COUNT`:
 
     ```bash
     gh api --paginate repos/chenders/deadonfilm/pulls/{pr_number}/reviews --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer[bot]")] | length'
@@ -106,9 +108,9 @@ Review and respond to GitHub Copilot review comments on a pull request. Loops un
 
     Poll every 15 seconds. Timeout after 10 minutes (assume review is delayed).
 
-    **CRITICAL:** The baseline count MUST be captured before re-requesting (step 9). If captured after, the new review may already be included, causing the poll to never trigger.
+    **CRITICAL:** The baseline count MUST be captured before re-requesting (step 10). If captured after, the new review may already be included, causing the poll to never trigger.
 
-11. **Loop back to step 2** — Fetch comments again and check for new ones.
+12. **Loop back to step 2** — Fetch comments again and check for new ones.
 
 ### Completion criteria
 
@@ -163,3 +165,4 @@ When complete, report a summary: total rounds, comments addressed, comments decl
 - Thread IDs (PRRT_) are NOT the same as comment IDs (PRRC_)
 - Track comment IDs across rounds to distinguish new comments from previously addressed ones
 - **CRITICAL:** GitHub has two comment endpoints — `pulls/{pr}/comments` (PR-level) and `pulls/{pr}/reviews/{review_id}/comments` (review-level). Copilot uses BOTH. Always check both endpoints or you will miss comments.
+- **Declined but valid suggestions**: When declining a suggestion that is valid but out of scope for this PR, create a brief tracking entry in `docs/plans/backlog/` (e.g., `fix-gsc-empty-sitemaps.md`) with the problem description, the Copilot comment that raised it, and the file/line involved. This ensures valid improvements don't get lost. Reference the backlog entry in your reply to the comment.
