@@ -289,7 +289,10 @@ export async function synthesizeBiography(
       return anthropic.messages.create({
         model,
         max_tokens: MAX_TOKENS,
-        messages: [{ role: "user", content: prompt }],
+        messages: [
+          { role: "user", content: prompt },
+          { role: "assistant", content: "{" },
+        ],
       })
     })
   } catch (error) {
@@ -344,10 +347,11 @@ export async function synthesizeBiography(
     }
   }
 
-  // Parse JSON response
+  // Parse JSON response — strip fences first, then prepend "{" from assistant prefill
   let parsed: Record<string, unknown>
   try {
-    const jsonText = stripMarkdownCodeFences(textBlock.text.trim())
+    const stripped = stripMarkdownCodeFences(textBlock.text.trim())
+    const jsonText = "{" + stripped
     parsed = JSON.parse(jsonText) as Record<string, unknown>
   } catch (error) {
     const parseErrorMsg = error instanceof Error ? error.message : "Unknown error"
