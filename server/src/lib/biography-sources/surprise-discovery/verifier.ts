@@ -8,6 +8,10 @@
  *
  * Uses Google CSE as the primary search provider, falling back to Brave Search
  * if Google is not configured. Tries two query patterns per verification attempt.
+ *
+ * Domain reliability logic lives in the shared module
+ * `server/src/lib/shared/reliable-domains.ts` and is re-exported here for
+ * backwards-compatibility with existing callers.
  */
 
 import { getCachedQuery, setCachedQuery } from "../../death-sources/cache.js"
@@ -15,84 +19,14 @@ import { logger } from "../../logger.js"
 import { BiographySourceType } from "../types.js"
 import type { DataSourceType } from "../../death-sources/types.js"
 import type { VerificationAttempt } from "./types.js"
+import { extractDomain, isReliableDomain } from "../../shared/reliable-domains.js"
+
+// Re-export so existing callers (e.g. verifier.test.ts) continue to work
+export { extractDomain, isReliableDomain }
 
 const CACHE_SOURCE_TYPE = BiographySourceType.DISCOVERY_VERIFICATION as unknown as DataSourceType
 
 const NUM_RESULTS = 10
-
-/**
- * High-reliability domains (ReliabilityTier >= 0.9).
- *
- * Includes Tier 1 News (0.95) and Trade Press (0.9) only.
- * Excludes SECONDARY_COMPILATION (0.85, e.g. Wikipedia, biography.com),
- * MARGINAL_EDITORIAL (0.65, e.g. people.com, ew.com),
- * SEARCH_AGGREGATOR (0.7), AI_MODEL (0.55), and UGC sources.
- */
-const RELIABLE_DOMAINS = new Set([
-  // Tier 1 News (0.95)
-  "theguardian.com",
-  "nytimes.com",
-  "bbc.com",
-  "bbc.co.uk",
-  "apnews.com",
-  "reuters.com",
-  "washingtonpost.com",
-  "latimes.com",
-  // Trade Press (0.9)
-  "variety.com",
-  "deadline.com",
-  "hollywoodreporter.com",
-  // Quality Publications (0.9+)
-  "newyorker.com",
-  "theatlantic.com",
-  "smithsonianmag.com",
-  "rollingstone.com",
-  "vanityfair.com",
-  "time.com",
-  "telegraph.co.uk",
-  "independent.co.uk",
-  "npr.org",
-  "pbs.org",
-])
-
-/**
- * Extracts the bare domain from a URL, stripping the www. prefix.
- *
- * @param url - Full URL string
- * @returns Normalized hostname without www., or empty string on parse error
- */
-export function extractDomain(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "")
-  } catch {
-    return ""
-  }
-}
-
-/**
- * Checks if a domain matches any entry in RELIABLE_DOMAINS.
- *
- * Matches exact hostname (after www. strip) or any subdomain of a reliable
- * domain (e.g. "edition.cnn.com" won't match, but "news.bbc.co.uk" would
- * match "bbc.co.uk").
- *
- * @param domain - Normalized hostname (www. already stripped)
- * @returns true if the domain is considered reliable
- */
-export function isReliableDomain(domain: string): boolean {
-  if (RELIABLE_DOMAINS.has(domain)) {
-    return true
-  }
-  // Check subdomain: strip leading label(s) until we find a match or run out
-  const parts = domain.split(".")
-  for (let i = 1; i < parts.length - 1; i++) {
-    const candidate = parts.slice(i).join(".")
-    if (RELIABLE_DOMAINS.has(candidate)) {
-      return true
-    }
-  }
-  return false
-}
 
 /**
  * Search via Google Custom Search Engine.
