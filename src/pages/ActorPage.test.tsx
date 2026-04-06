@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { HelmetProvider } from "react-helmet-async"
@@ -915,6 +915,86 @@ describe("ActorPage", () => {
       const sourceLinks = factsContainer.querySelectorAll("a[target='_blank']")
       // 5 visible facts: #1 has source, #2 has null, #3-5 have sources = 4 links
       expect(sourceLinks).toHaveLength(4)
+    })
+
+    it("wraps facts in a section with h2 heading", async () => {
+      mockActorWithFacts(factsData)
+      renderWithProviders(<ActorPage />)
+      await waitFor(() => {
+        expect(screen.getByTestId("biography-facts")).toBeInTheDocument()
+      })
+
+      const section = screen.getByRole("region", { name: "Lesser-Known Facts" })
+      expect(section).toBeInTheDocument()
+      const heading = within(section).getByRole("heading", { level: 2, name: "Lesser-Known Facts" })
+      expect(heading).toBeInTheDocument()
+    })
+
+    it("wraps source links in cite elements", async () => {
+      mockActorWithFacts(factsData)
+      renderWithProviders(<ActorPage />)
+      await waitFor(() => {
+        expect(screen.getByTestId("biography-facts")).toBeInTheDocument()
+      })
+
+      const cites = screen.getByTestId("biography-facts").querySelectorAll("cite")
+      // factsData has 4 facts with sources visible in first 5 (fact 2 has null source)
+      expect(cites.length).toBeGreaterThanOrEqual(4)
+    })
+
+    it("omits nofollow for reliable sources", async () => {
+      mockActorWithFacts([
+        {
+          text: "Verified fact",
+          sourceUrl: "https://theguardian.com/article",
+          sourceName: "The Guardian",
+          sourceReliable: true,
+        },
+      ])
+      renderWithProviders(<ActorPage />)
+      await waitFor(() => {
+        expect(screen.getByTestId("biography-facts")).toBeInTheDocument()
+      })
+
+      const link = screen.getByLabelText("Source: The Guardian (opens in new tab)")
+      expect(link).toHaveAttribute("rel", "noopener noreferrer")
+      expect(link.getAttribute("rel")).not.toContain("nofollow")
+    })
+
+    it("keeps nofollow for non-reliable sources", async () => {
+      mockActorWithFacts([
+        {
+          text: "Unverified fact",
+          sourceUrl: "https://reddit.com/r/movies",
+          sourceName: "Reddit",
+          sourceReliable: false,
+        },
+      ])
+      renderWithProviders(<ActorPage />)
+      await waitFor(() => {
+        expect(screen.getByTestId("biography-facts")).toBeInTheDocument()
+      })
+
+      const link = screen.getByLabelText("Source: Reddit (opens in new tab)")
+      expect(link).toHaveAttribute("rel", "nofollow noopener noreferrer")
+    })
+
+    it("defaults to nofollow when sourceReliable is missing", async () => {
+      mockActorWithFacts([
+        {
+          text: "Legacy fact",
+          sourceUrl: "https://example.com/old",
+          sourceName: "Example",
+          // sourceReliable not present (cached response)
+        },
+      ])
+      renderWithProviders(<ActorPage />)
+      await waitFor(() => {
+        expect(screen.getByTestId("biography-facts")).toBeInTheDocument()
+      })
+
+      const link = screen.getByLabelText("Source: Example (opens in new tab)")
+      expect(link).toHaveAttribute("rel", "nofollow noopener noreferrer")
     })
 
     it("does not render links for unsafe URLs", async () => {
