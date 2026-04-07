@@ -209,10 +209,9 @@ The CI workflow splits build from tests to minimize E2E critical path:
 
 **When modifying actor data directly** (via SQL, scripts, or one-off operations), always invalidate the Redis cache so the frontend reflects the change. The API caches actor responses in Redis — without invalidation, stale data will be served.
 
-```bash
-# Invalidate a specific actor's cache
-redis-cli -h localhost -p 6379 DEL "actor:id:{ACTOR_ID}:v:2" "related-actors:id:{ACTOR_ID}"
+**ALWAYS use the `invalidateActorCache` function** — never manually `redis-cli DEL` individual keys. The function handles all cache key types (profile, death, related actors, prerender, SSR) plus pattern-based cleanup. Manual DEL misses keys and causes stale data.
 
+```bash
 # Find cache keys for an actor (dev only — use SCAN in production)
 redis-cli -h localhost -p 6379 --scan --pattern "*{ACTOR_ID}*"
 ```
@@ -222,6 +221,15 @@ The `invalidateActorCache(actorId)` function in `server/src/lib/cache.ts` handle
 **Do not** use `curl` to verify data after cache invalidation — that re-populates the cache. Instead use `redis-cli GET` to inspect the cache or query the database directly.
 
 **When a migration changes the shape of a cached column** (e.g., `text[]` → JSONB objects), the Redis cache still serves the old format until TTL expires. This causes frontend bugs when code expects the new shape. **Always** make the frontend resilient to both old and new formats with a normalizer function, and flush affected cache keys in the migration or a post-migration script.
+
+### Data Source Hierarchy
+
+Actor data comes from multiple sources. When modifying actor data, understand which source takes priority:
+- **`actors` table** — canonical source for name, birthday, deathday, profile_path, known_for_department. Synced periodically from TMDB but can be manually overridden.
+- **TMDB API** — still called on cache miss for `place_of_birth` (to be removed after backfill). Never use TMDB data to override manually corrected DB fields.
+- **`actor_biography_details` table** — enriched biography fields (narrative, facts, SEO fields). Written by enrichment pipeline.
+- **`actor_death_circumstances` table** — death narrative, circumstances. Written by enrichment pipeline.
+- **Redis cache** — caches the full API response. TTL-based expiry. Must be invalidated after any DB change.
 
 ## JavaScript/CommonJS Files
 
