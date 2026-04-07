@@ -313,7 +313,7 @@ export async function getActor(req: Request, res: Response) {
         biography,
         biographySourceUrl,
         biographySourceType,
-        profilePath: actorRecord.profile_path ?? person.profile_path,
+        profilePath: actorRecord.profile_path || person.profile_path,
         placeOfBirth: person.place_of_birth,
         knownForDepartment: actorRecord.known_for_department ?? person.known_for_department ?? null,
       },
@@ -360,7 +360,7 @@ export async function getActor(req: Request, res: Response) {
     newrelic.recordCustomEvent("ActorView", {
       actorId: actorRecord.id,
       ...(actorRecord.tmdb_id !== null && { tmdbId: actorRecord.tmdb_id }),
-      name: person.name,
+      name: actorRecord.name,
       isDeceased: !!effectiveDeathday,
       filmographyCount: filmography.length,
       tvFilmographyCount: tvFilmography.length,

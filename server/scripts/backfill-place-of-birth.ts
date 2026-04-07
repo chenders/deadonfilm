@@ -26,7 +26,6 @@ const program = new Command()
   .description("Backfill place_of_birth from TMDB API for actors missing it")
   .option("-n, --limit <n>", "Max actors to process", parsePositiveInt)
   .option("--dry-run", "Preview without updating")
-  .option("--batch-size <n>", "Actors per batch", parsePositiveInt, 50)
   .action(async (opts) => {
     await run(opts)
   })
@@ -34,7 +33,6 @@ const program = new Command()
 interface Options {
   limit?: number
   dryRun?: boolean
-  batchSize: number
 }
 
 async function run(options: Options): Promise<void> {
@@ -48,80 +46,69 @@ async function run(options: Options): Promise<void> {
   }
 
   try {
-    // Find actors with tmdb_id but no place_of_birth
-    const countResult = await pool.query(
-      "SELECT COUNT(*) as cnt FROM actors WHERE tmdb_id IS NOT NULL AND place_of_birth IS NULL"
+    // Select all candidate IDs up front to avoid re-querying the same rows in dry-run mode
+    const limitClause = options.limit ? `LIMIT ${options.limit}` : ""
+    const candidates = await pool.query<{ id: number; tmdb_id: number; name: string }>(
+      `SELECT id, tmdb_id, name FROM actors
+       WHERE tmdb_id IS NOT NULL AND place_of_birth IS NULL
+       ORDER BY dof_popularity DESC NULLS LAST
+       ${limitClause}`
     )
-    const total = parseInt(countResult.rows[0]?.cnt ?? "0", 10)
-    const limit = options.limit ?? total
-    console.log(`Found ${total} actors without place_of_birth (processing ${limit})`)
+
+    console.log(`Found ${candidates.rows.length} actors without place_of_birth`)
 
     if (options.dryRun) {
       console.log("Dry run — no updates will be made")
     }
 
-    let processed = 0
     let updated = 0
+    let skipped = 0
     let errors = 0
 
-    while (processed < limit) {
-      const batchSize = Math.min(options.batchSize, limit - processed)
-      const batch = await pool.query<{ id: number; tmdb_id: number; name: string }>(
-        `SELECT id, tmdb_id, name FROM actors
-         WHERE tmdb_id IS NOT NULL AND place_of_birth IS NULL
-         ORDER BY dof_popularity DESC NULLS LAST
-         LIMIT $1`,
-        [batchSize]
-      )
+    for (const actor of candidates.rows) {
+      try {
+        const response = await fetch(`https://api.themoviedb.org/3/person/${actor.tmdb_id}`, {
+          headers: { Authorization: `Bearer ${tmdbToken}` },
+          signal: AbortSignal.timeout(10000),
+        })
 
-      if (batch.rows.length === 0) break
-
-      for (const actor of batch.rows) {
-        try {
-          const response = await fetch(`https://api.themoviedb.org/3/person/${actor.tmdb_id}`, {
-            headers: { Authorization: `Bearer ${tmdbToken}` },
-            signal: AbortSignal.timeout(10000),
-          })
-
-          if (!response.ok) {
-            console.warn(`  TMDB ${response.status} for ${actor.name} (tmdb_id: ${actor.tmdb_id})`)
-            errors++
-            // Still mark as processed to avoid infinite loop — set to empty string
-            if (!options.dryRun) {
-              await pool.query("UPDATE actors SET place_of_birth = '' WHERE id = $1", [actor.id])
-            }
-            continue
-          }
-
-          const data = (await response.json()) as { place_of_birth: string | null }
-          const placeOfBirth = data.place_of_birth || ""
-
-          if (!options.dryRun) {
-            await pool.query("UPDATE actors SET place_of_birth = $1 WHERE id = $2", [
-              placeOfBirth,
-              actor.id,
-            ])
-          }
-
-          updated++
-          if (updated % 100 === 0) {
-            console.log(`  Processed ${updated}/${limit} (${errors} errors)`)
-          }
-
-          // Rate limit: TMDB allows ~40 req/s, be conservative
-          await new Promise((resolve) => setTimeout(resolve, 50))
-        } catch (error) {
-          const msg = error instanceof Error ? error.message : String(error)
-          console.warn(`  Error for ${actor.name}: ${msg}`)
+        if (!response.ok) {
+          console.warn(`  TMDB ${response.status} for ${actor.name} (tmdb_id: ${actor.tmdb_id})`)
           errors++
+          continue
         }
 
-        processed++
-        if (processed >= limit) break
+        const data = (await response.json()) as { place_of_birth: string | null }
+
+        if (!data.place_of_birth) {
+          skipped++
+          continue
+        }
+
+        if (options.dryRun) {
+          console.log(`  ${actor.name}: ${data.place_of_birth}`)
+        } else {
+          await pool.query("UPDATE actors SET place_of_birth = $1 WHERE id = $2", [
+            data.place_of_birth,
+            actor.id,
+          ])
+        }
+
+        updated++
+        if (updated % 100 === 0) {
+          console.log(`  Processed ${updated}/${candidates.rows.length} (${errors} errors)`)
+        }
+
+        // Rate limit: TMDB allows ~40 req/s, be conservative
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        console.warn(`  Error for ${actor.name}: ${msg}`)
+        errors++
       }
     }
 
-    console.log(`\nDone: ${updated} updated, ${errors} errors, ${processed} processed`)
+    console.log(`\nDone: ${updated} updated, ${skipped} skipped (no TMDB data), ${errors} errors`)
   } catch (error) {
     console.error("Fatal error:", error)
     process.exitCode = 1
