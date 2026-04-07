@@ -91,37 +91,33 @@ async function run(options: Options): Promise<void> {
         if (!response.ok) {
           console.warn(`  TMDB ${response.status} for ${actor.name} (tmdb_id: ${actor.tmdb_id})`)
           errors++
-          continue
-        }
-
-        const data = (await response.json()) as { place_of_birth: string | null }
-
-        if (!data.place_of_birth) {
-          skipped++
-          continue
-        }
-
-        if (options.dryRun) {
-          console.log(`  ${actor.name}: ${data.place_of_birth}`)
         } else {
-          await pool.query("UPDATE actors SET place_of_birth = $1 WHERE id = $2", [
-            data.place_of_birth,
-            actor.id,
-          ])
+          const data = (await response.json()) as { place_of_birth: string | null }
+
+          if (!data.place_of_birth) {
+            skipped++
+          } else if (options.dryRun) {
+            console.log(`  ${actor.name}: ${data.place_of_birth}`)
+          } else {
+            await pool.query(
+              "UPDATE actors SET place_of_birth = $1 WHERE id = $2 AND place_of_birth IS NULL",
+              [data.place_of_birth, actor.id]
+            )
+            updated++
+          }
         }
 
-        updated++
-        if (updated % 100 === 0) {
-          console.log(`  Processed ${updated}/${candidates.rows.length} (${errors} errors)`)
+        if (updated % 100 === 0 && updated > 0) {
+          console.log(`  Updated ${updated}/${candidates.rows.length} (${errors} errors)`)
         }
-
-        // Rate limit: TMDB allows ~40 req/s, be conservative
-        await new Promise((resolve) => setTimeout(resolve, 50))
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
         console.warn(`  Error for ${actor.name}: ${msg}`)
         errors++
       }
+
+      // Rate limit on ALL paths: TMDB allows ~40 req/s, be conservative
+      await new Promise((resolve) => setTimeout(resolve, 50))
     }
 
     console.log(`\nDone: ${updated} updated, ${skipped} skipped (no TMDB data), ${errors} errors`)
