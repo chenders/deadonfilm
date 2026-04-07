@@ -1,10 +1,10 @@
 #!/usr/bin/env tsx
 /**
- * Backfill place_of_birth from TMDB API for all actors.
+ * Backfill missing place_of_birth values from the TMDB API for actors with a tmdb_id.
  *
- * Fetches person details from TMDB and stores place_of_birth in the actors table.
- * Once complete, the actor route can use the stored value instead of calling TMDB
- * on every page load.
+ * Fetches person details from TMDB for actors where place_of_birth is NULL and
+ * stores the result in the actors table. Once complete, the actor route can use
+ * the stored value instead of calling TMDB on every page load.
  *
  * Usage:
  *   cd server && npx tsx scripts/backfill-place-of-birth.ts [--limit N] [--dry-run]
@@ -99,11 +99,15 @@ async function run(options: Options): Promise<void> {
           } else if (options.dryRun) {
             console.log(`  ${actor.name}: ${data.place_of_birth}`)
           } else {
-            await pool.query(
+            const result = await pool.query(
               "UPDATE actors SET place_of_birth = $1 WHERE id = $2 AND place_of_birth IS NULL",
               [data.place_of_birth, actor.id]
             )
-            updated++
+            if ((result.rowCount ?? 0) > 0) {
+              updated++
+            } else {
+              skipped++ // Already filled by concurrent run or manual edit
+            }
           }
         }
 
