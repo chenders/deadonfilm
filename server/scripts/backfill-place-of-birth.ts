@@ -36,7 +36,6 @@ interface Options {
 }
 
 async function run(options: Options): Promise<void> {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
   const tmdbToken = process.env.TMDB_API_TOKEN
 
   if (!tmdbToken) {
@@ -45,15 +44,25 @@ async function run(options: Options): Promise<void> {
     return
   }
 
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+
   try {
     // Select all candidate IDs up front to avoid re-querying the same rows in dry-run mode
-    const limitClause = options.limit ? `LIMIT ${options.limit}` : ""
-    const candidates = await pool.query<{ id: number; tmdb_id: number; name: string }>(
-      `SELECT id, tmdb_id, name FROM actors
-       WHERE tmdb_id IS NOT NULL AND place_of_birth IS NULL
-       ORDER BY dof_popularity DESC NULLS LAST
-       ${limitClause}`
-    )
+    const query = options.limit
+      ? {
+          text: `SELECT id, tmdb_id, name FROM actors
+                 WHERE tmdb_id IS NOT NULL AND place_of_birth IS NULL
+                 ORDER BY dof_popularity DESC NULLS LAST
+                 LIMIT $1`,
+          values: [options.limit],
+        }
+      : {
+          text: `SELECT id, tmdb_id, name FROM actors
+                 WHERE tmdb_id IS NOT NULL AND place_of_birth IS NULL
+                 ORDER BY dof_popularity DESC NULLS LAST`,
+          values: [],
+        }
+    const candidates = await pool.query<{ id: number; tmdb_id: number; name: string }>(query)
 
     console.log(`Found ${candidates.rows.length} actors without place_of_birth`)
 
