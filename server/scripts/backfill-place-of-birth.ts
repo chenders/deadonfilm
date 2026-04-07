@@ -37,6 +37,7 @@ interface Options {
 
 async function run(options: Options): Promise<void> {
   const tmdbToken = process.env.TMDB_API_TOKEN
+  const databaseUrl = process.env.DATABASE_URL
 
   if (!tmdbToken) {
     console.error("TMDB_API_TOKEN is required")
@@ -44,7 +45,13 @@ async function run(options: Options): Promise<void> {
     return
   }
 
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  if (!databaseUrl) {
+    console.error("DATABASE_URL is required")
+    process.exitCode = 1
+    return
+  }
+
+  const pool = new Pool({ connectionString: databaseUrl })
 
   try {
     // Select all candidate IDs up front to avoid re-querying the same rows in dry-run mode
