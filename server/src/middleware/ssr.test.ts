@@ -41,7 +41,7 @@ vi.mock("node:fs", () => ({
     readFileSync: vi
       .fn()
       .mockReturnValue(
-        '<!DOCTYPE html><html><head><!--app-head--></head><body><div id="root"><!--app-html--></div></body></html>'
+        '<!DOCTYPE html><html><head><title>Dead on Film - Movie Cast Mortality Database</title><!--app-head--></head><body><div id="root"><!--app-html--></div></body></html>'
       ),
   },
 }))
@@ -232,15 +232,22 @@ describe("ssrMiddleware", () => {
 
   // ── Error handling ───────────────────────────────────────────────
 
-  it("serves SPA fallback when Redis errors", async () => {
+  it("serves SPA fallback with default title and description when Redis errors", async () => {
     vi.mocked(getCached).mockRejectedValue(new Error("Redis connection refused"))
 
     await ssrMiddleware(makeReq(), res as Response, next)
 
-    // Should serve the SPA fallback (template without SSR content)
+    // Should serve the SPA fallback with default head tags injected
     expect(res.set).toHaveBeenCalledWith("Content-Type", "text/html")
     expect(res.set).toHaveBeenCalledWith("X-SSR", "fallback")
-    expect(res.send).toHaveBeenCalled()
     expect(next).not.toHaveBeenCalled()
+
+    const html = vi.mocked(res.send!).mock.calls[0][0] as string
+    expect(html).toContain("<title>Dead on Film - Movie Cast Mortality Database</title>")
+    expect(html).toContain('<meta name="description"')
+    expect(html).not.toContain("<!--app-head-->")
+    // Verify no duplicate <title> tags
+    const titleCount = (html.match(/<title>/g) ?? []).length
+    expect(titleCount).toBe(1)
   })
 })

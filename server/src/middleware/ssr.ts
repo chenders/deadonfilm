@@ -239,10 +239,15 @@ function assembleHtml(
 ): string {
   let html = template
 
-  // Inject head tags from Helmet
-  if (headTags) {
-    html = html.replace("<!--app-head-->", headTags)
+  // Inject head tags from Helmet, falling back to defaults so every response
+  // has a <title> and meta description even if Helmet produced nothing.
+  const injectedTags = headTags || DEFAULT_HEAD_TAGS
+  // Strip the template's default <title> to avoid duplicates when Helmet provides one.
+  // Use /<title\b/ to match Helmet output with attributes (e.g. <title data-rh="true">).
+  if (/<title\b/i.test(injectedTags)) {
+    html = html.replace(/<title[^>]*>[^<]*<\/title>/i, "")
   }
+  html = html.replace("<!--app-head-->", injectedTags)
 
   // Inject rendered app HTML
   html = html.replace("<!--app-html-->", appHtml)
@@ -259,14 +264,24 @@ function assembleHtml(
   return html
 }
 
+/** Default head tags — used as SPA fallback and as SSR fallback when Helmet produces empty output. */
+const DEFAULT_HEAD_TAGS = [
+  "<title>Dead on Film - Movie Cast Mortality Database</title>",
+  '<meta name="description" content="Look up any movie and see which actors have passed away. Discover mortality statistics, death dates, and causes of death for your favorite films." />',
+].join("\n    ")
+
 /**
  * Serve the SPA shell (index.html without SSR content) as a fallback.
  */
 function serveSpaFallback(res: Response): void {
   try {
     const template = getTemplate()
-    // Strip SSR placeholders — client will do a full render
-    const fallback = template.replace("<!--app-head-->", "").replace("<!--app-html-->", "")
+    // Strip the template's default <title> (DEFAULT_HEAD_TAGS provides one),
+    // inject default head tags, then strip app placeholder
+    const fallback = template
+      .replace(/<title[^>]*>[^<]*<\/title>/i, "")
+      .replace("<!--app-head-->", DEFAULT_HEAD_TAGS)
+      .replace("<!--app-html-->", "")
     res.set("Content-Type", "text/html")
     res.set("X-SSR", "fallback")
     res.send(fallback)
