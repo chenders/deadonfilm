@@ -242,9 +242,10 @@ function assembleHtml(
   // Inject head tags from Helmet, falling back to defaults so every response
   // has a <title> and meta description even if Helmet produced nothing.
   const injectedTags = headTags || DEFAULT_HEAD_TAGS
-  // Strip the template's default <title> to avoid duplicates when Helmet provides one
-  if (injectedTags.includes("<title>")) {
-    html = html.replace(/<title>[^<]*<\/title>/, "")
+  // Strip the template's default <title> to avoid duplicates when Helmet provides one.
+  // Use /<title\b/ to match Helmet output with attributes (e.g. <title data-rh="true">).
+  if (/<title\b/i.test(injectedTags)) {
+    html = html.replace(/<title[^>]*>[^<]*<\/title>/i, "")
   }
   html = html.replace("<!--app-head-->", injectedTags)
 
@@ -278,7 +279,7 @@ function serveSpaFallback(res: Response): void {
     // Strip the template's default <title> (DEFAULT_HEAD_TAGS provides one),
     // inject default head tags, then strip app placeholder
     const fallback = template
-      .replace(/<title>[^<]*<\/title>/, "")
+      .replace(/<title[^>]*>[^<]*<\/title>/i, "")
       .replace("<!--app-head-->", DEFAULT_HEAD_TAGS)
       .replace("<!--app-html-->", "")
     res.set("Content-Type", "text/html")
