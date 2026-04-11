@@ -41,7 +41,7 @@ vi.mock("node:fs", () => ({
     readFileSync: vi
       .fn()
       .mockReturnValue(
-        '<!DOCTYPE html><html><head><!--app-head--></head><body><div id="root"><!--app-html--></div></body></html>'
+        '<!DOCTYPE html><html><head><title>Dead on Film - Movie Cast Mortality Database</title><!--app-head--></head><body><div id="root"><!--app-html--></div></body></html>'
       ),
   },
 }))
@@ -246,5 +246,8 @@ describe("ssrMiddleware", () => {
     expect(html).toContain("<title>Dead on Film - Movie Cast Mortality Database</title>")
     expect(html).toContain('<meta name="description"')
     expect(html).not.toContain("<!--app-head-->")
+    // Verify no duplicate <title> tags
+    const titleCount = (html.match(/<title>/g) ?? []).length
+    expect(titleCount).toBe(1)
   })
 })
