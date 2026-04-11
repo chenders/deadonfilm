@@ -259,14 +259,22 @@ function assembleHtml(
   return html
 }
 
+/** Default head tags injected when SSR is unavailable (SPA fallback). */
+const DEFAULT_HEAD_TAGS = [
+  "<title>Dead on Film - Movie Cast Mortality Database</title>",
+  '<meta name="description" content="Look up any movie and see which actors have passed away. Discover mortality statistics, death dates, and causes of death for your favorite films." />',
+].join("\n    ")
+
 /**
  * Serve the SPA shell (index.html without SSR content) as a fallback.
  */
 function serveSpaFallback(res: Response): void {
   try {
     const template = getTemplate()
-    // Strip SSR placeholders — client will do a full render
-    const fallback = template.replace("<!--app-head-->", "").replace("<!--app-html-->", "")
+    // Inject default title + description, then strip app placeholder
+    const fallback = template
+      .replace("<!--app-head-->", DEFAULT_HEAD_TAGS)
+      .replace("<!--app-html-->", "")
     res.set("Content-Type", "text/html")
     res.set("X-SSR", "fallback")
     res.send(fallback)
