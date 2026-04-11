@@ -258,7 +258,7 @@ function assembleHtml(
   return html
 }
 
-/** Default head tags injected when SSR is unavailable (SPA fallback). */
+/** Default head tags — used as SPA fallback and as SSR fallback when Helmet produces empty output. */
 const DEFAULT_HEAD_TAGS = [
   "<title>Dead on Film - Movie Cast Mortality Database</title>",
   '<meta name="description" content="Look up any movie and see which actors have passed away. Discover mortality statistics, death dates, and causes of death for your favorite films." />',

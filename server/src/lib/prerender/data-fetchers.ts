@@ -47,15 +47,19 @@ function extractYear(date: string | Date | null | undefined): string | null {
   return date.slice(0, 4)
 }
 
-/** Calculate current age from a birthday string (e.g., "1945-07-26"). */
+/**
+ * Calculate current age from a birthday string (e.g., "1945-07-26").
+ * Uses UTC to avoid timezone-dependent off-by-one errors (pg date columns
+ * are parsed as midnight UTC).
+ */
 function calculateCurrentAge(birthday: string | Date | null | undefined): number | null {
   if (!birthday) return null
   const birth = birthday instanceof Date ? birthday : new Date(birthday)
   if (Number.isNaN(birth.getTime())) return null
   const today = new Date()
-  let age = today.getFullYear() - birth.getFullYear()
-  const monthDiff = today.getMonth() - birth.getMonth()
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+  let age = today.getUTCFullYear() - birth.getUTCFullYear()
+  const monthDiff = today.getUTCMonth() - birth.getUTCMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getUTCDate() < birth.getUTCDate())) {
     age--
   }
   return age
@@ -211,6 +215,25 @@ function getHomePageData(): PrerenderPageData {
   }
 }
 
+/** Build a rich meta description for an actor prerender page. */
+export function buildActorDescription(actor: {
+  name: string
+  birthday: string | Date | null
+  deathday: string | Date | null
+  age_at_death: number | null
+  cause_of_death: string | null
+}): string {
+  if (actor.deathday) {
+    const deathYear = extractYear(actor.deathday)
+    const agePart = actor.age_at_death != null ? ` at age ${actor.age_at_death}` : ""
+    const causePart = actor.cause_of_death ? ` Cause of death: ${actor.cause_of_death}.` : ""
+    return `${actor.name} died in ${deathYear || "unknown"}${agePart}.${causePart} See complete filmography and mortality statistics.`
+  }
+  const currentAge = calculateCurrentAge(actor.birthday)
+  const agePart = currentAge != null ? ` at age ${currentAge}` : ""
+  return `${actor.name} is alive${agePart}. See filmography and which co-stars have passed away.`
+}
+
 async function getActorPageData(actorId: number): Promise<PrerenderPageData | null> {
   const actor = await getActorById(actorId)
   if (!actor) return null
@@ -240,20 +263,7 @@ async function getActorPageData(actorId: number): Promise<PrerenderPageData | nu
   const slug = createActorSlug(actor.name, actor.id)
   const canonicalUrl = `${BASE_URL}/actor/${slug}`
 
-  const isDeceased = !!actor.deathday
-
-  // Build a rich description matching the client-side Helmet output
-  let description: string
-  if (isDeceased) {
-    const deathYear = extractYear(actor.deathday)
-    const agePart = actor.age_at_death ? ` at age ${actor.age_at_death}` : ""
-    const causePart = actor.cause_of_death ? ` Cause of death: ${actor.cause_of_death}.` : ""
-    description = `${actor.name} died in ${deathYear || "unknown"}${agePart}.${causePart} See complete filmography and mortality statistics.`
-  } else {
-    const currentAge = calculateCurrentAge(actor.birthday)
-    const agePart = currentAge ? ` at age ${currentAge}` : ""
-    description = `${actor.name} is alive${agePart}. See filmography and which co-stars have passed away.`
-  }
+  const description = buildActorDescription(actor)
 
   const imageUrl = actor.tmdb_id
     ? `${BASE_URL}/og/actor/${actor.tmdb_id}.png`
