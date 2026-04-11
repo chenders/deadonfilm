@@ -47,6 +47,20 @@ function extractYear(date: string | Date | null | undefined): string | null {
   return date.slice(0, 4)
 }
 
+/** Calculate current age from a birthday string (e.g., "1945-07-26"). */
+function calculateCurrentAge(birthday: string | Date | null | undefined): number | null {
+  if (!birthday) return null
+  const birth = birthday instanceof Date ? birthday : new Date(birthday)
+  if (Number.isNaN(birth.getTime())) return null
+  const today = new Date()
+  let age = today.getFullYear() - birth.getFullYear()
+  const monthDiff = today.getMonth() - birth.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--
+  }
+  return age
+}
+
 function tmdbPoster(path: string | null): string | undefined {
   return path ? `${TMDB_IMAGE_BASE}/w500${path}` : undefined
 }
@@ -227,15 +241,19 @@ async function getActorPageData(actorId: number): Promise<PrerenderPageData | nu
   const canonicalUrl = `${BASE_URL}/actor/${slug}`
 
   const isDeceased = !!actor.deathday
-  const lifeSpan = isDeceased
-    ? `(${extractYear(actor.birthday) || "?"} – ${extractYear(actor.deathday) || "?"})`
-    : actor.birthday
-      ? `(born ${extractYear(actor.birthday)})`
-      : ""
 
-  const description = isDeceased
-    ? `${actor.name} ${lifeSpan}. ${actor.cause_of_death ? `Cause of death: ${actor.cause_of_death}.` : "View filmography and mortality statistics."}`
-    : `${actor.name} ${lifeSpan}. View filmography and mortality statistics on Dead on Film.`
+  // Build a rich description matching the client-side Helmet output
+  let description: string
+  if (isDeceased) {
+    const deathYear = extractYear(actor.deathday)
+    const agePart = actor.age_at_death ? ` at age ${actor.age_at_death}` : ""
+    const causePart = actor.cause_of_death ? ` Cause of death: ${actor.cause_of_death}.` : ""
+    description = `${actor.name} died in ${deathYear || "unknown"}${agePart}.${causePart} See complete filmography and mortality statistics.`
+  } else {
+    const currentAge = calculateCurrentAge(actor.birthday)
+    const agePart = currentAge ? ` at age ${currentAge}` : ""
+    description = `${actor.name} is alive${agePart}. See filmography and which co-stars have passed away.`
+  }
 
   const imageUrl = actor.tmdb_id
     ? `${BASE_URL}/og/actor/${actor.tmdb_id}.png`
