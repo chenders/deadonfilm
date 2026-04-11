@@ -239,10 +239,9 @@ function assembleHtml(
 ): string {
   let html = template
 
-  // Inject head tags from Helmet
-  if (headTags) {
-    html = html.replace("<!--app-head-->", headTags)
-  }
+  // Inject head tags from Helmet, falling back to defaults so every response
+  // has a <title> and meta description even if Helmet produced nothing.
+  html = html.replace("<!--app-head-->", headTags || DEFAULT_HEAD_TAGS)
 
   // Inject rendered app HTML
   html = html.replace("<!--app-html-->", appHtml)
