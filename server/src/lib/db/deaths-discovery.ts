@@ -89,26 +89,14 @@ export async function getRecentDeaths(limit: number = 5): Promise<
   }>
 > {
   const db = getPool()
-  // Use same filtering as getAllDeaths: require 2+ movies or 10+ TV episodes
+  // is_obscure = false already filters for actors with sufficient appearances/popularity,
+  // so we use idx_actors_not_obscure for a fast backward index scan instead of an expensive
+  // CTE that aggregated all 2.2M+ movie and 1.25M+ show appearances.
   const result = await db.query(
-    `WITH actor_appearances AS (
-       SELECT
-         a.id,
-         COUNT(DISTINCT ama.movie_tmdb_id) as movie_count,
-         COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) as episode_count
-       FROM actors a
-       LEFT JOIN actor_movie_appearances ama ON ama.actor_id = a.id
-       LEFT JOIN actor_show_appearances asa ON asa.actor_id = a.id
-       WHERE a.deathday IS NOT NULL
-       GROUP BY a.id
-       HAVING COUNT(DISTINCT ama.movie_tmdb_id) >= 2
-          OR COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10
-     )
-     SELECT a.id, a.tmdb_id, a.name, a.deathday, a.cause_of_death, a.cause_of_death_details,
+    `SELECT a.id, a.tmdb_id, a.name, a.deathday, a.cause_of_death, a.cause_of_death_details,
             a.profile_path, a.fallback_profile_url, a.age_at_death, a.birthday,
             kf.known_for
      FROM actors a
-     JOIN actor_appearances aa ON aa.id = a.id
      LEFT JOIN LATERAL (
        SELECT json_agg(w ORDER BY w.popularity DESC) AS known_for
        FROM (
@@ -129,6 +117,7 @@ export async function getRecentDeaths(limit: number = 5): Promise<
        ) w
      ) kf ON true
      WHERE a.is_obscure = false
+       AND a.deathday IS NOT NULL
      ORDER BY a.deathday DESC
      LIMIT $1`,
     [limit]
@@ -469,26 +458,14 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
     searchClause = `AND ${searchConditions.join(" AND ")}`
   }
 
+  // is_obscure = false already filters for actors with sufficient appearances/popularity,
+  // avoiding an expensive CTE that aggregated millions of appearance rows.
   const result = await db.query<
     ActorRecord & { total_count: string; top_films: TopFilmEntry[] | null }
   >(
-    `WITH actor_appearances AS (
-       SELECT
-         a.id,
-         COUNT(DISTINCT ama.movie_tmdb_id) as movie_count,
-         COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) as episode_count
-       FROM actors a
-       LEFT JOIN actor_movie_appearances ama ON ama.actor_id = a.id
-       LEFT JOIN actor_show_appearances asa ON asa.actor_id = a.id
-       WHERE a.deathday IS NOT NULL
-       GROUP BY a.id
-       HAVING COUNT(DISTINCT ama.movie_tmdb_id) >= 2
-          OR COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10
-     )
-     SELECT COUNT(*) OVER () as total_count, actors.*,
+    `SELECT COUNT(*) OVER () as total_count, actors.*,
             tf.films as top_films
      FROM actors
-     JOIN actor_appearances aa ON aa.id = actors.id
      LEFT JOIN LATERAL (
        SELECT json_agg(sub.film ORDER BY sub.pop DESC NULLS LAST) as films
        FROM (
@@ -501,7 +478,8 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
          LIMIT 2
        ) sub
      ) tf ON true
-     WHERE ($3 = true OR actors.is_obscure = false)
+     WHERE actors.deathday IS NOT NULL
+       AND ($3 = true OR actors.is_obscure = false)
        ${searchClause}
      ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}, actors.name, actors.id
      LIMIT $1 OFFSET $2`,
