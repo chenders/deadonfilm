@@ -14,10 +14,10 @@ integrations:
       TRUST_SERVER_CERTIFICATE: true  # Internal Docker network
 
       COLLECT_DB_LOCK_METRICS: true
-      COLLECT_BLOAT_METRICS: true  # Monitors table/index bloat
+      COLLECT_BLOAT_METRICS: false  # Expensive schema introspection; run manually when needed
 
       TIMEOUT: 10
-    interval: 15s
+    interval: 60s  # Was 15s — reduced to cut schema introspection overhead (510K calls/90 days)
     labels:
       env: production
       role: database

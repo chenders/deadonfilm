@@ -56,6 +56,7 @@ export async function getRecentDeathsHandler(req: Request, res: Response) {
       return res.json({ deaths: [] })
     }
 
+    const startTime = Date.now()
     const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 5, 1), 20)
     const cacheKey = buildCacheKey(CACHE_PREFIX.RECENT_DEATHS, { limit })
 
@@ -65,6 +66,14 @@ export async function getRecentDeathsHandler(req: Request, res: Response) {
     }
 
     const deaths = await getRecentDeaths(limit)
+
+    newrelic.recordCustomEvent("RecentDeathsQuery", {
+      limit,
+      resultCount: deaths.length,
+      responseTimeMs: Date.now() - startTime,
+      cacheHit: false,
+    })
+
     await setCached(cacheKey, deaths, CACHE_TTL.WEEK)
     sendWithETag(req, res, { deaths }, CACHE_TTL.WEEK)
   } catch (error) {
