@@ -144,27 +144,26 @@ export async function trackPageViewHandler(req: Request, res: Response): Promise
 
     const { pageType, entityId, path } = req.body
 
-    // Validate required fields
+    // Validate required fields — return 204 (not 400) for invalid tracking
+    // requests since tracking is fire-and-forget by design. Returning 400
+    // inflates NR error rate and triggers alerts for something with zero
+    // user impact.
     if (!pageType || !entityId || !path) {
-      res.status(400).json({
-        error: { message: "Missing required fields: pageType, entityId, path" },
-      })
+      res.status(204).send()
       return
     }
 
     // Validate page type
     const validPageTypes = ["movie", "show", "episode", "actor_death"]
     if (!validPageTypes.includes(pageType)) {
-      res.status(400).json({
-        error: { message: `Invalid pageType. Must be one of: ${validPageTypes.join(", ")}` },
-      })
+      res.status(204).send()
       return
     }
 
     // Validate entity ID
     const entityIdNum = parseInt(entityId, 10)
     if (isNaN(entityIdNum) || entityIdNum <= 0) {
-      res.status(400).json({ error: { message: "Invalid entityId. Must be a positive integer." } })
+      res.status(204).send()
       return
     }
 
