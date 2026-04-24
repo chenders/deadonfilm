@@ -57,7 +57,7 @@ exports.config = {
   // Error collector - capture and report errors
   error_collector: {
     enabled: true,
-    ignore_status_codes: [404], // Don't report 404s as errors
+    ignore_status_codes: [404, 429], // Don't report 404s or rate-limit responses as errors
     capture_events: true,
     max_event_samples_stored: 100
   },
