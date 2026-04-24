@@ -119,6 +119,15 @@ exports.config = {
     ]
   },
 
+  // Report a stable hostname instead of Docker container ID.
+  // Must match NRIA_DISPLAY_NAME in docker-compose.yml so NR can link
+  // APM datastore spans to the infrastructure PostgreSQL/Redis integrations.
+  // Without this, NR shows databases as "uninstrumented" because the APM
+  // agent reports host=<container-id> while infra reports host=deadonfilm-server.
+  process_host: {
+    display_name: process.env.NEW_RELIC_PROCESS_HOST_DISPLAY_NAME || undefined
+  },
+
   // Code-level metrics (shows function-level performance)
   code_level_metrics: {
     enabled: true

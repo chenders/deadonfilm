@@ -21,6 +21,7 @@ integrations:
     labels:
       env: production
       role: database
+      endpoint: db
     inventory_source: config/postgresql
 
 # PostgreSQL log forwarding to New Relic Logs

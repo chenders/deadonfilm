@@ -14,4 +14,5 @@ integrations:
     labels:
       env: production
       role: cache
+      endpoint: redis
     inventory_source: config/redis

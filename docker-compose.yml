@@ -105,6 +105,8 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-deadonfilm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-deadonfilm}
       - REDIS_URL=redis://redis:6379
       - REDIS_JOBS_URL=redis://redis-jobs:6379
+      # Must match NRIA_DISPLAY_NAME so NR links APM datastore spans to infra integrations
+      - NEW_RELIC_PROCESS_HOST_DISPLAY_NAME=deadonfilm-server
     depends_on:
       db:
         condition: service_healthy
@@ -206,6 +208,8 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-deadonfilm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-deadonfilm}
       - REDIS_URL=redis://redis:6379
       - REDIS_JOBS_URL=redis://redis-jobs:6379
+      # Must match NRIA_DISPLAY_NAME so NR links APM datastore spans to infra integrations
+      - NEW_RELIC_PROCESS_HOST_DISPLAY_NAME=deadonfilm-server
       # PATH needed so supercronic can find itself when forking for process reaping
       - PATH=/usr/local/bin:/usr/bin:/bin
     healthcheck:
@@ -274,6 +278,8 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-deadonfilm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-deadonfilm}
       - REDIS_URL=redis://redis:6379
       - REDIS_JOBS_URL=redis://redis-jobs:6379
+      # Must match NRIA_DISPLAY_NAME so NR links APM datastore spans to infra integrations
+      - NEW_RELIC_PROCESS_HOST_DISPLAY_NAME=deadonfilm-server
       # Optional: limit which queues this worker processes
       # - WORKER_QUEUES=enrichment,ratings
     depends_on:
