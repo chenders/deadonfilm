@@ -18,6 +18,13 @@ The system starts with sources that provide structured, machine-readable data at
 
 Search engines find obituaries, news articles, and reference pages. The system then fetches and extracts content from each result, following up to 3 links per actor.
 
+When a result is an obituary article rather than a structured record, preserve
+the article context separately from the extracted facts: death notice vs.
+reported feature, named relationships, source trail, and the life-story frame.
+The [FinalNotes obituary articles guide](https://www.finalnotes.page/obituary-articles/)
+is a useful reference for distinguishing obituary articles from notices,
+eulogies, and source-backed visual life stories.
+
 | Source | Method | Notes |
 |---|---|---|
 | **Google Custom Search** | Google Custom Search API | Requires `GOOGLE_SEARCH_API_KEY` + `GOOGLE_SEARCH_CX` |
