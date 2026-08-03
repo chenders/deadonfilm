@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import "dotenv/config" // MUST precede newrelic: newrelic.cjs reads NEW_RELIC_LICENSE_KEY at import time
 import newrelic from "newrelic"
 /**
  * Continuous runner for cause of death batch processing.
@@ -20,7 +21,6 @@ import newrelic from "newrelic"
  *   --all                 Process ALL deceased actors (not just those missing cause)
  */
 
-import "dotenv/config"
 import Anthropic from "@anthropic-ai/sdk"
 import { Command } from "commander"
 import { MODEL_ID } from "../src/lib/claude-batch/constants.js"

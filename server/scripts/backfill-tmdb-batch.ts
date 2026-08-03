@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import "dotenv/config" // MUST precede newrelic: newrelic.cjs reads NEW_RELIC_LICENSE_KEY at import time
 import newrelic from "newrelic"
 /**
  * Batch backfill TMDB sync in configurable batches with resumption
@@ -18,7 +19,6 @@ import newrelic from "newrelic"
  *   npm run backfill:tmdb -- --start-date 2026-01-01 --end-date 2026-01-21 --reset
  */
 
-import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { promises as fs } from "fs"
 import * as readline from "readline"

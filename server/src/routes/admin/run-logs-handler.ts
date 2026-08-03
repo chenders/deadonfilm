@@ -17,7 +17,9 @@ import { logger } from "../../lib/logger.js"
  * @param runType - Discriminator for the run_logs.run_type column ("death" or "biography")
  * @returns Express route handler
  */
-export function createRunLogsHandler(runType: "death" | "biography"): (req: Request, res: Response) => Promise<void> {
+export function createRunLogsHandler(
+  runType: "death" | "biography"
+): (req: Request, res: Response) => Promise<void> {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const pool = getPool()

@@ -145,7 +145,6 @@ export async function scoreIncongruity(
   }
 
   const allTerms = suggestions.map((s) => s.term)
-  const expectedTerms = new Set(allTerms)
 
   logger.debug(
     { actorName, termCount: allTerms.length, batches: Math.ceil(allTerms.length / BATCH_SIZE) },
