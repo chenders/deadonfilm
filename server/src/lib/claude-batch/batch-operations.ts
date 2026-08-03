@@ -18,6 +18,7 @@ import { parseClaudeResponse } from "./response-parser.js"
 import { applyUpdate } from "./actor-updater.js"
 import { storeFailure } from "./failure-recovery.js"
 import { createEmptyCheckpoint, type Checkpoint, type ActorToProcess } from "./schemas.js"
+import { extractClaudeText } from "../shared/claude-json.js"
 
 // Re-export checkpoint utilities with default file path
 export function loadCheckpoint(filePath: string = DEFAULT_CHECKPOINT_FILE): Checkpoint | null {
@@ -308,7 +309,7 @@ export async function processResults(
 
       // Parse the response
       const message = result.result.message
-      const responseText = message.content[0].type === "text" ? message.content[0].text : ""
+      const responseText = extractClaudeText(message)
 
       try {
         // parseClaudeResponse handles markdown stripping, JSON repair, and validation

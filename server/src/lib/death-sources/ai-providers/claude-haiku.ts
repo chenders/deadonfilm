@@ -23,8 +23,10 @@ import {
   parseEnrichedResponse,
   type EnrichedDeathResponse,
 } from "./shared-prompt.js"
+import { CLAUDE_MODELS } from "../../claude-models.js"
+import { extractClaudeText } from "../../shared/claude-json.js"
 
-const HAIKU_MODEL = "claude-haiku-4-5-20251001"
+const HAIKU_MODEL = CLAUDE_MODELS.haiku.id
 
 /**
  * Claude Haiku death source - fast and cost-effective (~$0.0001/query).
@@ -88,7 +90,7 @@ export class ClaudeHaikuDeathSource extends BaseDataSource {
         ],
       })
 
-      const responseText = message.content[0]?.type === "text" ? message.content[0].text : ""
+      const responseText = extractClaudeText(message)
 
       const parsed = parseEnrichedResponse(responseText)
 

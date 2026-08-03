@@ -31,6 +31,7 @@ vi.mock("@anthropic-ai/sdk", () => {
 import { ClaudeHaikuDeathSource } from "./claude-haiku.js"
 import type { ActorForEnrichment } from "../types.js"
 import { DataSourceType } from "../types.js"
+import { CLAUDE_MODELS } from "../../claude-models.js"
 
 describe("ClaudeHaikuDeathSource", () => {
   let source: ClaudeHaikuDeathSource
@@ -146,7 +147,7 @@ describe("ClaudeHaikuDeathSource", () => {
 
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: "claude-haiku-4-5-20251001",
+          model: CLAUDE_MODELS.haiku.id,
           temperature: 0,
           max_tokens: 2000,
         })

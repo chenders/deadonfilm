@@ -23,6 +23,7 @@ import newrelic from "newrelic"
 import "dotenv/config"
 import Anthropic from "@anthropic-ai/sdk"
 import { Command } from "commander"
+import { MODEL_ID } from "../src/lib/claude-batch/constants.js"
 import * as readline from "readline"
 import { getPool, resetPool } from "../src/lib/db.js"
 import { toSentenceCase } from "../src/lib/text-utils.js"
@@ -38,6 +39,7 @@ import {
   type Checkpoint,
 } from "./backfill-cause-of-death-batch.js"
 import { jsonrepair } from "jsonrepair"
+import { extractClaudeText } from "../src/lib/shared/claude-json.js"
 
 // Initialize New Relic for monitoring
 
@@ -250,7 +252,7 @@ async function run(options: {
       const requests = result.rows.map((actor) => ({
         custom_id: `actor-${actor.id}`,
         params: {
-          model: "claude-opus-4-5-20251101",
+          model: MODEL_ID,
           max_tokens: 300,
           messages: [
             {
@@ -534,7 +536,7 @@ export async function processResults(
 
       if (result.result.type === "succeeded") {
         const message = result.result.message
-        const responseText = message.content[0].type === "text" ? message.content[0].text : ""
+        const responseText = extractClaudeText(message)
 
         try {
           const jsonText = stripMarkdownCodeFences(responseText)

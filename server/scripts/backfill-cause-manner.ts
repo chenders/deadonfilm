@@ -17,6 +17,8 @@
 import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import Anthropic from "@anthropic-ai/sdk"
+import { CLAUDE_MODELS } from "../src/lib/claude-models.js"
+import { extractClaudeText } from "../src/lib/shared/claude-json.js"
 import { getPool } from "../src/lib/db/pool"
 import { getClaudeRateLimiter } from "../src/lib/claude"
 import { recordCliEvent } from "../src/lib/newrelic-cli.js"
@@ -252,17 +254,17 @@ ${causes.map((c, i) => `${i + 1}. "${c}"`).join("\n")}
 Respond with JSON array: [{"cause": "exact input", "manner": "classification"}]`
 
   const response = await client.messages.create({
-    model: "claude-sonnet-4-5-20250929",
+    model: CLAUDE_MODELS.sonnet.id,
     max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   })
 
-  const content = response.content[0]
-  if (content.type !== "text") {
-    throw new Error("Unexpected response type from Claude")
+  const responseText = extractClaudeText(response)
+  if (!responseText) {
+    throw new Error("No text block in Claude response")
   }
 
-  let jsonText = content.text.trim()
+  let jsonText = responseText.trim()
   if (jsonText.startsWith("```")) {
     jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "")
   }
@@ -434,7 +436,7 @@ async function main(options: { dryRun: boolean; batchSize: number }) {
 
         recordCliEvent("CauseMannerClassification", {
           batchSize: batch.length,
-          model: "claude-sonnet-4-5-20250929",
+          model: CLAUDE_MODELS.sonnet.id,
           success: true,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
@@ -462,7 +464,7 @@ async function main(options: { dryRun: boolean; batchSize: number }) {
         console.error(`  Error processing batch:`, error)
         recordCliEvent("CauseMannerClassification", {
           batchSize: batch.length,
-          model: "claude-sonnet-4-5-20250929",
+          model: CLAUDE_MODELS.sonnet.id,
           success: false,
           error: error instanceof Error ? error.message.substring(0, 1000) : "Unknown error",
         })

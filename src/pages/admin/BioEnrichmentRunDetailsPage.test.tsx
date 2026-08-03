@@ -65,7 +65,7 @@ describe("BioEnrichmentRunDetailsPage", () => {
           },
         ],
         sources_succeeded: 2,
-        synthesis_model: "claude-sonnet-4-20250514",
+        synthesis_model: "claude-sonnet-5",
         processing_time_ms: 4500,
         cost_usd: "0.0350",
         source_cost_usd: "0.0000",

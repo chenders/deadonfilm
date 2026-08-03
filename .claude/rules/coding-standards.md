@@ -63,6 +63,41 @@ Every interactive element must be accessible:
 </Link>
 ```
 
+## AI Model IDs
+
+**Never hardcode an Anthropic model ID.** Import it from the registry at
+`server/src/lib/claude-models.ts`:
+
+```typescript
+// BAD — a private copy that goes stale silently when the model retires
+const MODEL = "claude-sonnet-4-20250514"
+const INPUT_COST_PER_MILLION = 3
+
+// GOOD — single source of truth, ID and pricing stay in sync
+import { CLAUDE_MODELS } from "../claude-models.js"
+const MODEL = CLAUDE_MODELS.sonnet.id
+const INPUT_COST_PER_MILLION = CLAUDE_MODELS.sonnet.inputCostPerMillion
+```
+
+Model IDs are plain strings that only the Anthropic API validates, and only at
+request time. A retired ID passes `tsc`, lint, tests, and deploy — then 404s in
+production on whichever path runs first. In August 2026 `claude-sonnet-4-20250514`
+was retired while six files each held their own copy; it surfaced as a 404 during
+biography enrichment.
+
+Rules:
+- **Prefer undated aliases** (`claude-sonnet-5`) over dated pins (`claude-sonnet-4-20250514`). Dated pins are what expire.
+- **Keep pricing with the ID.** Cost constants feed `costLimits.maxCostPerActor`, which gates the pipelines. A model swap without a pricing update silently corrupts the budget guard.
+- **Don't assert the literal in tests.** `expect(MODEL).toBe("claude-sonnet-5")` only restates the constant and makes the next migration a multi-file change. Assert against `CLAUDE_MODELS.<tier>.id` instead.
+- **When a model retires**, add its ID to `RETIRED_MODEL_IDS` in `claude-models.test.ts` so any lingering reference fails the build.
+
+Verify every ID in the registry is still live:
+
+```bash
+curl -s https://api.anthropic.com/v1/models \
+  -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01" | jq -r '.data[].id'
+```
+
 ## Type Safety
 
 - **Database JSON columns**: `pg` auto-parses JSON — type as the parsed type (`MyType[]`), not `string`

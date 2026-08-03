@@ -1,4 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk"
+import { CLAUDE_MODEL_IDS } from "./claude-models.js"
+import { extractClaudeText } from "./shared/claude-json.js"
 
 let client: Anthropic | null = null
 
@@ -25,11 +27,7 @@ export interface ClaudeCauseVerificationResult {
 
 export type ClaudeModel = "sonnet" | "haiku" | "opus"
 
-const MODEL_IDS: Record<ClaudeModel, string> = {
-  sonnet: "claude-sonnet-4-20250514",
-  haiku: "claude-3-haiku-20240307",
-  opus: "claude-opus-4-5-20251101",
-}
+const MODEL_IDS: Record<ClaudeModel, string> = CLAUDE_MODEL_IDS
 
 // Rate limits per model (requests per minute)
 // Conservative estimates to avoid hitting limits
@@ -268,7 +266,7 @@ If unknown: {"cause": null, "details": null}`
       ],
     })
 
-    const responseText = message.content[0].type === "text" ? message.content[0].text : ""
+    const responseText = extractClaudeText(message)
 
     // Parse JSON response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
@@ -371,7 +369,7 @@ If unknown: {"cause": null, "confidence": null, "reasoning": "No reliable inform
       ],
     })
 
-    const responseText = message.content[0].type === "text" ? message.content[0].text : ""
+    const responseText = extractClaudeText(message)
 
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
@@ -521,7 +519,7 @@ Respond with ONLY the details text (1-2 sentences) or null. No JSON, no quotes a
       ],
     })
 
-    const responseText = message.content[0].type === "text" ? message.content[0].text.trim() : ""
+    const responseText = extractClaudeText(message).trim()
 
     // Check for null response
     if (!responseText || responseText.toLowerCase() === "null") {

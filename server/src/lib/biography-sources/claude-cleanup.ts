@@ -15,12 +15,13 @@ import { callClaudeForJson } from "../shared/claude-json.js"
 import { sanitizeSourceText } from "../shared/sanitize-source-text.js"
 import { getPool } from "../db/pool.js"
 import { saveRejectedFactors } from "../rejected-factors.js"
+import { CLAUDE_MODELS } from "../claude-models.js"
 
 // Sonnet pricing (per million tokens)
-const INPUT_COST_PER_MILLION = 3
-const OUTPUT_COST_PER_MILLION = 15
+const INPUT_COST_PER_MILLION = CLAUDE_MODELS.sonnet.inputCostPerMillion
+const OUTPUT_COST_PER_MILLION = CLAUDE_MODELS.sonnet.outputCostPerMillion
 
-const DEFAULT_MODEL = "claude-sonnet-4-20250514"
+const DEFAULT_MODEL = CLAUDE_MODELS.sonnet.id
 const MAX_TOKENS = 4096
 const MAX_SOURCE_CHARS = 60_000
 

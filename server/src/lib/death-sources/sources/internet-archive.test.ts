@@ -25,6 +25,7 @@ vi.mock("../ai-helpers.js", () => ({
 import { InternetArchiveSource } from "./internet-archive.js"
 import type { ActorForEnrichment } from "../types.js"
 import { DataSourceType } from "../types.js"
+import { CLAUDE_MODELS } from "../../claude-models.js"
 
 // Mock fetch globally
 const mockFetch = vi.fn()
@@ -312,7 +313,7 @@ describe("InternetArchiveSource", () => {
           },
         ],
         costUsd: 0.001,
-        model: "claude-sonnet-4-20250514",
+        model: CLAUDE_MODELS.sonnet.id,
         inputTokens: 100,
         outputTokens: 50,
         latencyMs: 500,
@@ -358,7 +359,7 @@ describe("InternetArchiveSource", () => {
           },
         ],
         costUsd: 0.001,
-        model: "claude-sonnet-4-20250514",
+        model: CLAUDE_MODELS.sonnet.id,
         inputTokens: 100,
         outputTokens: 50,
         latencyMs: 500,
@@ -407,7 +408,7 @@ describe("InternetArchiveSource", () => {
           },
         ],
         costUsd: 0.001,
-        model: "claude-sonnet-4-20250514",
+        model: CLAUDE_MODELS.sonnet.id,
         inputTokens: 100,
         outputTokens: 50,
         latencyMs: 500,
@@ -458,7 +459,7 @@ describe("InternetArchiveSource", () => {
           },
         ],
         costUsd: 0.001,
-        model: "claude-sonnet-4-20250514",
+        model: CLAUDE_MODELS.sonnet.id,
         inputTokens: 100,
         outputTokens: 50,
         latencyMs: 500,

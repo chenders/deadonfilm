@@ -9,8 +9,10 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk"
+import { CLAUDE_MODELS } from "../claude-models.js"
+import { extractClaudeText } from "../shared/claude-json.js"
 
-const CLAUDE_HAIKU_MODEL = "claude-haiku-4-5-20251001"
+const CLAUDE_HAIKU_MODEL = CLAUDE_MODELS.haiku.id
 
 const MIN_VALID_YEAR = 1000
 const MAX_VALID_YEAR = 2100
@@ -146,7 +148,7 @@ export async function extractDatesWithAI(
       { timeout: 15_000 }
     )
 
-    const responseText = message.content[0]?.type === "text" ? message.content[0].text : ""
+    const responseText = extractClaudeText(message)
     const parsed = parseDateResponse(responseText)
 
     if (!parsed) {

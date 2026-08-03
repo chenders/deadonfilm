@@ -9,6 +9,7 @@ vi.mock("@anthropic-ai/sdk", () => ({
 }))
 
 import { extractDatesWithAI, isAIDateExtractionAvailable } from "./wikipedia-date-extractor.js"
+import { CLAUDE_MODELS } from "../claude-models.js"
 
 describe("isAIDateExtractionAvailable", () => {
   afterEach(() => {
@@ -204,7 +205,7 @@ describe("extractDatesWithAI", () => {
     expect(mockCreate).toHaveBeenCalledTimes(1)
     const callArgs = mockCreate.mock.calls[0][0]
 
-    expect(callArgs.model).toBe("claude-haiku-4-5-20251001")
+    expect(callArgs.model).toBe(CLAUDE_MODELS.haiku.id)
     expect(callArgs.max_tokens).toBe(100)
     expect(callArgs.messages[0].role).toBe("user")
     expect(callArgs.messages[0].content).toContain("John Wayne")

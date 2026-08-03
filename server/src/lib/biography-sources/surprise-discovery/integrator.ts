@@ -7,21 +7,21 @@
  *     become a lesser-known fact, a narrative insert, or be discarded.
  *   - "re-synthesize": Claude rewrites the full narrative incorporating findings.
  *
- * Model: claude-sonnet-4-20250514
- * Pricing: input $3/M tokens, output $15/M tokens
+ * Model and pricing come from the shared registry (`CLAUDE_MODELS.sonnet`).
  */
 
 import Anthropic from "@anthropic-ai/sdk"
 import { logger } from "../../logger.js"
 import { stripMarkdownCodeFences } from "../../claude-batch/response-parser.js"
 import type { ResearchedAssociation, IntegratedFinding } from "./types.js"
+import { CLAUDE_MODELS } from "../../claude-models.js"
 
-const MODEL = "claude-sonnet-4-20250514"
+const MODEL = CLAUDE_MODELS.sonnet.id
 const MAX_TOKENS = 2048
 
 // Sonnet pricing per million tokens
-const INPUT_COST_PER_MILLION = 3
-const OUTPUT_COST_PER_MILLION = 15
+const INPUT_COST_PER_MILLION = CLAUDE_MODELS.sonnet.inputCostPerMillion
+const OUTPUT_COST_PER_MILLION = CLAUDE_MODELS.sonnet.outputCostPerMillion
 
 /**
  * Calculates the cost in USD from token usage.

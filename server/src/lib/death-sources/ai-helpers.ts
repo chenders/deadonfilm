@@ -5,21 +5,22 @@
  * These functions help search sources identify the most relevant links and
  * extract death information from page content.
  *
- * Default model: claude-sonnet-4-20250514 (configurable via --ai-model flag)
+ * Default model: `CLAUDE_MODELS.sonnet` (configurable via --ai-model flag)
  */
 
 import Anthropic from "@anthropic-ai/sdk"
 import type { ActorForEnrichment, EnrichmentData } from "./types.js"
 import { getEnrichmentLogger } from "./logger.js"
 import { stripMarkdownCodeFences } from "../claude-batch/response-parser.js"
+import { CLAUDE_MODELS } from "../claude-models.js"
 
 // Default AI model for helpers (Sonnet is cost-effective for these tasks)
-export const DEFAULT_AI_HELPER_MODEL = "claude-sonnet-4-20250514"
+export const DEFAULT_AI_HELPER_MODEL = CLAUDE_MODELS.sonnet.id
 const MAX_TOKENS = 1000
 
-// Cost per million tokens (Sonnet 4 - May 2025)
-const SONNET_INPUT_COST_PER_MILLION = 3
-const SONNET_OUTPUT_COST_PER_MILLION = 15
+// Cost per million tokens
+const SONNET_INPUT_COST_PER_MILLION = CLAUDE_MODELS.sonnet.inputCostPerMillion
+const SONNET_OUTPUT_COST_PER_MILLION = CLAUDE_MODELS.sonnet.outputCostPerMillion
 
 /**
  * Search result to be ranked by AI.
@@ -70,7 +71,7 @@ function calculateCost(inputTokens: number, outputTokens: number): number {
  * @param actor - Actor to find death information for
  * @param searchResults - Search results to rank
  * @param maxLinks - Maximum number of links to return
- * @param model - AI model to use (default: claude-sonnet-4-20250514)
+ * @param model - AI model to use (default: `DEFAULT_AI_HELPER_MODEL`)
  * @returns Ranked links with scores and reasons
  */
 export async function aiSelectLinks(
@@ -184,7 +185,7 @@ Return ONLY valid JSON array, no markdown fences.`
  * @param actor - Actor to extract death information for
  * @param pageContent - Text content of the page (HTML tags already stripped)
  * @param pageUrl - URL of the page (for context)
- * @param model - AI model to use (default: claude-sonnet-4-20250514)
+ * @param model - AI model to use (default: `DEFAULT_AI_HELPER_MODEL`)
  * @returns Extracted death information
  */
 export async function aiExtractDeathInfo(
