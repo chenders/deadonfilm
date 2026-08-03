@@ -78,6 +78,7 @@ import { invalidateActorCache } from "../cache.js"
 import type { ActorForBiography, BiographyData, BiographySourceEntry } from "./types.js"
 import { BiographySourceType } from "./types.js"
 import wtf from "wtf_wikipedia"
+import { CLAUDE_MODELS } from "../claude-models.js"
 
 const mockWtfFetch = vi.mocked(wtf.fetch)
 
@@ -221,7 +222,7 @@ const CLAUDE_SYNTHESIS_RESPONSE = {
   content: [
     {
       type: "text" as const,
-      text: JSON.stringify(CLAUDE_SYNTHESIS_JSON).slice(1),
+      text: JSON.stringify(CLAUDE_SYNTHESIS_JSON),
     },
   ],
   usage: {
@@ -501,11 +502,12 @@ describe("Biography Enrichment Integration Test", () => {
       // -- Verify Claude synthesis was called --
       expect(anthropicMockCreate).toHaveBeenCalledTimes(1)
       const synthesisCallArgs = anthropicMockCreate.mock.calls[0][0]
-      expect(synthesisCallArgs.model).toBe("claude-sonnet-4-20250514")
+      expect(synthesisCallArgs.model).toBe(CLAUDE_MODELS.sonnet.id)
       expect(synthesisCallArgs.max_tokens).toBe(4096)
-      expect(synthesisCallArgs.messages).toHaveLength(2)
+      // Single user message — assistant prefill was removed because models from
+      // the 4.6 generation onward reject it with a 400.
+      expect(synthesisCallArgs.messages).toHaveLength(1)
       expect(synthesisCallArgs.messages[0].role).toBe("user")
-      expect(synthesisCallArgs.messages[1]).toEqual({ role: "assistant", content: "{" })
       // Prompt should contain actor name and source material
       expect(synthesisCallArgs.messages[0].content).toContain("John Wayne")
 
@@ -641,7 +643,7 @@ describe("Biography Enrichment Integration Test", () => {
         has_substantive_content: true,
       })
       anthropicMockCreate.mockResolvedValue({
-        content: [{ type: "text" as const, text: factorsJson.slice(1) }],
+        content: [{ type: "text" as const, text: factorsJson }],
         usage: { input_tokens: 1000, output_tokens: 400 },
       })
 

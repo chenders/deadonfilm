@@ -69,10 +69,6 @@ import type {
 } from "../types.js"
 import { synthesizeBiography, type BiographySynthesisResult } from "../claude-cleanup.js"
 
-// Logging
-import { logger } from "../../logger.js"
-const log = logger.child({ name: "bio-debriefer-adapter" })
-
 // Page fetching infrastructure for link following
 import { createBrowserFetchPage } from "@debriefer/browser"
 import { getCaptchaSolverConfig } from "../../shared/captcha-config.js"

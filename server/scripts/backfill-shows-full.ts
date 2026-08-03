@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import "dotenv/config" // MUST precede newrelic: newrelic.cjs reads NEW_RELIC_LICENSE_KEY at import time
 import newrelic from "newrelic"
 /**
  * All-in-one TV show backfill script.
@@ -26,7 +27,6 @@ import newrelic from "newrelic"
  *   npm run backfill:shows:full -- --shows 987 --source imdb --include-cast
  */
 
-import "dotenv/config"
 import path from "path"
 import { Command, InvalidArgumentError } from "commander"
 import {

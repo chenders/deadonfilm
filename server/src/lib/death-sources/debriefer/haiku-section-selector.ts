@@ -13,8 +13,10 @@
 
 import Anthropic from "@anthropic-ai/sdk"
 import type { WikipediaSection, AsyncSectionFilter } from "@debriefer/sources"
+import { CLAUDE_MODELS } from "../../claude-models.js"
+import { extractClaudeText } from "../../shared/claude-json.js"
 
-const HAIKU_MODEL = "claude-haiku-4-5-20251001"
+const HAIKU_MODEL = CLAUDE_MODELS.haiku.id
 
 function buildPrompt(sectionTitles: string[], articleIntro: string): string {
   const formatted = sectionTitles.map((title, i) => `${i + 1}. ${title}`).join("\n")
@@ -98,7 +100,7 @@ export function createHaikuSectionFilter(maxSections = 10): AsyncSectionFilter {
         messages: [{ role: "user", content: prompt }],
       })
 
-      const responseText = response.content[0]?.type === "text" ? response.content[0].text : ""
+      const responseText = extractClaudeText(response)
 
       const selectedTitles = parseResponse(responseText)
       if (!selectedTitles || selectedTitles.length === 0) return sections

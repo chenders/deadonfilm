@@ -18,6 +18,8 @@ import "dotenv/config"
 import { Command } from "commander"
 import pg from "pg"
 import Anthropic from "@anthropic-ai/sdk"
+import { CLAUDE_MODELS } from "../src/lib/claude-models.js"
+import { extractClaudeText } from "../src/lib/shared/claude-json.js"
 
 const { Pool } = pg
 
@@ -119,13 +121,12 @@ Do not include any other text.`
 
   try {
     const message = await anthropic.messages.create({
-      model: "claude-3-haiku-20240307",
+      model: CLAUDE_MODELS.haiku.id,
       max_tokens: 10,
       messages: [{ role: "user", content: prompt }],
     })
 
-    const response =
-      message.content[0].type === "text" ? message.content[0].text.trim().toLowerCase() : ""
+    const response = extractClaudeText(message).trim().toLowerCase()
 
     if (response === "yes") return true
     if (response === "no") return false

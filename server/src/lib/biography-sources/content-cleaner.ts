@@ -22,6 +22,7 @@ import {
 import { stripMarkdownCodeFences } from "../claude-batch/response-parser.js"
 import { extractArticleContent } from "../shared/readability-extract.js"
 import type { CleanedContent } from "./types.js"
+import { CLAUDE_MODELS } from "../claude-models.js"
 
 // ============================================================================
 // Types
@@ -750,9 +751,9 @@ export function mechanicalPreClean(html: string, url?: string): MechanicalCleanR
 // ============================================================================
 
 /** Haiku 4.5 pricing per million tokens */
-const HAIKU_INPUT_COST_PER_MILLION = 1.0
-const HAIKU_OUTPUT_COST_PER_MILLION = 5.0
-const HAIKU_MODEL = "claude-haiku-4-5-20251001"
+const HAIKU_INPUT_COST_PER_MILLION = CLAUDE_MODELS.haiku.inputCostPerMillion
+const HAIKU_OUTPUT_COST_PER_MILLION = CLAUDE_MODELS.haiku.outputCostPerMillion
+const HAIKU_MODEL = CLAUDE_MODELS.haiku.id
 const HAIKU_MAX_TOKENS = 2000
 
 /**

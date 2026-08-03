@@ -22,20 +22,18 @@ describe("run logs handler", () => {
   })
 
   it("returns paginated run logs filtered by run_type and run_id", async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [{ total: "5" }] })
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: 1,
-            timestamp: "2026-02-24T00:00:00Z",
-            level: "info",
-            message: "Starting enrichment",
-            data: null,
-            source: null,
-          },
-        ],
-      })
+    mockQuery.mockResolvedValueOnce({ rows: [{ total: "5" }] }).mockResolvedValueOnce({
+      rows: [
+        {
+          id: 1,
+          timestamp: "2026-02-24T00:00:00Z",
+          level: "info",
+          message: "Starting enrichment",
+          data: null,
+          source: null,
+        },
+      ],
+    })
 
     const res = await request(app).get("/run-logs?runId=42&page=1&pageSize=50")
     expect(res.status).toBe(200)
@@ -50,20 +48,18 @@ describe("run logs handler", () => {
   })
 
   it("filters by level when provided", async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [{ total: "1" }] })
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: 2,
-            timestamp: "2026-02-24T00:00:00Z",
-            level: "error",
-            message: "Failed",
-            data: null,
-            source: null,
-          },
-        ],
-      })
+    mockQuery.mockResolvedValueOnce({ rows: [{ total: "1" }] }).mockResolvedValueOnce({
+      rows: [
+        {
+          id: 2,
+          timestamp: "2026-02-24T00:00:00Z",
+          level: "error",
+          message: "Failed",
+          data: null,
+          source: null,
+        },
+      ],
+    })
 
     const res = await request(app).get("/run-logs?runId=42&level=error")
     expect(res.status).toBe(200)
@@ -80,9 +76,7 @@ describe("run logs handler", () => {
   })
 
   it("ignores invalid level values", async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [{ total: "0" }] })
-      .mockResolvedValueOnce({ rows: [] })
+    mockQuery.mockResolvedValueOnce({ rows: [{ total: "0" }] }).mockResolvedValueOnce({ rows: [] })
 
     const res = await request(app).get("/run-logs?runId=42&level=invalid")
     expect(res.status).toBe(200)
@@ -93,9 +87,7 @@ describe("run logs handler", () => {
   })
 
   it("uses biography run_type for bio-run-logs route", async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [{ total: "0" }] })
-      .mockResolvedValueOnce({ rows: [] })
+    mockQuery.mockResolvedValueOnce({ rows: [{ total: "0" }] }).mockResolvedValueOnce({ rows: [] })
 
     const res = await request(app).get("/bio-run-logs?runId=10")
     expect(res.status).toBe(200)

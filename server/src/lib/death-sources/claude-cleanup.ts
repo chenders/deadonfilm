@@ -29,8 +29,9 @@ import { getEnrichmentLogger } from "./logger.js"
 import { getPool } from "../db/pool.js"
 import { saveRejectedFactors } from "../rejected-factors.js"
 import newrelic from "newrelic"
+import { CLAUDE_MODELS } from "../claude-models.js"
 
-const MODEL_ID = "claude-opus-4-5-20251101"
+const MODEL_ID = CLAUDE_MODELS.opus.id
 const MAX_TOKENS = 3000
 /**
  * Total character budget for all source text in the cleanup prompt.
@@ -100,8 +101,8 @@ export function isViolentDeath(manner: string | null | undefined): boolean | und
 }
 
 // Cost per million tokens (Opus 4.5)
-const INPUT_COST_PER_MILLION = 15
-const OUTPUT_COST_PER_MILLION = 75
+const INPUT_COST_PER_MILLION = CLAUDE_MODELS.opus.inputCostPerMillion
+const OUTPUT_COST_PER_MILLION = CLAUDE_MODELS.opus.outputCostPerMillion
 
 /**
  * Response structure expected from Claude.

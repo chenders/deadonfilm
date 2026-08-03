@@ -31,6 +31,7 @@ import {
   parseSonnetResponse,
 } from "./integrator.js"
 import type { ResearchedAssociation } from "./types.js"
+import { CLAUDE_MODELS } from "../../claude-models.js"
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -324,7 +325,7 @@ describe("integrateFindings", () => {
     )
   })
 
-  it("uses the correct model (claude-sonnet-4-20250514)", async () => {
+  it("uses the Sonnet model from the shared registry", async () => {
     const findings = [makeResearchedAssociation("karate black belt")]
 
     mockCreate.mockResolvedValue(
@@ -340,7 +341,7 @@ describe("integrateFindings", () => {
     await integrateFindings(ACTOR_NAME, EXISTING_NARRATIVE, EXISTING_FACTS, findings, "append-only")
 
     expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "claude-sonnet-4-20250514" })
+      expect.objectContaining({ model: CLAUDE_MODELS.sonnet.id })
     )
   })
 

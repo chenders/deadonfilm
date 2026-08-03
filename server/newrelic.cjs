@@ -124,9 +124,20 @@ exports.config = {
   // APM datastore spans to the infrastructure PostgreSQL/Redis integrations.
   // Without this, NR shows databases as "uninstrumented" because the APM
   // agent reports host=<container-id> while infra reports host=deadonfilm-server.
-  process_host: {
-    display_name: process.env.NEW_RELIC_PROCESS_HOST_DISPLAY_NAME || undefined
-  },
+  //
+  // The key is spread in conditionally rather than set to `undefined`. An
+  // explicit `display_name: undefined` is NOT the same as omitting it: the
+  // agent treats the key as present and getDisplayHost() calls
+  // Buffer.from(undefined), throwing ERR_INVALID_ARG_TYPE and killing the
+  // process. That crashes every local run and CI test where
+  // NEW_RELIC_PROCESS_HOST_DISPLAY_NAME is unset.
+  ...(process.env.NEW_RELIC_PROCESS_HOST_DISPLAY_NAME
+    ? {
+        process_host: {
+          display_name: process.env.NEW_RELIC_PROCESS_HOST_DISPLAY_NAME
+        }
+      }
+    : {}),
 
   // Code-level metrics (shows function-level performance)
   code_level_metrics: {

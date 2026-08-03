@@ -3,9 +3,10 @@
  */
 
 import path from "path"
+import { CLAUDE_MODELS } from "../claude-models.js"
 
 /** Claude model ID for batch processing */
-export const MODEL_ID = "claude-opus-4-5-20251101"
+export const MODEL_ID = CLAUDE_MODELS.opus.id
 
 /** Source name for database records */
 export const SOURCE_NAME = "claude-opus-4.5-batch"

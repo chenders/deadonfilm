@@ -143,14 +143,6 @@ function isCostarMatch(term: string, context: BoringFilterContext): boolean {
 }
 
 /**
- * Returns true if the term (longer than 3 chars) appears in the bio text.
- */
-function isInBio(term: string, bioText: string): boolean {
-  if (term.length <= 3) return false
-  return bioText.toLowerCase().includes(term.toLowerCase())
-}
-
-/**
  * Remove subset terms — if term A is a strict prefix of term B (followed by
  * a space or apostrophe), drop term A and keep term B.
  */

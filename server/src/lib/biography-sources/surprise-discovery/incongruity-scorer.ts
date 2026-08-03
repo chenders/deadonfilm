@@ -6,7 +6,7 @@
  * candidates with cost tracking.
  *
  * Candidates are sent in batches of up to 30 per API call to minimize cost.
- * Model: claude-haiku-4-5-20251001
+ * Model: `CLAUDE_MODELS.haiku`
  * Pricing: input $1.0/M tokens, output $5.0/M tokens
  */
 
@@ -14,13 +14,14 @@ import Anthropic from "@anthropic-ai/sdk"
 import { logger } from "../../logger.js"
 import { stripMarkdownCodeFences } from "../../claude-batch/response-parser.js"
 import type { AutocompleteSuggestion, IncongruityCandidate } from "./types.js"
+import { CLAUDE_MODELS } from "../../claude-models.js"
 
-const MODEL = "claude-haiku-4-5-20251001"
+const MODEL = CLAUDE_MODELS.haiku.id
 const MAX_TOKENS = 4096
 
 // Haiku pricing per million tokens
-const INPUT_COST_PER_MILLION = 1.0
-const OUTPUT_COST_PER_MILLION = 5.0
+const INPUT_COST_PER_MILLION = CLAUDE_MODELS.haiku.inputCostPerMillion
+const OUTPUT_COST_PER_MILLION = CLAUDE_MODELS.haiku.outputCostPerMillion
 
 /** Maximum candidates per Haiku call to avoid response truncation. */
 const BATCH_SIZE = 30
@@ -144,7 +145,6 @@ export async function scoreIncongruity(
   }
 
   const allTerms = suggestions.map((s) => s.term)
-  const expectedTerms = new Set(allTerms)
 
   logger.debug(
     { actorName, termCount: allTerms.length, batches: Math.ceil(allTerms.length / BATCH_SIZE) },

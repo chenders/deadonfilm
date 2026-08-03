@@ -30,6 +30,7 @@ import {
   parseHaikuResponse,
 } from "./incongruity-scorer.js"
 import type { AutocompleteSuggestion } from "./types.js"
+import { CLAUDE_MODELS } from "../../claude-models.js"
 
 function makeSuggestion(term: string): AutocompleteSuggestion {
   return {
@@ -74,7 +75,7 @@ describe("scoreIncongruity", () => {
     expect(mockCreate).toHaveBeenCalledOnce()
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "claude-haiku-4-5-20251001",
+        model: CLAUDE_MODELS.haiku.id,
         max_tokens: expect.any(Number),
         messages: expect.arrayContaining([expect.objectContaining({ role: "user" })]),
       })

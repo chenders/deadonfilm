@@ -11,13 +11,15 @@ import { Command } from "commander"
 import { getPool } from "../src/lib/db.js"
 import { calculateYearsLost } from "../src/lib/mortality-stats.js"
 import Anthropic from "@anthropic-ai/sdk"
+import { CLAUDE_MODELS } from "../src/lib/claude-models.js"
+import { extractClaudeText } from "../src/lib/shared/claude-json.js"
 
 const anthropic = new Anthropic()
 
 async function lookupBirthday(name: string, deathday: string): Promise<string | null> {
   try {
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: CLAUDE_MODELS.sonnet.id,
       max_tokens: 100,
       messages: [
         {
@@ -30,8 +32,7 @@ Do not include any other text.`,
       ],
     })
 
-    const text =
-      response.content[0].type === "text" ? response.content[0].text.trim().toLowerCase() : ""
+    const text = extractClaudeText(response).trim().toLowerCase()
 
     // Validate it looks like a date
     if (text === "unknown" || text.includes("unknown")) {

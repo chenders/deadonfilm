@@ -35,14 +35,15 @@ import {
 import { chromium } from "playwright-core"
 
 import { consoleLog } from "./logger.js"
+import { CLAUDE_MODELS } from "../claude-models.js"
 
 // Claude model for link operations (use a cheaper model than cleanup)
-const LINK_MODEL_ID = "claude-sonnet-4-20250514"
+const LINK_MODEL_ID = CLAUDE_MODELS.sonnet.id
 const MAX_TOKENS = 1000
 
-// Cost per million tokens (Sonnet 4)
-const INPUT_COST_PER_MILLION = 3
-const OUTPUT_COST_PER_MILLION = 15
+// Cost per million tokens
+const INPUT_COST_PER_MILLION = CLAUDE_MODELS.sonnet.inputCostPerMillion
+const OUTPUT_COST_PER_MILLION = CLAUDE_MODELS.sonnet.outputCostPerMillion
 
 // Fetch timeouts and limits
 const FETCH_TIMEOUT_MS = 10000

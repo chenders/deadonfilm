@@ -157,7 +157,7 @@ DuckDuckGo is limited to 2-3 concurrent requests across all sources to prevent C
   confidenceThreshold: 0.6,      // Content confidence threshold for high-quality counting
   reliabilityThreshold: 0.6,     // Source reliability threshold
   useReliabilityThreshold: true, // Enforce reliability threshold
-  synthesisModel: "claude-sonnet-4-20250514",
+  synthesisModel: CLAUDE_MODELS.sonnet.id,  // see server/src/lib/claude-models.ts
   sourceCategories: {
     free: true,                  // Wikidata, Wikipedia
     reference: true,             // Britannica, Biography.com, TCM, AllMusic

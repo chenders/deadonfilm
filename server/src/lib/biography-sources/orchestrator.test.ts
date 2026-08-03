@@ -232,6 +232,7 @@ import type { BiographyLookupResult } from "./base-source.js"
 import { getCachedQueriesForActor } from "../death-sources/cache.js"
 import type { CachedQueryResult } from "../death-sources/cache.js"
 import type { ReliabilityTier } from "../death-sources/types.js"
+import { CLAUDE_MODELS } from "../claude-models.js"
 
 // ============================================================================
 // Test Fixtures
@@ -347,7 +348,7 @@ function createSynthesisResult(
           }
         : null,
     costUsd: overrides?.costUsd ?? 0.01,
-    model: "claude-sonnet-4-20250514",
+    model: CLAUDE_MODELS.sonnet.id,
     inputTokens: 1000,
     outputTokens: 500,
     error: overrides?.error,
@@ -723,7 +724,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           books: false,
           ai: false,
         },
-        synthesisModel: "claude-sonnet-4-20250514",
+        synthesisModel: CLAUDE_MODELS.sonnet.id,
       })
 
       const wikidataMock = getMock("Wikidata")
@@ -740,7 +741,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
       expect(synthesizeBiography).toHaveBeenCalledWith(
         testActor,
         expect.arrayContaining([expect.objectContaining({ sourceName: "Wikidata" })]),
-        { model: "claude-sonnet-4-20250514" }
+        { model: CLAUDE_MODELS.sonnet.id }
       )
       expect(result.data).not.toBeNull()
       expect(result.data!.narrative).toBe("Full narrative")

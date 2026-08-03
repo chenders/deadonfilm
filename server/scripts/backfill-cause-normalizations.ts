@@ -14,6 +14,8 @@
 import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import Anthropic from "@anthropic-ai/sdk"
+import { CLAUDE_MODELS } from "../src/lib/claude-models.js"
+import { extractClaudeText } from "../src/lib/shared/claude-json.js"
 import { getPool } from "../src/lib/db/pool"
 import { getClaudeRateLimiter } from "../src/lib/claude"
 import { recordCliEvent } from "../src/lib/newrelic-cli.js"
@@ -62,19 +64,19 @@ ${causes.map((c, i) => `${i + 1}. "${c}"`).join("\n")}
 Respond with JSON array: [{"original": "exact input", "normalized": "your normalized version"}]`
 
   const response = await client.messages.create({
-    model: "claude-opus-4-5-20251101",
+    model: CLAUDE_MODELS.opus.id,
     max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   })
 
-  const content = response.content[0]
-  if (content.type !== "text") {
-    throw new Error("Unexpected response type from Claude")
+  const responseText = extractClaudeText(response)
+  if (!responseText) {
+    throw new Error("No text block in Claude response")
   }
 
   try {
     // Strip markdown code blocks if present
-    let jsonText = content.text.trim()
+    let jsonText = responseText.trim()
     if (jsonText.startsWith("```")) {
       jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "")
     }
@@ -94,7 +96,7 @@ Respond with JSON array: [{"original": "exact input", "normalized": "your normal
       },
     }
   } catch (e) {
-    console.error("Failed to parse Claude response:", content.text)
+    console.error("Failed to parse Claude response:", responseText)
     throw e
   }
 }
@@ -167,7 +169,7 @@ async function main(options: { dryRun: boolean; batchSize: number }) {
         batchSize: batch.length,
         causesInput: batch.join(" | ").substring(0, 4000),
         normalizationsOutput,
-        model: "claude-opus-4-5-20251101",
+        model: CLAUDE_MODELS.opus.id,
         success: true,
         inputTokens: result.usage.inputTokens,
         outputTokens: result.usage.outputTokens,
@@ -222,7 +224,7 @@ async function main(options: { dryRun: boolean; batchSize: number }) {
       // Record failed New Relic event
       recordCliEvent("CauseOfDeathNormalization", {
         batchSize: batch.length,
-        model: "claude-opus-4-5-20251101",
+        model: CLAUDE_MODELS.opus.id,
         success: false,
         error: error instanceof Error ? error.message.substring(0, 1000) : "Unknown error",
       })

@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { CLAUDE_MODELS } from "../claude-models.js"
 import {
   recordAIUsage,
   updateUsageQuality,
@@ -33,7 +34,7 @@ describe("AI Usage Tracker", () => {
 
       const record: Omit<AIUsageRecord, "id" | "createdAt"> = {
         actorId: 123,
-        model: "claude-sonnet-4-20250514",
+        model: CLAUDE_MODELS.sonnet.id,
         operation: "link_selection",
         inputTokens: 1000,
         outputTokens: 200,
@@ -51,7 +52,7 @@ describe("AI Usage Tracker", () => {
       const [query, params] = mockPool.query.mock.calls[0]
       expect(query).toContain("INSERT INTO ai_helper_usage")
       expect(params).toContain(123) // actorId
-      expect(params).toContain("claude-sonnet-4-20250514") // model
+      expect(params).toContain(CLAUDE_MODELS.sonnet.id) // model
       expect(params).toContain("link_selection") // operation
     })
   })
@@ -136,7 +137,7 @@ describe("AI Usage Tracker", () => {
         })
 
       await getAIUsageStats(mockPool as unknown as import("pg").Pool, {
-        model: "claude-sonnet-4-20250514",
+        model: CLAUDE_MODELS.sonnet.id,
         operation: "link_selection",
       })
 
@@ -144,7 +145,7 @@ describe("AI Usage Tracker", () => {
       const [query, params] = mockPool.query.mock.calls[0]
       expect(query).toContain("model = $")
       expect(query).toContain("operation = $")
-      expect(params).toContain("claude-sonnet-4-20250514")
+      expect(params).toContain(CLAUDE_MODELS.sonnet.id)
       expect(params).toContain("link_selection")
     })
   })
@@ -154,7 +155,7 @@ describe("AI Usage Tracker", () => {
       mockPool.query.mockResolvedValue({
         rows: [
           {
-            model: "claude-sonnet-4-20250514",
+            model: CLAUDE_MODELS.sonnet.id,
             calls: "100",
             total_cost: "0.50",
             avg_latency: "1500",
@@ -175,8 +176,8 @@ describe("AI Usage Tracker", () => {
       const result = await getAIUsageByModel(mockPool as unknown as import("pg").Pool)
 
       expect(result.size).toBe(2)
-      expect(result.get("claude-sonnet-4-20250514")?.calls).toBe(100)
-      expect(result.get("claude-sonnet-4-20250514")?.avgQuality).toBe(0.8) // 80/100
+      expect(result.get(CLAUDE_MODELS.sonnet.id)?.calls).toBe(100)
+      expect(result.get(CLAUDE_MODELS.sonnet.id)?.avgQuality).toBe(0.8) // 80/100
       expect(result.get("gpt-4o-mini")?.calls).toBe(50)
       expect(result.get("gpt-4o-mini")?.avgQuality).toBe(0.7) // 35/50
     })

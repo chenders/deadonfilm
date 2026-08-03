@@ -15,11 +15,12 @@ import {
   aiExtractDeathInfo,
 } from "./ai-helpers.js"
 import type { ActorForEnrichment } from "./types.js"
+import { CLAUDE_MODELS } from "../claude-models.js"
 
 describe("AI Helpers", () => {
   describe("DEFAULT_AI_HELPER_MODEL", () => {
     it("exports the default model", () => {
-      expect(DEFAULT_AI_HELPER_MODEL).toBe("claude-sonnet-4-20250514")
+      expect(DEFAULT_AI_HELPER_MODEL).toBe(CLAUDE_MODELS.sonnet.id)
     })
   })
 

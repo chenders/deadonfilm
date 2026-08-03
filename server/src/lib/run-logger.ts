@@ -54,8 +54,14 @@ export class RunLogger {
     this.log("debug", message, data, source)
   }
 
-  private log(level: string, message: string, data?: Record<string, unknown>, source?: string): void {
-    const prefix = level === "error" ? "ERROR" : level === "warn" ? "WARN" : level === "debug" ? "DEBUG" : "INFO"
+  private log(
+    level: string,
+    message: string,
+    data?: Record<string, unknown>,
+    source?: string
+  ): void {
+    const prefix =
+      level === "error" ? "ERROR" : level === "warn" ? "WARN" : level === "debug" ? "DEBUG" : "INFO"
     const dataStr = data ? ` ${JSON.stringify(data)}` : ""
     console.log(`[${this.runType}:${this.runId}] [${prefix}] ${message}${dataStr}`)
 
@@ -96,7 +102,10 @@ export class RunLogger {
         [this.runType, this.runId, timestamps, levels, messages, dataArr, sources]
       )
     } catch (err) {
-      logger.error({ err, runType: this.runType, runId: this.runId }, "[RunLogger] Failed to flush logs")
+      logger.error(
+        { err, runType: this.runType, runId: this.runId },
+        "[RunLogger] Failed to flush logs"
+      )
     }
   }
 }

@@ -8,6 +8,7 @@
 
 import { ReliabilityTier } from "../death-sources/types.js"
 import type { LogEntry } from "../death-sources/debriefer/lifecycle-hooks.js"
+import { CLAUDE_MODELS } from "../claude-models.js"
 
 // ============================================================================
 // Source Types
@@ -323,7 +324,8 @@ export interface BiographyEnrichmentConfig {
     haikuEnabled: boolean // Enable Haiku AI extraction (Stage 2)
     mechanicalOnly: boolean // Skip Stage 2, use mechanical only
   }
-  synthesisModel: string // default "claude-sonnet-4-20250514"
+  /** Anthropic model ID for Stage 3 synthesis (default: `CLAUDE_MODELS.sonnet.id`) */
+  synthesisModel: string
   /** Number of actors to process concurrently (default: 5, range: 1-20) */
   concurrency?: number
 }
@@ -355,5 +357,5 @@ export const DEFAULT_BIOGRAPHY_CONFIG: BiographyEnrichmentConfig = {
     haikuEnabled: true,
     mechanicalOnly: false,
   },
-  synthesisModel: "claude-sonnet-4-20250514",
+  synthesisModel: CLAUDE_MODELS.sonnet.id,
 }

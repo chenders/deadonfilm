@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import "dotenv/config" // MUST precede newrelic: newrelic.cjs reads NEW_RELIC_LICENSE_KEY at import time
 import newrelic from "newrelic"
 /**
  * Sync script to detect newly deceased actors, movie changes, and new show episodes from TMDB.
@@ -21,7 +22,6 @@ import newrelic from "newrelic"
  *   npm run sync:tmdb -- --shows-only                   # Only sync active TV show episodes
  */
 
-import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool } from "../src/lib/db.js"
 import {

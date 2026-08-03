@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import type { ActorForBiography, RawBiographySourceData } from "./types.js"
 import { BiographySourceType } from "./types.js"
+import { CLAUDE_MODELS } from "../claude-models.js"
 
 // Shared mock create function accessible from all tests
 const mockCreate = vi.fn()
@@ -112,15 +113,14 @@ function makeMockApiResponse(
   jsonData: Record<string, unknown>,
   tokenOverrides?: { input?: number; output?: number }
 ) {
-  // Strip leading "{" to match assistant prefill behavior —
-  // the API call uses { role: "assistant", content: "{" } so Claude's
-  // response continues from after the opening brace
-  const fullJson = JSON.stringify(jsonData)
+  // Full JSON including the opening brace. Assistant prefill was removed
+  // because models from the 4.6 generation onward reject it with a 400, so
+  // the model now returns a complete object.
   return {
     content: [
       {
         type: "text" as const,
-        text: fullJson.slice(1),
+        text: JSON.stringify(jsonData),
       },
     ],
     usage: {
@@ -422,9 +422,9 @@ describe("claude-cleanup (biography)", () => {
 
       const result = await synthesizeBiography(mockActor, mockSources)
 
-      expect(result.model).toBe("claude-sonnet-4-20250514")
+      expect(result.model).toBe(CLAUDE_MODELS.sonnet.id)
       expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ model: "claude-sonnet-4-20250514" })
+        expect.objectContaining({ model: CLAUDE_MODELS.sonnet.id })
       )
     })
 
@@ -432,12 +432,12 @@ describe("claude-cleanup (biography)", () => {
       mockCreate.mockResolvedValue(makeMockApiResponse(makeValidClaudeResponse()))
 
       const result = await synthesizeBiography(mockActor, mockSources, {
-        model: "claude-opus-4-20250514",
+        model: CLAUDE_MODELS.opus.id,
       })
 
-      expect(result.model).toBe("claude-opus-4-20250514")
+      expect(result.model).toBe(CLAUDE_MODELS.opus.id)
       expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ model: "claude-opus-4-20250514" })
+        expect.objectContaining({ model: CLAUDE_MODELS.opus.id })
       )
     })
 
@@ -455,9 +455,8 @@ describe("claude-cleanup (biography)", () => {
 
     it("strips markdown fences from response", async () => {
       const validResponse = makeValidClaudeResponse()
-      // With assistant prefill "{", Claude's fenced response omits the leading brace
-      const jsonWithoutBrace = JSON.stringify(validResponse).slice(1)
-      mockCreate.mockResolvedValue(makeMockApiResponseRaw("```json\n" + jsonWithoutBrace + "\n```"))
+      const json = JSON.stringify(validResponse)
+      mockCreate.mockResolvedValue(makeMockApiResponseRaw("```json\n" + json + "\n```"))
 
       const result = await synthesizeBiography(mockActor, mockSources)
 
